@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 const pool = require('./db');
+const authRoutes = require('./routes/auth.routes');
 
 const app = express();
 
@@ -24,9 +25,11 @@ app.get('/api/test-db', async (req, res) => {
   }
 });
 
+// ---- Autenticación ----
+app.use('/api/auth', authRoutes);
+
 // ---- Ejemplo de CRUD real: GALERAS ----
 
-// Obtener todas las galeras
 app.get('/api/galeras', async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM GALERAS');
@@ -36,7 +39,6 @@ app.get('/api/galeras', async (req, res) => {
   }
 });
 
-// Crear una nueva galera
 app.post('/api/galeras', async (req, res) => {
   try {
     const { nombre, ubicacion, capacidad } = req.body;
