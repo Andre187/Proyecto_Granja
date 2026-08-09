@@ -76,9 +76,9 @@ nav.side-nav { display: flex; flex-direction: column; gap: 2px; }
   font-size: 13.5px; color: var(--green-light); border: none; background: transparent;
   width: 100%; text-align: left; text-decoration: none;
 }
-.nav-item .dot { width: 6px; height: 6px; border-radius: 50%; background: #9DB3D9; flex-shrink: 0; }
+.nav-icon { font-size: 14px; flex-shrink: 0; opacity: 0.85; filter: grayscale(0.3); }
 .nav-item.active { background: rgba(255,255,255,0.12); color: #fff; font-weight: 500; }
-.nav-item.active .dot { background: var(--gold); }
+.nav-item.active .nav-icon { opacity: 1; filter: none; }
 .nav-item:not(.active):not(.locked):hover { background: rgba(255,255,255,0.06); }
 .nav-item.locked { color: #5C7098; cursor: not-allowed; }
 .nav-item .lock { margin-left: auto; font-size: 11px; }
