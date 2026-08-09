@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Login from './Login';
 import Layout from './components/Layout';
 import Panel from './pages/Panel';
+import Usuarios from './pages/Usuarios';
+import Produccion from './pages/Produccion';
 import ModuloPendiente from './pages/ModuloPendiente';
 
 function App() {
@@ -26,7 +28,7 @@ function App() {
       <Layout usuario={usuarioActivo} onLogout={handleLogout}>
         <Routes>
           <Route path="/" element={<Panel usuario={usuarioActivo} />} />
-          <Route path="/produccion" element={<ModuloPendiente nombre="Producción" />} />
+          <Route path="/produccion" element={<Produccion />} />
           <Route path="/sanidad" element={<ModuloPendiente nombre="Sanidad y vacunación" />} />
           <Route path="/tareas" element={<ModuloPendiente nombre="Tareas" />} />
           <Route path="/inventario" element={<ModuloPendiente nombre="Inventario" />} />
@@ -34,6 +36,7 @@ function App() {
           <Route path="/personal" element={<ModuloPendiente nombre="Personal" />} />
           <Route path="/gastos" element={<ModuloPendiente nombre="Gastos" />} />
           <Route path="/reportes" element={<ModuloPendiente nombre="Reportes" />} />
+          <Route path="/usuarios" element={<Usuarios usuario={usuarioActivo} />} />
         </Routes>
       </Layout>
     </BrowserRouter>

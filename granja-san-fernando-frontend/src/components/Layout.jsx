@@ -2,15 +2,16 @@ import { NavLink, useLocation } from 'react-router-dom';
 import logo from '../assets/logo.png';
 
 const NAV = [
-  { group: null, to: '/', label: 'Panel general', roles: ['administrador', 'operador'] },
-  { group: 'Operación', to: '/produccion', label: 'Producción', roles: ['administrador', 'operador'] },
-  { group: 'Operación', to: '/sanidad', label: 'Sanidad y vacunación', roles: ['administrador', 'operador'] },
-  { group: 'Operación', to: '/tareas', label: 'Tareas', roles: ['administrador', 'operador'] },
-  { group: 'Administración', to: '/inventario', label: 'Inventario', roles: ['administrador'] },
-  { group: 'Administración', to: '/ventas', label: 'Ventas', roles: ['administrador'] },
-  { group: 'Administración', to: '/personal', label: 'Personal', roles: ['administrador'] },
-  { group: 'Administración', to: '/gastos', label: 'Gastos', roles: ['administrador'] },
-  { group: 'Administración', to: '/reportes', label: 'Reportes', roles: ['administrador'] },
+  { group: null, to: '/', label: 'Panel general', icon: '🏠', roles: ['administrador', 'operador'] },
+  { group: 'Operación', to: '/produccion', label: 'Producción', icon: '🥚', roles: ['administrador', 'operador'] },
+  { group: 'Operación', to: '/sanidad', label: 'Sanidad y vacunación', icon: '💉', roles: ['administrador', 'operador'] },
+  { group: 'Operación', to: '/tareas', label: 'Tareas', icon: '✅', roles: ['administrador', 'operador'] },
+  { group: 'Operación', to: '/ventas', label: 'Ventas', icon: '💰', roles: ['administrador', 'operador'] },
+  { group: 'Operación', to: '/inventario', label: 'Inventario (consulta)', icon: '📦', roles: ['administrador', 'operador'] },
+  { group: 'Administración', to: '/personal', label: 'Personal', icon: '👥', roles: ['administrador'] },
+  { group: 'Administración', to: '/gastos', label: 'Gastos', icon: '🧾', roles: ['administrador'] },
+  { group: 'Administración', to: '/reportes', label: 'Reportes', icon: '📈', roles: ['administrador'] },
+  { group: 'Administración', to: '/usuarios', label: 'Usuarios', icon: '👤', roles: ['administrador'] },
 ];
 
 const TITLES = {
@@ -23,12 +24,14 @@ const TITLES = {
   '/personal': ['Personal', 'Trabajadores activos y costo por día'],
   '/gastos': ['Gastos operativos', 'Registro de gastos varios de la granja'],
   '/reportes': ['Reportes', 'Indicadores clave de producción, ventas y costos'],
+  '/usuarios': ['Usuarios', 'Administración de cuentas y permisos del sistema'],
 };
 
 function Layout({ usuario, onLogout, children }) {
   const location = useLocation();
   const [title, subtitle] = TITLES[location.pathname] || ['Granja San Fernando', ''];
 
+  const itemsVisibles = NAV.filter((item) => item.roles.includes(usuario.rol));
   let lastGroup = null;
 
   return (
@@ -45,30 +48,21 @@ function Layout({ usuario, onLogout, children }) {
         </div>
 
         <nav className="side-nav">
-          {NAV.map((item) => {
+          {itemsVisibles.map((item) => {
             const showGroupLabel = item.group && item.group !== lastGroup;
             lastGroup = item.group;
-            const allowed = item.roles.includes(usuario.rol);
 
             return (
               <div key={item.to}>
                 {showGroupLabel && <div className="nav-label">{item.group}</div>}
-                {allowed ? (
-                  <NavLink
-                    to={item.to}
-                    end={item.to === '/'}
-                    className={({ isActive }) => 'nav-item' + (isActive ? ' active' : '')}
-                  >
-                    <span className="dot"></span>
-                    {item.label}
-                  </NavLink>
-                ) : (
-                  <div className="nav-item locked" title="Solo administrador">
-                    <span className="dot"></span>
-                    {item.label}
-                    <span className="lock">🔒</span>
-                  </div>
-                )}
+                <NavLink
+                  to={item.to}
+                  end={item.to === '/'}
+                  className={({ isActive }) => 'nav-item' + (isActive ? ' active' : '')}
+                >
+                  <span className="nav-icon">{item.icon}</span>
+                  {item.label}
+                </NavLink>
               </div>
             );
           })}
