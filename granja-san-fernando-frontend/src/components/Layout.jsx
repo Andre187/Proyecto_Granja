@@ -32,7 +32,6 @@ function Layout({ usuario, onLogout, children }) {
   const [title, subtitle] = TITLES[location.pathname] || ['Granja San Fernando', ''];
 
   const itemsVisibles = NAV.filter((item) => item.roles.includes(usuario.rol));
-  let lastGroup = null;
 
   return (
     <div className="app-shell">
@@ -47,30 +46,39 @@ function Layout({ usuario, onLogout, children }) {
           </div>
         </div>
 
-        <nav className="side-nav">
-          {itemsVisibles.map((item) => {
-            const showGroupLabel = item.group && item.group !== lastGroup;
-            lastGroup = item.group;
+        <div className="nav-scroll">
+          <nav className="side-nav">
+            {itemsVisibles.map((item, index) => {
+              const grupoAnterior = index > 0 ? itemsVisibles[index - 1].group : null;
+              const showGroupLabel = item.group && item.group !== grupoAnterior;
 
-            return (
-              <div key={item.to}>
-                {showGroupLabel && <div className="nav-label">{item.group}</div>}
-                <NavLink
-                  to={item.to}
-                  end={item.to === '/'}
-                  className={({ isActive }) => 'nav-item' + (isActive ? ' active' : '')}
-                >
-                  <span className="nav-icon">{item.icon}</span>
-                  {item.label}
-                </NavLink>
-              </div>
-            );
-          })}
-        </nav>
+              return (
+                <div key={item.to}>
+                  {showGroupLabel && <div className="nav-label">{item.group}</div>}
+                  <NavLink
+                    to={item.to}
+                    end={item.to === '/'}
+                    className={({ isActive }) => 'nav-item' + (isActive ? ' active' : '')}
+                  >
+                    <span className="nav-icon">{item.icon}</span>
+                    {item.label}
+                  </NavLink>
+                </div>
+              );
+            })}
+          </nav>
+        </div>
 
         <div className="role-card">
-          <b>{usuario.usuario}</b>
-          {usuario.rol === 'administrador' ? 'Acceso completo al sistema' : 'Rol trabajador — registro y consulta'}
+          <div className="role-card-top">
+            <div className="role-avatar">{usuario.usuario.charAt(0).toUpperCase()}</div>
+            <div>
+              <b>{usuario.usuario}</b>
+              <span className={`role-badge ${usuario.rol === 'administrador' ? 'admin' : 'operador'}`}>
+                {usuario.rol === 'administrador' ? 'Administrador' : 'Operador'}
+              </span>
+            </div>
+          </div>
           <button onClick={onLogout}>Cerrar sesión</button>
         </div>
       </aside>

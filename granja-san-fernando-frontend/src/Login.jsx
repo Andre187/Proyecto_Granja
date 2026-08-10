@@ -53,7 +53,7 @@ function Login({ onLoginSuccess }) {
           <h1 className="login-title">Granja San Fernando</h1>
           <p className="login-subtitle">Sistema de Gestión</p>
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} autoComplete="off">
             <div className="input-group">
               <span className="input-icon">👤</span>
               <input
@@ -61,6 +61,7 @@ function Login({ onLoginSuccess }) {
                 placeholder="Usuario"
                 value={usuario}
                 onChange={(e) => setUsuario(e.target.value)}
+                autoComplete="off"
                 required
               />
             </div>
@@ -72,6 +73,7 @@ function Login({ onLoginSuccess }) {
                 placeholder="Contraseña"
                 value={contrasena}
                 onChange={(e) => setContrasena(e.target.value)}
+                autoComplete="new-password"
                 required
               />
             </div>
