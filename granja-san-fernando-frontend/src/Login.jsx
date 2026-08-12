@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import axios from 'axios';
 import './Login.css';
-import logo from './assets/logo.png'; // Asegúrate de tener un logo en la carpeta assets
+import logo from './assets/logo.png';
+import fondoLogin from './assets/fondo_login.png';
 
 const API_URL = 'http://localhost:4000/api';
 
@@ -39,8 +40,8 @@ function Login({ onLoginSuccess }) {
   };
 
   return (
-    <div className="login-wrapper">
-      <div className="login-card">
+    <div className="login-wrapper" style={{ backgroundImage: `url(${fondoLogin})` }}>
+      <div className="login-card" style={{ position: 'relative', zIndex: 1 }}>
 
          <div className="login-visual-circle">
           <img src={logo} alt="Granja San Fernando" className="login-logo" />

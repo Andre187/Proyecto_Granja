@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router-dom';
-import logo from '../assets/logo.png';
+import logo from '../assets/logo_mini.png';
 
 const NAV = [
   { group: null, to: '/', label: 'Panel general', icon: '🏠', roles: ['administrador', 'operador'] },

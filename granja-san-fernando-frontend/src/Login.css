@@ -1,11 +1,23 @@
 .login-wrapper {
+  position: relative;
   min-height: 100vh;
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #1B3B6F 0%, #3d6b8f 50%, #5C8A3A 100%);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.login-wrapper::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, rgba(0,0,0,0) 45%, rgba(0,0,0,0.45) 100%);
+  pointer-events: none;
 }
 
 .login-card {
@@ -13,9 +25,12 @@
   width: 800px;
   max-width: 92vw;
   min-height: 440px;
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.78);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
   border-radius: 16px;
-  box-shadow: 0 25px 60px rgba(40, 20, 60, 0.35);
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.3);
   overflow: hidden;
 }
 
@@ -26,7 +41,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #fafafa;
+  background: transparent;
 }
 
 .login-visual-circle {
@@ -97,7 +112,7 @@
 
 .login-subtitle {
   font-size: 13px;
-  color: #9a9a9a;
+  color: #6b6559;
   margin: 0 0 28px 0;
 }
 
@@ -120,7 +135,7 @@
   padding: 13px 16px 13px 42px;
   border: none;
   border-radius: 8px;
-  background: #f0f0f2;
+  background: rgba(240, 240, 242, 0.85);
   font-size: 14px;
   color: #333;
   box-sizing: border-box;
@@ -129,7 +144,7 @@
 }
 
 .input-group input:focus {
-  background: #e8e8ec;
+  background: rgba(232, 232, 236, 0.95);
 }
 
 .login-error {
@@ -157,10 +172,6 @@
   background: #b38f3f;
 }
 
-.login-button:hover:not(:disabled) {
-  background: #5fae4a;
-}
-
 .login-button:active:not(:disabled) {
   transform: scale(0.99);
 }
@@ -175,14 +186,9 @@
     flex-direction: column;
     min-height: unset;
   }
- .login-visual {
-  position: relative;
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #F5F1E6;
-}
+  .login-visual {
+    padding: 32px 0;
+  }
   .login-form-side {
     padding: 36px 32px 44px 32px;
   }
