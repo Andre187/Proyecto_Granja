@@ -20,6 +20,7 @@ function Usuarios({ usuario: usuarioActivo }) {
       const respuesta = await api.get('/usuarios');
       setUsuarios(respuesta.data);
     } catch (err) {
+      console.error(err);
       setError('No se pudo cargar la lista de usuarios');
     } finally {
       setCargando(false);
@@ -27,6 +28,7 @@ function Usuarios({ usuario: usuarioActivo }) {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     cargarUsuarios();
   }, []);
 
@@ -55,13 +57,23 @@ function Usuarios({ usuario: usuarioActivo }) {
   };
 
   const handleCambiarRol = async (id, rolActual) => {
-    const nuevoRol = rolActual === 'administrador' ? 'operador' : 'administrador';
+    const nuevoRolCambio = rolActual === 'administrador' ? 'operador' : 'administrador';
     try {
-      await api.put(`/usuarios/${id}`, { rol: nuevoRol });
+      await api.put(`/usuarios/${id}`, { rol: nuevoRolCambio });
       mostrarMensaje('Rol actualizado');
       cargarUsuarios();
     } catch (err) {
       setError(err.response?.data?.error || 'No se pudo actualizar el rol');
+    }
+  };
+
+  const handleVincularTrabajador = async (id) => {
+    try {
+      await api.post(`/usuarios/${id}/vincular-trabajador`);
+      mostrarMensaje('Registro de trabajador generado');
+      cargarUsuarios();
+    } catch (err) {
+      setError(err.response?.data?.error || 'No se pudo generar el registro de trabajador');
     }
   };
 
@@ -97,7 +109,7 @@ function Usuarios({ usuario: usuarioActivo }) {
         <div className="head">
           <h2>Agregar usuario</h2>
         </div>
-        <form onSubmit={handleCrear} className="form-row" style={{ borderBottom: 'none', marginBottom: 0, paddingBottom: 0 }}>
+        <form onSubmit={handleCrear} style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <div className="field">
             <label>Usuario</label>
             <input
@@ -144,6 +156,7 @@ function Usuarios({ usuario: usuarioActivo }) {
               <tr>
                 <th>Usuario</th>
                 <th>Rol</th>
+                <th>Trabajador (para tareas)</th>
                 <th>Contraseña</th>
                 <th>Acciones</th>
               </tr>
@@ -154,6 +167,20 @@ function Usuarios({ usuario: usuarioActivo }) {
                   <td>{u.usuario}</td>
                   <td>
                     <span className={`tag ${u.rol === 'administrador' ? 'ok' : 'pend'}`}>{u.rol}</span>
+                  </td>
+                  <td>
+                    {u.rol !== 'operador' ? (
+                      <span style={{ color: 'var(--ink-soft)' }}>—</span>
+                    ) : u.trabajador_nombre ? (
+                      u.trabajador_nombre
+                    ) : (
+                      <button
+                        style={{ background: 'transparent', border: 'none', fontSize: '12px', color: 'var(--navy)', textDecoration: 'underline', padding: 0 }}
+                        onClick={() => handleVincularTrabajador(u.id_usuario)}
+                      >
+                        Generar registro
+                      </button>
+                    )}
                   </td>
                   <td>
                     {editandoPasswordId === u.id_usuario ? (

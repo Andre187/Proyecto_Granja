@@ -5,7 +5,13 @@ import Layout from './components/Layout';
 import Panel from './pages/Panel';
 import Usuarios from './pages/Usuarios';
 import Produccion from './pages/Produccion';
-import ModuloPendiente from './pages/ModuloPendiente';
+import Sanidad from './pages/Sanidad';
+import Tareas from './pages/Tareas';
+import Ventas from './pages/Ventas';
+import Inventario from './pages/Inventario';
+import Personal from './pages/Personal';
+import Gastos from './pages/Gastos';
+import Reportes from './pages/Reportes';
 
 function App() {
   const [usuarioActivo, setUsuarioActivo] = useState(() => {
@@ -29,13 +35,13 @@ function App() {
         <Routes>
           <Route path="/" element={<Panel usuario={usuarioActivo} />} />
           <Route path="/produccion" element={<Produccion />} />
-          <Route path="/sanidad" element={<ModuloPendiente nombre="Sanidad y vacunación" />} />
-          <Route path="/tareas" element={<ModuloPendiente nombre="Tareas" />} />
-          <Route path="/inventario" element={<ModuloPendiente nombre="Inventario" />} />
-          <Route path="/ventas" element={<ModuloPendiente nombre="Ventas" />} />
-          <Route path="/personal" element={<ModuloPendiente nombre="Personal" />} />
-          <Route path="/gastos" element={<ModuloPendiente nombre="Gastos" />} />
-          <Route path="/reportes" element={<ModuloPendiente nombre="Reportes" />} />
+          <Route path="/sanidad" element={<Sanidad />} />
+          <Route path="/tareas" element={<Tareas usuario={usuarioActivo} />} />
+          <Route path="/inventario" element={<Inventario usuario={usuarioActivo} />} />
+          <Route path="/ventas" element={<Ventas usuario={usuarioActivo} />} />
+          <Route path="/personal" element={<Personal />} />
+          <Route path="/gastos" element={<Gastos />} />
+          <Route path="/reportes" element={<Reportes />} />
           <Route path="/usuarios" element={<Usuarios usuario={usuarioActivo} />} />
         </Routes>
       </Layout>
