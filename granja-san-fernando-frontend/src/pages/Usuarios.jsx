@@ -92,14 +92,24 @@ function Usuarios({ usuario: usuarioActivo }) {
     }
   };
 
-  const handleEliminar = async (id, nombre) => {
-    if (!window.confirm(`¿Eliminar al usuario "${nombre}"? Esta acción no se puede deshacer.`)) return;
+  const handleDesactivar = async (id, nombre) => {
+    if (!window.confirm(`¿Desactivar al usuario "${nombre}"? No podrá iniciar sesión hasta que lo reactives. Su historial se conserva.`)) return;
     try {
-      await api.delete(`/usuarios/${id}`);
-      mostrarMensaje('Usuario eliminado');
+      await api.put(`/usuarios/${id}/desactivar`);
+      mostrarMensaje('Usuario desactivado');
       cargarUsuarios();
     } catch (err) {
-      setError(err.response?.data?.error || 'No se pudo eliminar el usuario');
+      setError(err.response?.data?.error || 'No se pudo desactivar el usuario');
+    }
+  };
+
+  const handleReactivar = async (id) => {
+    try {
+      await api.put(`/usuarios/${id}/reactivar`);
+      mostrarMensaje('Usuario reactivado');
+      cargarUsuarios();
+    } catch (err) {
+      setError(err.response?.data?.error || 'No se pudo reactivar el usuario');
     }
   };
 
@@ -151,91 +161,106 @@ function Usuarios({ usuario: usuarioActivo }) {
         {cargando ? (
           <p style={{ color: 'var(--ink-soft)', fontSize: '13px' }}>Cargando...</p>
         ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Usuario</th>
-                <th>Rol</th>
-                <th>Trabajador (para tareas)</th>
-                <th>Contraseña</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {usuarios.map((u) => (
-                <tr key={u.id_usuario}>
-                  <td>{u.usuario}</td>
-                  <td>
-                    <span className={`tag ${u.rol === 'administrador' ? 'ok' : 'pend'}`}>{u.rol}</span>
-                  </td>
-                  <td>
-                    {u.rol !== 'operador' ? (
-                      <span style={{ color: 'var(--ink-soft)' }}>—</span>
-                    ) : u.trabajador_nombre ? (
-                      u.trabajador_nombre
-                    ) : (
-                      <button
-                        style={{ background: 'transparent', border: 'none', fontSize: '12px', color: 'var(--navy)', textDecoration: 'underline', padding: 0 }}
-                        onClick={() => handleVincularTrabajador(u.id_usuario)}
-                      >
-                        Generar registro
-                      </button>
-                    )}
-                  </td>
-                  <td>
-                    {editandoPasswordId === u.id_usuario ? (
-                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                        <input
-                          type="password"
-                          value={passwordTemporal}
-                          onChange={(e) => setPasswordTemporal(e.target.value)}
-                          placeholder="nueva contraseña"
-                          style={{
-                            fontSize: '12px', padding: '5px 8px', border: '1px solid var(--line)',
-                            borderRadius: '6px', minWidth: '120px'
-                          }}
-                        />
-                        <button className="btn" style={{ padding: '5px 10px', fontSize: '11px' }} onClick={() => handleGuardarPassword(u.id_usuario)}>
-                          Guardar
-                        </button>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Usuario</th>
+                  <th>Rol</th>
+                  <th>Estado</th>
+                  <th>Trabajador (para tareas)</th>
+                  <th>Contraseña</th>
+                  <th>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {usuarios.map((u) => (
+                  <tr key={u.id_usuario} style={{ opacity: u.activo ? 1 : 0.6 }}>
+                    <td>{u.usuario}</td>
+                    <td>
+                      <span className={`tag ${u.rol === 'administrador' ? 'ok' : 'pend'}`}>{u.rol}</span>
+                    </td>
+                    <td>
+                      <span className={`tag ${u.activo ? 'ok' : 'low'}`}>{u.activo ? 'activo' : 'inactivo'}</span>
+                    </td>
+                    <td>
+                      {u.rol !== 'operador' ? (
+                        <span style={{ color: 'var(--ink-soft)' }}>—</span>
+                      ) : u.trabajador_nombre ? (
+                        u.trabajador_nombre
+                      ) : (
                         <button
-                          style={{ background: 'transparent', border: 'none', fontSize: '11px', color: 'var(--ink-soft)' }}
-                          onClick={() => { setEditandoPasswordId(null); setPasswordTemporal(''); }}
+                          style={{ background: 'transparent', border: 'none', fontSize: '12px', color: 'var(--navy)', textDecoration: 'underline', padding: 0 }}
+                          onClick={() => handleVincularTrabajador(u.id_usuario)}
                         >
-                          Cancelar
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        style={{ background: 'transparent', border: 'none', fontSize: '12px', color: 'var(--navy)', textDecoration: 'underline', padding: 0 }}
-                        onClick={() => { setEditandoPasswordId(u.id_usuario); setPasswordTemporal(''); }}
-                      >
-                        Cambiar contraseña
-                      </button>
-                    )}
-                  </td>
-                  <td>
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                      <button
-                        style={{ background: 'transparent', border: 'none', fontSize: '12px', color: 'var(--ink-soft)', textDecoration: 'underline', padding: 0 }}
-                        onClick={() => handleCambiarRol(u.id_usuario, u.rol)}
-                      >
-                        Cambiar rol
-                      </button>
-                      {u.id_usuario !== usuarioActivo.id_usuario && (
-                        <button
-                          style={{ background: 'transparent', border: 'none', fontSize: '12px', color: 'var(--red)', textDecoration: 'underline', padding: 0 }}
-                          onClick={() => handleEliminar(u.id_usuario, u.usuario)}
-                        >
-                          Eliminar
+                          Generar registro
                         </button>
                       )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    </td>
+                    <td>
+                      {editandoPasswordId === u.id_usuario ? (
+                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                          <input
+                            type="password"
+                            value={passwordTemporal}
+                            onChange={(e) => setPasswordTemporal(e.target.value)}
+                            placeholder="nueva contraseña"
+                            style={{
+                              fontSize: '12px', padding: '5px 8px', border: '1px solid var(--line)',
+                              borderRadius: '6px', minWidth: '120px'
+                            }}
+                          />
+                          <button className="btn" style={{ padding: '5px 10px', fontSize: '11px' }} onClick={() => handleGuardarPassword(u.id_usuario)}>
+                            Guardar
+                          </button>
+                          <button
+                            style={{ background: 'transparent', border: 'none', fontSize: '11px', color: 'var(--ink-soft)' }}
+                            onClick={() => { setEditandoPasswordId(null); setPasswordTemporal(''); }}
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          style={{ background: 'transparent', border: 'none', fontSize: '12px', color: 'var(--navy)', textDecoration: 'underline', padding: 0 }}
+                          onClick={() => { setEditandoPasswordId(u.id_usuario); setPasswordTemporal(''); }}
+                        >
+                          Cambiar contraseña
+                        </button>
+                      )}
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', gap: '10px' }}>
+                        <button
+                          style={{ background: 'transparent', border: 'none', fontSize: '12px', color: 'var(--ink-soft)', textDecoration: 'underline', padding: 0 }}
+                          onClick={() => handleCambiarRol(u.id_usuario, u.rol)}
+                        >
+                          Cambiar rol
+                        </button>
+                        {u.id_usuario !== usuarioActivo.id_usuario && (
+                          u.activo ? (
+                            <button
+                              style={{ background: 'transparent', border: 'none', fontSize: '12px', color: 'var(--red)', textDecoration: 'underline', padding: 0 }}
+                              onClick={() => handleDesactivar(u.id_usuario, u.usuario)}
+                            >
+                              Desactivar
+                            </button>
+                          ) : (
+                            <button
+                              style={{ background: 'transparent', border: 'none', fontSize: '12px', color: 'var(--green)', textDecoration: 'underline', padding: 0 }}
+                              onClick={() => handleReactivar(u.id_usuario)}
+                            >
+                              Reactivar
+                            </button>
+                          )
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
     </>

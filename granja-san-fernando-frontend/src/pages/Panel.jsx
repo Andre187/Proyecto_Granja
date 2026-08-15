@@ -2,11 +2,6 @@ import { useState, useEffect } from 'react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import api from '../api/api';
 
-const tareasEjemplo = [
-  { desc: 'Aplicar vacuna Newcastle', quien: 'Dani · Galpón 2', estado: 'pendiente', vence: '27/07' },
-  { desc: 'Registrar peso promedio del lote', quien: 'Carlos · Galera nueva', estado: 'progreso', vence: '26/07' },
-];
-
 const LABELS = { hoy: 'Hoy', semana: 'Últimos 7 días', mes: 'Este mes', personalizado: 'Personalizado' };
 
 function eggClass(pct, idx) {
@@ -21,6 +16,8 @@ function Panel({ usuario }) {
   const [periodo, setPeriodo] = useState('semana');
   const [datos, setDatos] = useState(null);
   const [cargando, setCargando] = useState(true);
+  const [misTareas, setMisTareas] = useState([]);
+  const [cargandoTareas, setCargandoTareas] = useState(true);
   const [mostrarPersonalizado, setMostrarPersonalizado] = useState(false);
   const [fechaDesde, setFechaDesde] = useState('');
   const [fechaHasta, setFechaHasta] = useState('');
@@ -59,6 +56,23 @@ function Panel({ usuario }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [periodo]);
 
+  useEffect(() => {
+    if (!esAdmin) {
+       
+      (async () => {
+        try {
+          const respuesta = await api.get('/tareas/tareas');
+          setMisTareas(respuesta.data.filter((t) => t.estado !== 'finalizado'));
+        } catch (err) {
+          console.error(err);
+        } finally {
+          setCargandoTareas(false);
+        }
+      })();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const q = (n) => `Q ${Number(n || 0).toLocaleString('es-GT', { minimumFractionDigits: 2 })}`;
   const fechaCorta = (f) => f?.slice(5, 10).split('-').reverse().join('/');
 
@@ -66,23 +80,42 @@ function Panel({ usuario }) {
     return (
       <section className="card">
         <div className="head">
-          <h2>Tareas próximas</h2>
-          <span className="sub">Vencimiento más cercano primero</span>
+          <h2>Tus tareas pendientes</h2>
+          <span className="sub">Gestiónalas en el módulo Tareas</span>
         </div>
-        <div className="task-list">
-          {tareasEjemplo.map((t, i) => (
-            <div key={i} style={{
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              padding: '11px 0', borderBottom: i < tareasEjemplo.length - 1 ? '1px solid var(--line)' : 'none', gap: '10px'
-            }}>
-              <div>
-                <div style={{ fontSize: '13px' }}>{t.desc}</div>
-                <div style={{ fontSize: '11.5px', color: 'var(--ink-soft)', marginTop: '2px' }}>{t.quien} · vence {t.vence}</div>
+        {cargandoTareas ? (
+          <p style={{ fontSize: '13px', color: 'var(--ink-soft)' }}>Cargando...</p>
+        ) : misTareas.length === 0 ? (
+          <p style={{ fontSize: '13px', color: 'var(--ink-soft)' }}>¡No tienes tareas pendientes! 🎉</p>
+        ) : (
+          <div className="task-list">
+            {misTareas.map((t, i) => (
+              <div key={t.id_tarea} style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '11px 0', borderBottom: i < misTareas.length - 1 ? '1px solid var(--line)' : 'none', gap: '10px'
+              }}>
+                <div>
+                  <div style={{ fontSize: '13px' }}>
+                    {t.descripcion}
+                    {t.galera_nombre && (
+                      <span style={{
+                        marginLeft: '8px', fontSize: '11px', fontWeight: 600, color: 'var(--navy)',
+                        background: 'var(--green-light)', padding: '2px 8px', borderRadius: '999px'
+                      }}>
+                        📍 {t.galera_nombre}
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ fontSize: '11.5px', color: 'var(--ink-soft)', marginTop: '2px' }}>
+                    Asignada: {t.fecha_asignacion?.slice(0, 10)}
+                    {t.fecha_limite && ` · Vence: ${t.fecha_limite.slice(0, 10)}`}
+                  </div>
+                </div>
+                <span className={`status-pill ${t.estado}`}>{t.estado}</span>
               </div>
-              <span className={`status-pill ${t.estado}`}>{t.estado}</span>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </section>
     );
   }
@@ -138,7 +171,7 @@ function Panel({ usuario }) {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+          <div className="grid-2col">
             <section className="card">
               <div className="head"><h2>Huevos por día</h2></div>
               <div className="chart-box">
@@ -201,7 +234,7 @@ function Panel({ usuario }) {
             )}
           </section>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: '20px' }}>
+          <div className="grid-2col-wide">
             <section className="card">
               <div className="head">
                 <h2>Ventas recientes</h2>

@@ -1,12 +1,26 @@
 const express = require('express');
+const { body } = require('express-validator');
 const pool = require('../db');
 const { verificarToken, soloAdministrador } = require('../middleware/auth.middleware');
+const { validar } = require('../middleware/validacion.middleware');
 
 const router = express.Router();
 
 router.use(verificarToken);
 
-// Lista de trabajadores disponibles para asignar tareas (ya vinculados a un usuario)
+const reglasTarea = [
+  body('id_trabajador').isInt({ min: 1 }).withMessage('Selecciona un trabajador válido'),
+  body('id_galera').optional({ checkFalsy: true }).isInt({ min: 1 }).withMessage('Galera inválida'),
+  body('descripcion').trim().notEmpty().withMessage('La descripción es requerida')
+    .isLength({ max: 255 }).withMessage('La descripción no puede superar 255 caracteres'),
+  body('fecha_asignacion').isISO8601().withMessage('Fecha de asignación inválida'),
+  body('fecha_limite').optional({ checkFalsy: true }).isISO8601().withMessage('Fecha límite inválida'),
+];
+
+const reglasEstado = [
+  body('estado').isIn(['pendiente', 'en proceso', 'finalizado']).withMessage('Estado inválido'),
+];
+
 router.get('/trabajadores', async (req, res) => {
   try {
     const [rows] = await pool.query(`
@@ -22,15 +36,15 @@ router.get('/trabajadores', async (req, res) => {
   }
 });
 
-// ---------- TAREAS ----------
-
 router.get('/tareas', async (req, res) => {
   try {
     let query = `
       SELECT t.id_tarea, t.id_trabajador, tr.nombre AS trabajador_nombre,
+             t.id_galera, g.nombre AS galera_nombre,
              t.descripcion, t.fecha_asignacion, t.fecha_limite, t.estado
       FROM TAREAS t
       JOIN TRABAJADORES tr ON tr.id_trabajador = t.id_trabajador
+      LEFT JOIN GALERAS g ON g.id_galera = t.id_galera
     `;
     const params = [];
 
@@ -51,16 +65,12 @@ router.get('/tareas', async (req, res) => {
   }
 });
 
-router.post('/tareas', soloAdministrador, async (req, res) => {
+router.post('/tareas', soloAdministrador, reglasTarea, validar, async (req, res) => {
   try {
-    const { id_trabajador, descripcion, fecha_asignacion, fecha_limite } = req.body;
-    if (!id_trabajador || !descripcion || !fecha_asignacion) {
-      return res.status(400).json({ error: 'Trabajador, descripción y fecha de asignación son requeridos' });
-    }
-
+    const { id_trabajador, id_galera, descripcion, fecha_asignacion, fecha_limite } = req.body;
     await pool.query(
-      'INSERT INTO TAREAS (id_trabajador, descripcion, fecha_asignacion, fecha_limite, estado) VALUES (?, ?, ?, ?, "pendiente")',
-      [id_trabajador, descripcion, fecha_asignacion, fecha_limite || null]
+      'INSERT INTO TAREAS (id_trabajador, id_galera, descripcion, fecha_asignacion, fecha_limite, estado) VALUES (?, ?, ?, ?, ?, "pendiente")',
+      [id_trabajador, id_galera || null, descripcion, fecha_asignacion, fecha_limite || null]
     );
     res.status(201).json({ mensaje: 'Tarea asignada correctamente' });
   } catch (error) {
@@ -68,12 +78,9 @@ router.post('/tareas', soloAdministrador, async (req, res) => {
   }
 });
 
-router.put('/tareas/:id/estado', async (req, res) => {
+router.put('/tareas/:id/estado', reglasEstado, validar, async (req, res) => {
   try {
     const { estado } = req.body;
-    if (!['pendiente', 'en proceso', 'finalizado'].includes(estado)) {
-      return res.status(400).json({ error: 'Estado inválido' });
-    }
 
     if (req.usuario.rol !== 'administrador') {
       const [rows] = await pool.query('SELECT id_trabajador FROM TAREAS WHERE id_tarea = ?', [req.params.id]);

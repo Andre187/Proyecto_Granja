@@ -13,4 +13,23 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Si el servidor responde 401 (token ausente, inválido o expirado),
+// cerramos la sesión localmente y regresamos al login, en vez de dejar
+// que la pantalla se quede mostrando errores sin sentido.
+api.interceptors.response.use(
+  (respuesta) => respuesta,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('usuario');
+      if (window.location.pathname !== '/') {
+        window.location.href = '/';
+      } else {
+        window.location.reload();
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default api;

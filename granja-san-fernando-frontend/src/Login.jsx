@@ -43,12 +43,14 @@ function Login({ onLoginSuccess }) {
     <div className="login-wrapper" style={{ backgroundImage: `url(${fondoLogin})` }}>
       <div className="login-card" style={{ position: 'relative', zIndex: 1 }}>
 
-         <div className="login-visual-circle">
-          <img src={logo} alt="Granja San Fernando" className="login-logo" />
-        </div>
+        <div className="login-visual">
+          <div className="login-visual-circle">
+            <img src={logo} alt="Granja San Fernando" className="login-logo" />
+          </div>
           <span className="dot dot-a"></span>
           <span className="dot dot-b"></span>
           <span className="triangle"></span>
+        </div>
 
         <div className="login-form-side">
           <h1 className="login-title">Granja San Fernando</h1>

@@ -239,7 +239,9 @@ function Ventas({ usuario }) {
                   >
                     <option value="">Clasificación...</option>
                     {clasificaciones.map((c) => (
-                      <option key={c.id_clasificacion} value={c.id_clasificacion}>{c.nombre}</option>
+                      <option key={c.id_clasificacion} value={c.id_clasificacion}>
+                        {c.nombre} ({c.existencia_actual} disponibles)
+                      </option>
                     ))}
                   </select>
                   <input
@@ -289,7 +291,8 @@ function Ventas({ usuario }) {
         {ventas.length === 0 ? (
           <p style={{ fontSize: '13px', color: 'var(--ink-soft)' }}>Aún no hay ventas registradas.</p>
         ) : (
-          <table>
+          <div className="table-wrap">
+            <table>
             <thead>
               <tr>
                 <th>Fecha</th>
@@ -303,12 +306,12 @@ function Ventas({ usuario }) {
             <tbody>
               {ventas.map((v) => (
                 <tr key={v.id_venta}>
-                  <td>{v.fecha?.slice(0, 10)}</td>
-                  <td>{v.cliente_nombre}</td>
-                  <td>{q(v.monto_total)}</td>
-                  <td>{q(v.saldo_pendiente)}</td>
-                  <td><span className={`tag ${v.estado === 'cancelado' ? 'ok' : 'pend'}`}>{v.estado}</span></td>
-                  <td>
+                  <td data-label="Fecha">{v.fecha?.slice(0, 10)}</td>
+                  <td data-label="Cliente">{v.cliente_nombre}</td>
+                  <td data-label="Total">{q(v.monto_total)}</td>
+                  <td data-label="Saldo pendiente">{q(v.saldo_pendiente)}</td>
+                  <td data-label="Estado"><span className={`tag ${v.estado === 'cancelado' ? 'ok' : 'pend'}`}>{v.estado}</span></td>
+                  <td data-label="Acción">
                     {v.saldo_pendiente > 0 && (
                       abonandoId === v.id_venta ? (
                         <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
@@ -346,6 +349,7 @@ function Ventas({ usuario }) {
               ))}
             </tbody>
           </table>
+            </div>
         )}
       </section>
     </>

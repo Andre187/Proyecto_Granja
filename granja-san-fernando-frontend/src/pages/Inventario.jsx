@@ -13,6 +13,9 @@ function Inventario({ usuario }) {
   const [concentradoConsumo, setConcentradoConsumo] = useState([]);
   const [medicamentos, setMedicamentos] = useState([]);
   const [movimientos, setMovimientos] = useState([]);
+  const [clasificacionesHuevo, setClasificacionesHuevo] = useState([]);
+  const [huevosStock, setHuevosStock] = useState([]);
+  const [huevosClasificados, setHuevosClasificados] = useState([]);
 
   const [error, setError] = useState('');
   const [mensaje, setMensaje] = useState('');
@@ -28,20 +31,33 @@ function Inventario({ usuario }) {
   const [formMovimientoAdmin, setFormMovimientoAdmin] = useState({ id_medicamento: '', fecha: hoy(), tipo_movimiento: 'entrada', cantidad: '' });
   const [formSalidaMed, setFormSalidaMed] = useState({ id_medicamento: '', fecha: hoy(), cantidad: '' });
 
+  const [formClasificarHuevos, setFormClasificarHuevos] = useState({
+    fecha: hoy(),
+    items: [{ id_clasificacion: '', cantidad: '' }],
+  });
+  const [editandoMinimoHuevoId, setEditandoMinimoHuevoId] = useState(null);
+  const [minimoHuevoTemporal, setMinimoHuevoTemporal] = useState('');
+
   const cargarTodo = async () => {
     try {
-      const [rConcentrado, rStock, rConsumo, rMedicamentos, rMovimientos] = await Promise.all([
+      const [rConcentrado, rStock, rConsumo, rMedicamentos, rMovimientos, rClasificaciones, rHuevosStock, rHuevosClasificados] = await Promise.all([
         api.get('/inventario/concentrado'),
         api.get('/inventario/concentrado-stock'),
         api.get('/inventario/concentrado-consumo'),
         api.get('/inventario/medicamentos'),
         api.get('/inventario/movimientos'),
+        api.get('/ventas/clasificaciones'),
+        api.get('/inventario/huevos-stock'),
+        api.get('/inventario/huevos-clasificados'),
       ]);
       setConcentrado(rConcentrado.data);
       setConcentradoStock(rStock.data);
       setConcentradoConsumo(rConsumo.data);
       setMedicamentos(rMedicamentos.data);
       setMovimientos(rMovimientos.data);
+      setClasificacionesHuevo(rClasificaciones.data);
+      setHuevosStock(rHuevosStock.data);
+      setHuevosClasificados(rHuevosClasificados.data);
     } catch (err) {
       console.error(err);
       setError('No se pudo cargar la información de inventario');
@@ -51,7 +67,7 @@ function Inventario({ usuario }) {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     cargarTodo();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   const mostrarMensaje = (texto) => {
@@ -67,6 +83,7 @@ function Inventario({ usuario }) {
 
   const medicamentosBajoMinimo = medicamentos.filter((m) => Number(m.existencia_actual) < Number(m.nivel_minimo));
   const concentradoBajoMinimo = concentradoStock.filter((c) => Number(c.existencia_actual) < Number(c.nivel_minimo) && Number(c.nivel_minimo) > 0);
+  const huevosBajoMinimo = huevosStock.filter((h) => Number(h.existencia_actual) < Number(h.nivel_minimo) && Number(h.nivel_minimo) > 0);
 
   // ---- Concentrado: compra (solo admin) ----
   const handleRegistrarConcentrado = async (e) => {
@@ -162,12 +179,63 @@ function Inventario({ usuario }) {
     }
   };
 
+  // ---- Huevos: clasificación diaria por tamaño (admin u operador) ----
+  const agregarItemHuevo = () => {
+    setFormClasificarHuevos({
+      ...formClasificarHuevos,
+      items: [...formClasificarHuevos.items, { id_clasificacion: '', cantidad: '' }],
+    });
+  };
+
+  const quitarItemHuevo = (index) => {
+    if (formClasificarHuevos.items.length === 1) return;
+    setFormClasificarHuevos({
+      ...formClasificarHuevos,
+      items: formClasificarHuevos.items.filter((_, i) => i !== index),
+    });
+  };
+
+  const actualizarItemHuevo = (index, campo, valor) => {
+    const copia = [...formClasificarHuevos.items];
+    copia[index][campo] = valor;
+    setFormClasificarHuevos({ ...formClasificarHuevos, items: copia });
+  };
+
+  const handleRegistrarClasificacionHuevos = async (e) => {
+    e.preventDefault();
+    try {
+      await api.post('/inventario/huevos-clasificados', {
+        fecha: formClasificarHuevos.fecha,
+        items: formClasificarHuevos.items.map((it) => ({
+          id_clasificacion: it.id_clasificacion,
+          cantidad: parseInt(it.cantidad),
+        })),
+      });
+      setFormClasificarHuevos({ fecha: hoy(), items: [{ id_clasificacion: '', cantidad: '' }] });
+      mostrarMensaje('Clasificación de huevos registrada');
+      cargarTodo();
+    } catch (err) {
+      mostrarError(err.response?.data?.error || 'No se pudo registrar la clasificación');
+    }
+  };
+
+  const handleGuardarMinimoHuevo = async (id_stock) => {
+    try {
+      await api.put(`/inventario/huevos-stock/${id_stock}`, { nivel_minimo: parseInt(minimoHuevoTemporal) });
+      setEditandoMinimoHuevoId(null);
+      mostrarMensaje('Nivel mínimo actualizado');
+      cargarTodo();
+    } catch (err) {
+      mostrarError(err.response?.data?.error || 'No se pudo actualizar el nivel mínimo');
+    }
+  };
+
   return (
     <>
       {error && <p style={{ color: 'var(--red)', fontSize: '13px', marginBottom: '14px' }}>{error}</p>}
       {mensaje && <p style={{ color: 'var(--green)', fontSize: '13px', marginBottom: '14px' }}>{mensaje}</p>}
 
-      {(medicamentosBajoMinimo.length > 0 || concentradoBajoMinimo.length > 0) && (
+      {(medicamentosBajoMinimo.length > 0 || concentradoBajoMinimo.length > 0 || huevosBajoMinimo.length > 0) && (
         <section className="card">
           <div className="head"><h2>Alertas de nivel mínimo</h2></div>
           <div className="alert-list">
@@ -189,12 +257,81 @@ function Inventario({ usuario }) {
                 </div>
               </div>
             ))}
+            {huevosBajoMinimo.map((h) => (
+              <div className="alert" key={`huevo-${h.id_stock}`}>
+                <span className="a-mark">!</span>
+                <div>
+                  <div className="a-title">Huevo {h.clasificacion} bajo mínimo</div>
+                  <div className="a-sub">Existencia: {h.existencia_actual} · Mínimo: {h.nivel_minimo}</div>
+                </div>
+              </div>
+            ))}
           </div>
         </section>
       )}
 
+      {/* ---- Clasificar huevos por tamaño (visible para todos) ---- */}
+      <section className="card">
+        <div className="head"><h2>Clasificar huevos por tamaño</h2></div>
+        <form onSubmit={handleRegistrarClasificacionHuevos} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div className="field" style={{ maxWidth: '220px' }}>
+            <label>Fecha</label>
+            <input
+              type="date"
+              value={formClasificarHuevos.fecha}
+              onChange={(e) => setFormClasificarHuevos({ ...formClasificarHuevos, fecha: e.target.value })}
+              required
+              style={estiloClaro}
+            />
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {formClasificarHuevos.items.map((item, i) => (
+              <div key={i} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <select
+                  value={item.id_clasificacion}
+                  onChange={(e) => actualizarItemHuevo(i, 'id_clasificacion', e.target.value)}
+                  required
+                  style={{ ...estiloClaro, flex: 2, padding: '8px 10px', border: '1px solid var(--line)', borderRadius: '7px', fontSize: '13px' }}
+                >
+                  <option value="">Tamaño...</option>
+                  {clasificacionesHuevo.map((c) => (
+                    <option key={c.id_clasificacion} value={c.id_clasificacion}>{c.nombre}</option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  placeholder="Cantidad"
+                  value={item.cantidad}
+                  onChange={(e) => actualizarItemHuevo(i, 'cantidad', e.target.value)}
+                  required
+                  style={{ ...estiloClaro, flex: 1, minWidth: '80px', padding: '8px 10px', border: '1px solid var(--line)', borderRadius: '7px', fontSize: '13px' }}
+                />
+                {formClasificarHuevos.items.length > 1 && (
+                  <button type="button" onClick={() => quitarItemHuevo(i)}
+                    style={{ background: 'transparent', border: 'none', color: 'var(--red)', fontSize: '13px', cursor: 'pointer' }}>
+                    ✕
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <div>
+            <button type="button" onClick={agregarItemHuevo} className="btn"
+              style={{ background: 'transparent', color: 'var(--navy)', border: '1px solid var(--line)', fontSize: '12px', padding: '6px 12px' }}>
+              + Agregar tamaño
+            </button>
+          </div>
+
+          <div>
+            <button type="submit" className="btn" style={{ background: 'var(--green)' }}>Registrar clasificación</button>
+          </div>
+        </form>
+      </section>
+
       {/* ---- Registrar salida rápida (visible para todos) ---- */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+      <div className="grid-2col">
         <section className="card">
           <div className="head"><h2>Registrar consumo de concentrado</h2></div>
           {concentradoStock.length === 0 ? (
@@ -262,7 +399,7 @@ function Inventario({ usuario }) {
 
       {/* ---- Solo administrador: compras y catálogo ---- */}
       {esAdmin && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' }}>
+        <div className="grid-2col" style={{ marginTop: '20px' }}>
           <section className="card">
             <div className="head"><h2>Registrar compra de concentrado</h2></div>
             <form onSubmit={handleRegistrarConcentrado} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -363,23 +500,24 @@ function Inventario({ usuario }) {
         {concentradoStock.length === 0 ? (
           <p style={{ fontSize: '13px', color: 'var(--ink-soft)' }}>Sin existencia registrada todavía.</p>
         ) : (
-          <table>
+          <div className="table-wrap">
+            <table>
             <thead>
               <tr><th>Tipo</th><th>Existencia (qq)</th><th>Nivel mínimo</th><th>Estado</th>{esAdmin && <th>Editar mínimo</th>}</tr>
             </thead>
             <tbody>
               {concentradoStock.map((c) => (
                 <tr key={c.id_stock}>
-                  <td>{c.tipo_concentrado}</td>
-                  <td>{c.existencia_actual}</td>
-                  <td>{c.nivel_minimo}</td>
-                  <td>
+                  <td data-label="Tipo">{c.tipo_concentrado}</td>
+                  <td data-label="Existencia (qq)">{c.existencia_actual}</td>
+                  <td data-label="Nivel mínimo">{c.nivel_minimo}</td>
+                  <td data-label="Estado">
                     <span className={`tag ${Number(c.existencia_actual) < Number(c.nivel_minimo) && Number(c.nivel_minimo) > 0 ? 'low' : 'ok'}`}>
                       {Number(c.existencia_actual) < Number(c.nivel_minimo) && Number(c.nivel_minimo) > 0 ? 'bajo mínimo' : 'normal'}
                     </span>
                   </td>
                   {esAdmin && (
-                    <td>
+                    <td data-label="Editar mínimo">
                       {editandoMinimoId === c.id_stock ? (
                         <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                           <input type="number" step="0.01" value={minimoTemporal} onChange={(e) => setMinimoTemporal(e.target.value)}
@@ -400,6 +538,58 @@ function Inventario({ usuario }) {
               ))}
             </tbody>
           </table>
+            </div>
+        )}
+      </section>
+
+      {/* ---- Existencia de huevos por tamaño ---- */}
+      <section className="card">
+        <div className="head">
+          <h2>Existencia de huevos por tamaño</h2>
+          <span className="sub">{huevosStock.length} tamaños</span>
+        </div>
+        {huevosStock.length === 0 ? (
+          <p style={{ fontSize: '13px', color: 'var(--ink-soft)' }}>Sin existencia registrada todavía.</p>
+        ) : (
+          <div className="table-wrap">
+            <table>
+            <thead>
+              <tr><th>Tamaño</th><th>Existencia</th><th>Nivel mínimo</th><th>Estado</th>{esAdmin && <th>Editar mínimo</th>}</tr>
+            </thead>
+            <tbody>
+              {huevosStock.map((h) => (
+                <tr key={h.id_stock}>
+                  <td data-label="Tamaño">{h.clasificacion}</td>
+                  <td data-label="Existencia">{h.existencia_actual}</td>
+                  <td data-label="Nivel mínimo">{h.nivel_minimo}</td>
+                  <td data-label="Estado">
+                    <span className={`tag ${Number(h.existencia_actual) < Number(h.nivel_minimo) && Number(h.nivel_minimo) > 0 ? 'low' : 'ok'}`}>
+                      {Number(h.existencia_actual) < Number(h.nivel_minimo) && Number(h.nivel_minimo) > 0 ? 'bajo mínimo' : 'normal'}
+                    </span>
+                  </td>
+                  {esAdmin && (
+                    <td data-label="Editar mínimo">
+                      {editandoMinimoHuevoId === h.id_stock ? (
+                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                          <input type="number" value={minimoHuevoTemporal} onChange={(e) => setMinimoHuevoTemporal(e.target.value)}
+                            style={{ ...estiloClaro, width: '70px', fontSize: '12px', padding: '5px 8px', border: '1px solid var(--line)', borderRadius: '6px' }} />
+                          <button className="btn" style={{ padding: '5px 10px', fontSize: '11px' }} onClick={() => handleGuardarMinimoHuevo(h.id_stock)}>Guardar</button>
+                        </div>
+                      ) : (
+                        <button
+                          style={{ background: 'transparent', border: 'none', fontSize: '12px', color: 'var(--navy)', textDecoration: 'underline', padding: 0 }}
+                          onClick={() => { setEditandoMinimoHuevoId(h.id_stock); setMinimoHuevoTemporal(h.nivel_minimo); }}
+                        >
+                          Editar
+                        </button>
+                      )}
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+            </div>
         )}
       </section>
 
@@ -412,17 +602,18 @@ function Inventario({ usuario }) {
         {medicamentos.length === 0 ? (
           <p style={{ fontSize: '13px', color: 'var(--ink-soft)' }}>Sin medicamentos registrados todavía.</p>
         ) : (
-          <table>
+          <div className="table-wrap">
+            <table>
             <thead>
               <tr><th>Nombre</th><th>Existencia</th><th>Nivel mínimo</th><th>Estado</th></tr>
             </thead>
             <tbody>
               {medicamentos.map((m) => (
                 <tr key={m.id_medicamento}>
-                  <td>{m.nombre}</td>
-                  <td>{m.existencia_actual} {m.unidad_medida}</td>
-                  <td>{m.nivel_minimo} {m.unidad_medida}</td>
-                  <td>
+                  <td data-label="Nombre">{m.nombre}</td>
+                  <td data-label="Existencia">{m.existencia_actual} {m.unidad_medida}</td>
+                  <td data-label="Nivel mínimo">{m.nivel_minimo} {m.unidad_medida}</td>
+                  <td data-label="Estado">
                     <span className={`tag ${Number(m.existencia_actual) < Number(m.nivel_minimo) ? 'low' : 'ok'}`}>
                       {Number(m.existencia_actual) < Number(m.nivel_minimo) ? 'bajo mínimo' : 'normal'}
                     </span>
@@ -431,12 +622,13 @@ function Inventario({ usuario }) {
               ))}
             </tbody>
           </table>
+            </div>
         )}
       </section>
 
       {/* ---- Historiales (solo administrador) ---- */}
       {esAdmin && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+        <div className="grid-2col">
           <section className="card">
             <div className="head">
               <h2>Historial de consumo de concentrado</h2>
@@ -445,20 +637,22 @@ function Inventario({ usuario }) {
             {concentradoConsumo.length === 0 ? (
               <p style={{ fontSize: '13px', color: 'var(--ink-soft)' }}>Sin registros todavía.</p>
             ) : (
-              <table>
+              <div className="table-wrap">
+            <table>
                 <thead>
                   <tr><th>Fecha</th><th>Tipo</th><th>Cant. (qq)</th></tr>
                 </thead>
                 <tbody>
                   {concentradoConsumo.map((c) => (
                     <tr key={c.id_consumo}>
-                      <td>{c.fecha?.slice(0, 10)}</td>
-                      <td>{c.tipo_concentrado}</td>
-                      <td>{c.cantidad_qq}</td>
+                      <td data-label="Fecha">{c.fecha?.slice(0, 10)}</td>
+                      <td data-label="Tipo">{c.tipo_concentrado}</td>
+                      <td data-label="Cant. (qq)">{c.cantidad_qq}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+            </div>
             )}
           </section>
 
@@ -470,21 +664,23 @@ function Inventario({ usuario }) {
             {movimientos.length === 0 ? (
               <p style={{ fontSize: '13px', color: 'var(--ink-soft)' }}>Sin registros todavía.</p>
             ) : (
-              <table>
+              <div className="table-wrap">
+            <table>
                 <thead>
                   <tr><th>Fecha</th><th>Medicamento</th><th>Tipo</th><th>Cantidad</th></tr>
                 </thead>
                 <tbody>
                   {movimientos.map((m) => (
                     <tr key={m.id_movimiento}>
-                      <td>{m.fecha?.slice(0, 10)}</td>
-                      <td>{m.medicamento_nombre}</td>
-                      <td><span className={`tag ${m.tipo_movimiento === 'entrada' ? 'ok' : 'pend'}`}>{m.tipo_movimiento}</span></td>
-                      <td>{m.cantidad} {m.unidad_medida}</td>
+                      <td data-label="Fecha">{m.fecha?.slice(0, 10)}</td>
+                      <td data-label="Medicamento">{m.medicamento_nombre}</td>
+                      <td data-label="Tipo"><span className={`tag ${m.tipo_movimiento === 'entrada' ? 'ok' : 'pend'}`}>{m.tipo_movimiento}</span></td>
+                      <td data-label="Cantidad">{m.cantidad} {m.unidad_medida}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+            </div>
             )}
           </section>
         </div>
@@ -496,21 +692,48 @@ function Inventario({ usuario }) {
             <h2>Historial de compras de concentrado</h2>
             <span className="sub">Últimas 30</span>
           </div>
-          <table>
+          <div className="table-wrap">
+            <table>
             <thead>
               <tr><th>Fecha</th><th>Tipo</th><th>Cant. (qq)</th><th>Total</th></tr>
             </thead>
             <tbody>
               {concentrado.map((c) => (
                 <tr key={c.id_concentrado}>
-                  <td>{c.fecha?.slice(0, 10)}</td>
-                  <td>{c.tipo_concentrado}</td>
-                  <td>{c.cantidad_qq}</td>
-                  <td>Q {Number(c.total).toLocaleString('es-GT', { minimumFractionDigits: 2 })}</td>
+                  <td data-label="Fecha">{c.fecha?.slice(0, 10)}</td>
+                  <td data-label="Tipo">{c.tipo_concentrado}</td>
+                  <td data-label="Cant. (qq)">{c.cantidad_qq}</td>
+                  <td data-label="Total">Q {Number(c.total).toLocaleString('es-GT', { minimumFractionDigits: 2 })}</td>
                 </tr>
               ))}
             </tbody>
           </table>
+            </div>
+        </section>
+      )}
+
+      {esAdmin && huevosClasificados.length > 0 && (
+        <section className="card">
+          <div className="head">
+            <h2>Historial de clasificación de huevos</h2>
+            <span className="sub">Últimos 30</span>
+          </div>
+          <div className="table-wrap">
+            <table>
+            <thead>
+              <tr><th>Fecha</th><th>Tamaño</th><th>Cantidad</th></tr>
+            </thead>
+            <tbody>
+              {huevosClasificados.map((h) => (
+                <tr key={h.id_registro}>
+                  <td data-label="Fecha">{h.fecha?.slice(0, 10)}</td>
+                  <td data-label="Tamaño">{h.clasificacion}</td>
+                  <td data-label="Cantidad">{h.cantidad}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+            </div>
         </section>
       )}
     </>

@@ -8,22 +8,31 @@ function Tareas({ usuario }) {
 
   const [tareas, setTareas] = useState([]);
   const [trabajadores, setTrabajadores] = useState([]);
+  const [galeras, setGaleras] = useState([]);
 
   const [error, setError] = useState('');
   const [mensaje, setMensaje] = useState('');
 
   const [formTarea, setFormTarea] = useState({
-    id_trabajador: '', descripcion: '', fecha_asignacion: hoy(), fecha_limite: '',
+    id_trabajador: '', id_galera: '', descripcion: '', fecha_asignacion: hoy(), fecha_limite: '',
   });
+
+  const tareasVisibles = esAdmin ? tareas : tareas.filter((t) => t.estado !== 'finalizado');
 
   const cargarTodo = async () => {
     try {
       const peticiones = [api.get('/tareas/tareas')];
-      if (esAdmin) peticiones.push(api.get('/tareas/trabajadores'));
+      if (esAdmin) {
+        peticiones.push(api.get('/tareas/trabajadores'));
+        peticiones.push(api.get('/produccion/galeras'));
+      }
 
-      const [rTareas, rTrabajadores] = await Promise.all(peticiones);
+      const [rTareas, rTrabajadores, rGaleras] = await Promise.all(peticiones);
       setTareas(rTareas.data);
-      if (esAdmin) setTrabajadores(rTrabajadores.data);
+      if (esAdmin) {
+        setTrabajadores(rTrabajadores.data);
+        setGaleras(rGaleras.data);
+      }
     } catch (err) {
       console.error(err);
       setError('No se pudo cargar la información de tareas');
@@ -52,9 +61,10 @@ function Tareas({ usuario }) {
     try {
       await api.post('/tareas/tareas', {
         ...formTarea,
+        id_galera: formTarea.id_galera || null,
         fecha_limite: formTarea.fecha_limite || null,
       });
-      setFormTarea({ id_trabajador: '', descripcion: '', fecha_asignacion: hoy(), fecha_limite: '' });
+      setFormTarea({ id_trabajador: '', id_galera: '', descripcion: '', fecha_asignacion: hoy(), fecha_limite: '' });
       mostrarMensaje('Tarea asignada correctamente');
       cargarTodo();
     } catch (err) {
@@ -99,14 +109,25 @@ function Tareas({ usuario }) {
             </p>
           ) : (
             <form onSubmit={handleAsignarTarea} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              <div className="field">
-                <label>Trabajador</label>
-                <select value={formTarea.id_trabajador} onChange={(e) => setFormTarea({ ...formTarea, id_trabajador: e.target.value })} required>
-                  <option value="">Selecciona un trabajador...</option>
-                  {trabajadores.map((t) => (
-                    <option key={t.id_trabajador} value={t.id_trabajador}>{t.nombre}</option>
-                  ))}
-                </select>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                <div className="field" style={{ flex: 1, minWidth: '180px' }}>
+                  <label>Trabajador</label>
+                  <select value={formTarea.id_trabajador} onChange={(e) => setFormTarea({ ...formTarea, id_trabajador: e.target.value })} required>
+                    <option value="">Selecciona un trabajador...</option>
+                    {trabajadores.map((t) => (
+                      <option key={t.id_trabajador} value={t.id_trabajador}>{t.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="field" style={{ flex: 1, minWidth: '180px' }}>
+                  <label>Galera (opcional)</label>
+                  <select value={formTarea.id_galera} onChange={(e) => setFormTarea({ ...formTarea, id_galera: e.target.value })}>
+                    <option value="">Sin galera específica</option>
+                    {galeras.map((g) => (
+                      <option key={g.id_galera} value={g.id_galera}>{g.nombre}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
               <div className="field">
                 <label>Descripción de la tarea</label>
@@ -131,23 +152,37 @@ function Tareas({ usuario }) {
       <section className="card">
         <div className="head">
           <h2>{esAdmin ? 'Todas las tareas' : 'Mis tareas'}</h2>
-          <span className="sub">{tareas.length} tareas</span>
+          <span className="sub">
+            {esAdmin ? `${tareasVisibles.length} tareas (historial completo)` : `${tareasVisibles.length} tareas pendientes`}
+          </span>
         </div>
 
-        {tareas.length === 0 ? (
-          <p style={{ fontSize: '13px', color: 'var(--ink-soft)' }}>No hay tareas para mostrar.</p>
+        {tareasVisibles.length === 0 ? (
+          <p style={{ fontSize: '13px', color: 'var(--ink-soft)' }}>
+            {esAdmin ? 'No hay tareas para mostrar.' : '¡No tienes tareas pendientes! 🎉'}
+          </p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {tareas.map((t, i) => (
+            {tareasVisibles.map((t, i) => (
               <div
                 key={t.id_tarea}
                 style={{
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: '13px 0', borderBottom: i < tareas.length - 1 ? '1px solid var(--line)' : 'none', gap: '14px'
+                  padding: '13px 0', borderBottom: i < tareasVisibles.length - 1 ? '1px solid var(--line)' : 'none', gap: '14px'
                 }}
               >
                 <div>
-                  <div style={{ fontSize: '13.5px', fontWeight: 500 }}>{t.descripcion}</div>
+                  <div style={{ fontSize: '13.5px', fontWeight: 500 }}>
+                    {t.descripcion}
+                    {t.galera_nombre && (
+                      <span style={{
+                        marginLeft: '8px', fontSize: '11px', fontWeight: 600, color: 'var(--navy)',
+                        background: 'var(--green-light)', padding: '2px 8px', borderRadius: '999px'
+                      }}>
+                        📍 {t.galera_nombre}
+                      </span>
+                    )}
+                  </div>
                   <div style={{ fontSize: '11.5px', color: 'var(--ink-soft)', marginTop: '3px' }}>
                     {esAdmin && `${t.trabajador_nombre} · `}
                     Asignada: {t.fecha_asignacion?.slice(0, 10)}

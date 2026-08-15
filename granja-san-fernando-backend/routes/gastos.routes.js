@@ -1,6 +1,15 @@
 const express = require('express');
+const { body } = require('express-validator');
 const pool = require('../db');
 const { verificarToken, soloAdministrador } = require('../middleware/auth.middleware');
+const { validar } = require('../middleware/validacion.middleware');
+
+const reglasGasto = [
+  body('fecha').isISO8601().withMessage('Fecha inválida'),
+  body('descripcion').trim().notEmpty().withMessage('La descripción es requerida')
+    .isLength({ max: 200 }).withMessage('La descripción no puede superar 200 caracteres'),
+  body('monto').isFloat({ min: 0.01, max: 1000000 }).withMessage('El monto debe ser mayor a 0'),
+];
 
 const router = express.Router();
 
@@ -17,7 +26,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-router.post('/', async (req, res) => {
+router.post('/', reglasGasto, validar, async (req, res) => {
   try {
     const { fecha, descripcion, monto } = req.body;
     if (!fecha || !descripcion || !monto) {
