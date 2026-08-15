@@ -103,7 +103,8 @@ function Personal() {
             Aún no hay trabajadores. Se crean automáticamente al dar de alta un usuario operador en el módulo de Usuarios.
           </p>
         ) : (
-          <table>
+          <div className="table-wrap">
+            <table>
             <thead>
               <tr>
                 <th>Nombre</th>
@@ -116,9 +117,9 @@ function Personal() {
             <tbody>
               {trabajadores.map((t) => (
                 <tr key={t.id_trabajador}>
-                  <td>{t.nombre}</td>
-                  <td>{t.usuario_vinculado || <span style={{ color: 'var(--ink-soft)' }}>—</span>}</td>
-                  <td>
+                  <td data-label="Nombre">{t.nombre}</td>
+                  <td data-label="Usuario vinculado">{t.usuario_vinculado || <span style={{ color: 'var(--ink-soft)' }}>—</span>}</td>
+                  <td data-label="Costo por día">
                     {editandoCostoId === t.id_trabajador ? (
                       <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                         <input
@@ -141,8 +142,8 @@ function Personal() {
                       </span>
                     )}
                   </td>
-                  <td><span className={`tag ${t.estado === 'activo' ? 'ok' : 'low'}`}>{t.estado}</span></td>
-                  <td>
+                  <td data-label="Estado"><span className={`tag ${t.estado === 'activo' ? 'ok' : 'low'}`}>{t.estado}</span></td>
+                  <td data-label="Acciones">
                     <button
                       style={{ background: 'transparent', border: 'none', fontSize: '12px', color: t.estado === 'activo' ? 'var(--red)' : 'var(--green)', textDecoration: 'underline', padding: 0 }}
                       onClick={() => handleCambiarEstado(t.id_trabajador, t.estado)}
@@ -154,6 +155,7 @@ function Personal() {
               ))}
             </tbody>
           </table>
+            </div>
         )}
       </section>
 
@@ -197,22 +199,24 @@ function Personal() {
         {pagos.length === 0 ? (
           <p style={{ fontSize: '13px', color: 'var(--ink-soft)' }}>Sin pagos registrados todavía.</p>
         ) : (
-          <table>
+          <div className="table-wrap">
+            <table>
             <thead>
               <tr><th>Trabajador</th><th>Semana</th><th>Días</th><th>Costo/día</th><th>Total</th></tr>
             </thead>
             <tbody>
               {pagos.map((p) => (
                 <tr key={p.id_pago}>
-                  <td>{p.trabajador_nombre}</td>
-                  <td>{p.semana_inicio?.slice(0, 10)} — {p.semana_fin?.slice(0, 10)}</td>
-                  <td>{p.dias_laborados}</td>
-                  <td>{q(p.costo_dia_registrado)}</td>
-                  <td>{q(p.total_pagar)}</td>
+                  <td data-label="Trabajador">{p.trabajador_nombre}</td>
+                  <td data-label="Semana">{p.semana_inicio?.slice(0, 10)} — {p.semana_fin?.slice(0, 10)}</td>
+                  <td data-label="Días">{p.dias_laborados}</td>
+                  <td data-label="Costo/día">{q(p.costo_dia_registrado)}</td>
+                  <td data-label="Total">{q(p.total_pagar)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
+            </div>
         )}
       </section>
     </>

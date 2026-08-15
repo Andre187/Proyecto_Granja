@@ -1,13 +1,29 @@
 const express = require('express');
+const { body } = require('express-validator');
 const pool = require('../db');
 const { verificarToken, soloAdministrador } = require('../middleware/auth.middleware');
+const { validar } = require('../middleware/validacion.middleware');
 
 const router = express.Router();
 
-// Todo este módulo es exclusivo de administrador
 router.use(verificarToken, soloAdministrador);
 
-// ---------- TRABAJADORES ----------
+const reglasEditarTrabajador = [
+  body('costo_dia').optional().isFloat({ min: 0, max: 10000 }).withMessage('El costo por día debe ser un número válido'),
+  body('estado').optional().isIn(['activo', 'inactivo']).withMessage('Estado inválido'),
+];
+
+const reglasPago = [
+  body('id_trabajador').isInt({ min: 1 }).withMessage('Selecciona un trabajador válido'),
+  body('semana_inicio').isISO8601().withMessage('Fecha de inicio inválida'),
+  body('semana_fin').isISO8601().withMessage('Fecha de fin inválida').custom((valor, { req }) => {
+    if (new Date(valor) < new Date(req.body.semana_inicio)) {
+      throw new Error('La fecha de fin no puede ser anterior a la fecha de inicio');
+    }
+    return true;
+  }),
+  body('dias_laborados').isInt({ min: 0, max: 7 }).withMessage('Los días laborados deben ser un número entre 0 y 7'),
+];
 
 router.get('/trabajadores', async (req, res) => {
   try {
@@ -23,7 +39,7 @@ router.get('/trabajadores', async (req, res) => {
   }
 });
 
-router.put('/trabajadores/:id', async (req, res) => {
+router.put('/trabajadores/:id', reglasEditarTrabajador, validar, async (req, res) => {
   try {
     const { costo_dia, estado } = req.body;
 
@@ -31,9 +47,6 @@ router.put('/trabajadores/:id', async (req, res) => {
       await pool.query('UPDATE TRABAJADORES SET costo_dia = ? WHERE id_trabajador = ?', [costo_dia, req.params.id]);
     }
     if (estado !== undefined) {
-      if (!['activo', 'inactivo'].includes(estado)) {
-        return res.status(400).json({ error: 'Estado inválido' });
-      }
       await pool.query('UPDATE TRABAJADORES SET estado = ? WHERE id_trabajador = ?', [estado, req.params.id]);
     }
 
@@ -42,8 +55,6 @@ router.put('/trabajadores/:id', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
-// ---------- PAGOS SEMANALES ----------
 
 router.get('/pagos', async (req, res) => {
   try {
@@ -61,14 +72,10 @@ router.get('/pagos', async (req, res) => {
   }
 });
 
-router.post('/pagos', async (req, res) => {
+router.post('/pagos', reglasPago, validar, async (req, res) => {
   try {
     const { id_trabajador, semana_inicio, semana_fin, dias_laborados } = req.body;
-    if (!id_trabajador || !semana_inicio || !semana_fin || !dias_laborados) {
-      return res.status(400).json({ error: 'Todos los campos son requeridos' });
-    }
 
-    // Tomamos el costo por día VIGENTE del trabajador en este momento (nunca del cliente)
     const [trabajadorRows] = await pool.query('SELECT costo_dia FROM TRABAJADORES WHERE id_trabajador = ?', [id_trabajador]);
     if (trabajadorRows.length === 0) {
       return res.status(404).json({ error: 'Trabajador no encontrado' });

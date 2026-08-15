@@ -13,13 +13,12 @@ const inventarioRoutes = require('./routes/inventario.routes');
 const reportesRoutes = require('./routes/reportes.routes');
 const personalRoutes = require('./routes/personal.routes');
 const gastosRoutes = require('./routes/gastos.routes');
+const superadminRoutes = require('./routes/superadmin.routes');
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
-
-// Límite general para toda la API
 app.use(limitadorGeneral);
 
 app.get('/', (req, res) => {
@@ -36,7 +35,6 @@ app.get('/api/test-db', async (req, res) => {
   }
 });
 
-// Límite estricto solo en la ruta de login (antes de montar las rutas de auth)
 app.use('/api/auth/login', limitadorLogin);
 
 app.use('/api/auth', authRoutes);
@@ -49,6 +47,7 @@ app.use('/api/inventario', inventarioRoutes);
 app.use('/api/reportes', reportesRoutes);
 app.use('/api/personal', personalRoutes);
 app.use('/api/gastos', gastosRoutes);
+app.use('/api/superadmin', superadminRoutes);
 
 const PORT = process.env.PORT || 4000;
 app.listen(PORT, () => {

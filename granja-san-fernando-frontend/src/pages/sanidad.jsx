@@ -91,7 +91,7 @@ function Sanidad() {
         </section>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+      <div className="grid-2col">
         <section className="card">
           <div className="head"><h2>Registrar vacunación</h2></div>
           <form onSubmit={handleRegistrarVacuna} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -153,27 +153,29 @@ function Sanidad() {
         </section>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' }}>
+      <div className="grid-2col" style={{ marginTop: '20px' }}>
         <section className="card">
           <div className="head">
             <h2>Historial de vacunación</h2>
             <span className="sub">Últimos 20 registros</span>
           </div>
-          <table>
+          <div className="table-wrap">
+            <table>
             <thead>
               <tr><th>Galera</th><th>Fecha</th><th>Vacuna</th><th>Semana</th></tr>
             </thead>
             <tbody>
               {vacunaciones.map((v) => (
                 <tr key={v.id_vacunacion}>
-                  <td>{v.galera_nombre}</td>
-                  <td>{v.fecha?.slice(0, 10)}</td>
-                  <td>{v.tipo_vacuna}</td>
-                  <td>{v.semana_aplicacion}</td>
+                  <td data-label="Galera">{v.galera_nombre}</td>
+                  <td data-label="Fecha">{v.fecha?.slice(0, 10)}</td>
+                  <td data-label="Vacuna">{v.tipo_vacuna}</td>
+                  <td data-label="Semana">{v.semana_aplicacion}</td>
                 </tr>
               ))}
             </tbody>
           </table>
+            </div>
         </section>
 
         <section className="card">
@@ -181,21 +183,23 @@ function Sanidad() {
             <h2>Historial de peso</h2>
             <span className="sub">Últimos 20 registros</span>
           </div>
-          <table>
+          <div className="table-wrap">
+            <table>
             <thead>
               <tr><th>Galera</th><th>Semana</th><th>Peso (kg)</th><th>Uniformidad</th></tr>
             </thead>
             <tbody>
               {pesos.map((p) => (
                 <tr key={p.id_seguimiento}>
-                  <td>{p.galera_nombre}</td>
-                  <td>{p.semana}</td>
-                  <td>{p.peso_promedio}</td>
-                  <td>{p.uniformidad}%</td>
+                  <td data-label="Galera">{p.galera_nombre}</td>
+                  <td data-label="Semana">{p.semana}</td>
+                  <td data-label="Peso (kg)">{p.peso_promedio}</td>
+                  <td data-label="Uniformidad">{p.uniformidad}%</td>
                 </tr>
               ))}
             </tbody>
           </table>
+            </div>
         </section>
       </div>
     </>

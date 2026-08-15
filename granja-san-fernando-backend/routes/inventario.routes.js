@@ -1,10 +1,50 @@
 const express = require('express');
+const { body } = require('express-validator');
 const pool = require('../db');
 const { verificarToken, soloAdministrador } = require('../middleware/auth.middleware');
+const { validar } = require('../middleware/validacion.middleware');
 
 const router = express.Router();
 
 router.use(verificarToken);
+
+const reglasConcentrado = [
+  body('fecha').isISO8601().withMessage('Fecha inválida'),
+  body('tipo_concentrado').trim().notEmpty().withMessage('El tipo de concentrado es requerido').isLength({ max: 50 }),
+  body('cantidad_qq').isFloat({ min: 0.01, max: 100000 }).withMessage('La cantidad debe ser mayor a 0'),
+  body('costo_unitario').isFloat({ min: 0.01, max: 100000 }).withMessage('El costo unitario debe ser mayor a 0'),
+];
+
+const reglasNivelMinimo = [
+  body('nivel_minimo').isFloat({ min: 0, max: 100000 }).withMessage('El nivel mínimo debe ser un número válido'),
+];
+
+const reglasConsumoConcentrado = [
+  body('id_stock').isInt({ min: 1 }).withMessage('Selecciona un tipo de concentrado válido'),
+  body('fecha').isISO8601().withMessage('Fecha inválida'),
+  body('cantidad_qq').isFloat({ min: 0.01, max: 100000 }).withMessage('La cantidad debe ser mayor a 0'),
+];
+
+const reglasMedicamento = [
+  body('nombre').trim().notEmpty().withMessage('El nombre es requerido').isLength({ max: 100 }),
+  body('existencia_actual').isFloat({ min: 0, max: 1000000 }).withMessage('La existencia debe ser un número válido'),
+  body('nivel_minimo').isFloat({ min: 0, max: 1000000 }).withMessage('El nivel mínimo debe ser un número válido'),
+  body('unidad_medida').trim().notEmpty().withMessage('La unidad de medida es requerida').isLength({ max: 20 }),
+];
+
+const reglasMovimiento = [
+  body('id_medicamento').isInt({ min: 1 }).withMessage('Selecciona un medicamento válido'),
+  body('fecha').isISO8601().withMessage('Fecha inválida'),
+  body('tipo_movimiento').isIn(['entrada', 'salida']).withMessage('Tipo de movimiento inválido'),
+  body('cantidad').isFloat({ min: 0.01, max: 100000 }).withMessage('La cantidad debe ser mayor a 0'),
+];
+
+const reglasClasificarHuevos = [
+  body('fecha').isISO8601().withMessage('Fecha inválida'),
+  body('items').isArray({ min: 1 }).withMessage('Agrega al menos un tamaño'),
+  body('items.*.id_clasificacion').isInt({ min: 1 }).withMessage('Selecciona un tamaño válido'),
+  body('items.*.cantidad').isInt({ min: 1, max: 1000000 }).withMessage('La cantidad debe ser mayor a 0'),
+];
 
 // ---------- CONCENTRADO (compras) — solo administrador ----------
 
@@ -17,12 +57,9 @@ router.get('/concentrado', async (req, res) => {
   }
 });
 
-router.post('/concentrado', soloAdministrador, async (req, res) => {
+router.post('/concentrado', soloAdministrador, reglasConcentrado, validar, async (req, res) => {
   try {
     const { fecha, tipo_concentrado, cantidad_qq, costo_unitario } = req.body;
-    if (!fecha || !tipo_concentrado || !cantidad_qq || !costo_unitario) {
-      return res.status(400).json({ error: 'Todos los campos son requeridos' });
-    }
     await pool.query(
       'INSERT INTO CONCENTRADO (fecha, tipo_concentrado, cantidad_qq, costo_unitario) VALUES (?, ?, ?, ?)',
       [fecha, tipo_concentrado, cantidad_qq, costo_unitario]
@@ -44,13 +81,9 @@ router.get('/concentrado-stock', async (req, res) => {
   }
 });
 
-// El administrador puede ajustar el nivel mínimo de alerta de cada tipo
-router.put('/concentrado-stock/:id', soloAdministrador, async (req, res) => {
+router.put('/concentrado-stock/:id', soloAdministrador, reglasNivelMinimo, validar, async (req, res) => {
   try {
     const { nivel_minimo } = req.body;
-    if (nivel_minimo === undefined) {
-      return res.status(400).json({ error: 'El nivel mínimo es requerido' });
-    }
     await pool.query('UPDATE CONCENTRADO_STOCK SET nivel_minimo = ? WHERE id_stock = ?', [nivel_minimo, req.params.id]);
     res.json({ mensaje: 'Nivel mínimo actualizado' });
   } catch (error) {
@@ -75,19 +108,15 @@ router.get('/concentrado-consumo', async (req, res) => {
   }
 });
 
-router.post('/concentrado-consumo', async (req, res) => {
+router.post('/concentrado-consumo', reglasConsumoConcentrado, validar, async (req, res) => {
   try {
     const { id_stock, fecha, cantidad_qq } = req.body;
-    if (!id_stock || !fecha || !cantidad_qq) {
-      return res.status(400).json({ error: 'Todos los campos son requeridos' });
-    }
     await pool.query(
       'INSERT INTO CONCENTRADO_CONSUMO (id_stock, fecha, cantidad_qq) VALUES (?, ?, ?)',
       [id_stock, fecha, cantidad_qq]
     );
     res.status(201).json({ mensaje: 'Consumo registrado correctamente' });
   } catch (error) {
-    // El trigger rechaza consumos que superen la existencia disponible
     res.status(400).json({ error: error.sqlMessage || error.message });
   }
 });
@@ -103,25 +132,23 @@ router.get('/medicamentos', async (req, res) => {
   }
 });
 
-router.post('/medicamentos', soloAdministrador, async (req, res) => {
+router.post('/medicamentos', soloAdministrador, reglasMedicamento, validar, async (req, res) => {
   try {
     const { nombre, existencia_actual, nivel_minimo, unidad_medida } = req.body;
-    if (!nombre || existencia_actual === undefined || nivel_minimo === undefined || !unidad_medida) {
-      return res.status(400).json({ error: 'Todos los campos son requeridos' });
-    }
     const [result] = await pool.query(
       'INSERT INTO MEDICAMENTOS (nombre, existencia_actual, nivel_minimo, unidad_medida) VALUES (?, ?, ?, ?)',
       [nombre, existencia_actual, nivel_minimo, unidad_medida]
     );
     res.status(201).json({ id_medicamento: result.insertId, mensaje: 'Medicamento agregado correctamente' });
   } catch (error) {
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({ error: 'Ya existe un medicamento con ese nombre' });
+    }
     res.status(400).json({ error: error.sqlMessage || error.message });
   }
 });
 
 // ---------- MOVIMIENTOS DE MEDICAMENTO ----------
-// Administrador: puede registrar entradas y salidas.
-// Operador: solo puede registrar salidas (consumo), no entradas (compras).
 
 router.get('/movimientos', async (req, res) => {
   try {
@@ -139,17 +166,10 @@ router.get('/movimientos', async (req, res) => {
   }
 });
 
-router.post('/movimientos', async (req, res) => {
+router.post('/movimientos', reglasMovimiento, validar, async (req, res) => {
   try {
     const { id_medicamento, fecha, tipo_movimiento, cantidad } = req.body;
-    if (!id_medicamento || !fecha || !tipo_movimiento || !cantidad) {
-      return res.status(400).json({ error: 'Todos los campos son requeridos' });
-    }
-    if (!['entrada', 'salida'].includes(tipo_movimiento)) {
-      return res.status(400).json({ error: 'Tipo de movimiento inválido' });
-    }
 
-    // El operador solo puede registrar salidas (consumo), no entradas (compras)
     if (req.usuario.rol !== 'administrador' && tipo_movimiento !== 'salida') {
       return res.status(403).json({ error: 'Solo el administrador puede registrar entradas de medicamento' });
     }
@@ -161,6 +181,73 @@ router.post('/movimientos', async (req, res) => {
     res.status(201).json({ mensaje: 'Movimiento registrado correctamente' });
   } catch (error) {
     res.status(400).json({ error: error.sqlMessage || error.message });
+  }
+});
+
+// ---------- HUEVOS: EXISTENCIA POR TAMAÑO ----------
+
+router.get('/huevos-stock', async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT hs.id_stock, hs.id_clasificacion, ch.nombre AS clasificacion,
+             hs.existencia_actual, hs.nivel_minimo
+      FROM HUEVOS_STOCK hs
+      JOIN CLASIFICACIONES_HUEVO ch ON ch.id_clasificacion = hs.id_clasificacion
+      ORDER BY ch.id_clasificacion
+    `);
+    res.json(rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// El administrador puede ajustar el nivel mínimo de alerta de cada tamaño
+router.put('/huevos-stock/:id', soloAdministrador, reglasNivelMinimo, validar, async (req, res) => {
+  try {
+    const { nivel_minimo } = req.body;
+    await pool.query('UPDATE HUEVOS_STOCK SET nivel_minimo = ? WHERE id_stock = ?', [nivel_minimo, req.params.id]);
+    res.json({ mensaje: 'Nivel mínimo actualizado' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ---------- HUEVOS: CLASIFICACIÓN DIARIA — admin u operador pueden registrar ----------
+
+router.get('/huevos-clasificados', async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT hc.id_registro, hc.id_clasificacion, ch.nombre AS clasificacion, hc.fecha, hc.cantidad
+      FROM HUEVOS_CLASIFICADOS hc
+      JOIN CLASIFICACIONES_HUEVO ch ON ch.id_clasificacion = hc.id_clasificacion
+      ORDER BY hc.fecha DESC, hc.id_registro DESC
+      LIMIT 30
+    `);
+    res.json(rows);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Registra la clasificación de uno o varios tamaños del mismo día en una sola operación
+router.post('/huevos-clasificados', reglasClasificarHuevos, validar, async (req, res) => {
+  const conexion = await pool.getConnection();
+  try {
+    const { fecha, items } = req.body;
+    await conexion.beginTransaction();
+    for (const item of items) {
+      await conexion.query(
+        'INSERT INTO HUEVOS_CLASIFICADOS (id_clasificacion, fecha, cantidad) VALUES (?, ?, ?)',
+        [item.id_clasificacion, fecha, item.cantidad]
+      );
+    }
+    await conexion.commit();
+    res.status(201).json({ mensaje: 'Clasificación de huevos registrada correctamente' });
+  } catch (error) {
+    await conexion.rollback();
+    res.status(400).json({ error: error.sqlMessage || error.message });
+  } finally {
+    conexion.release();
   }
 });
 

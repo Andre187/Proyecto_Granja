@@ -105,17 +105,18 @@ function Gastos() {
         {gastos.length === 0 ? (
           <p style={{ fontSize: '13px', color: 'var(--ink-soft)' }}>Sin gastos registrados todavía.</p>
         ) : (
-          <table>
+          <div className="table-wrap">
+            <table>
             <thead>
               <tr><th>Fecha</th><th>Descripción</th><th>Monto</th><th></th></tr>
             </thead>
             <tbody>
               {gastos.map((g) => (
                 <tr key={g.id_gasto}>
-                  <td>{g.fecha?.slice(0, 10)}</td>
-                  <td>{g.descripcion}</td>
-                  <td>{q(g.monto)}</td>
-                  <td>
+                  <td data-label="Fecha">{g.fecha?.slice(0, 10)}</td>
+                  <td data-label="Descripción">{g.descripcion}</td>
+                  <td data-label="Monto">{q(g.monto)}</td>
+                  <td data-label="Acción">
                     <button
                       style={{ background: 'transparent', border: 'none', fontSize: '12px', color: 'var(--red)', textDecoration: 'underline', padding: 0 }}
                       onClick={() => handleEliminar(g.id_gasto)}
@@ -127,6 +128,7 @@ function Gastos() {
               ))}
             </tbody>
           </table>
+            </div>
         )}
       </section>
     </>

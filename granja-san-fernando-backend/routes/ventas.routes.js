@@ -1,6 +1,22 @@
 const express = require('express');
+const { body } = require('express-validator');
 const pool = require('../db');
 const { verificarToken, soloAdministrador } = require('../middleware/auth.middleware');
+const { validar } = require('../middleware/validacion.middleware');
+
+const reglasVenta = [
+  body('fecha').isISO8601().withMessage('Fecha inválida'),
+  body('forma_pago').optional().isIn(['contado', 'credito']).withMessage('Forma de pago inválida'),
+  body('items').isArray({ min: 1 }).withMessage('Debes agregar al menos un artículo'),
+  body('items.*.id_clasificacion').isInt({ min: 1 }).withMessage('Selecciona una clasificación válida en cada artículo'),
+  body('items.*.cantidad').isInt({ min: 1, max: 100000 }).withMessage('La cantidad debe ser un número entero mayor a 0'),
+  body('items.*.precio_unitario').isFloat({ min: 0.01, max: 100000 }).withMessage('El precio unitario debe ser mayor a 0'),
+];
+
+const reglasAbono = [
+  body('fecha').isISO8601().withMessage('Fecha inválida'),
+  body('monto').isFloat({ min: 0.01, max: 1000000 }).withMessage('El monto debe ser mayor a 0'),
+];
 
 const router = express.Router();
 
@@ -111,7 +127,7 @@ router.get('/ventas/:id', async (req, res) => {
 });
 
 // Crear una venta completa: cliente (nuevo o existente) + artículos + forma de pago
-router.post('/ventas', async (req, res) => {
+router.post('/ventas', reglasVenta, validar, async (req, res) => {
   const conexion = await pool.getConnection();
   try {
     const { id_cliente, cliente_nombre, cliente_telefono, cliente_direccion, fecha, items, forma_pago } = req.body;
@@ -174,7 +190,7 @@ router.post('/ventas', async (req, res) => {
 
 // ---------- ABONOS ----------
 
-router.post('/ventas/:id/abonos', async (req, res) => {
+router.post('/ventas/:id/abonos', reglasAbono, validar, async (req, res) => {
   try {
     const { fecha, monto } = req.body;
     if (!fecha || !monto) {

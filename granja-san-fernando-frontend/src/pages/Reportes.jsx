@@ -125,18 +125,20 @@ function Reportes() {
             </div>
           </section>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.3fr', gap: '20px' }}>
+          <div className="grid-2col-wide-r">
             <section className="card">
               <div className="head"><h2>Desglose de egresos</h2></div>
-              <table>
+              <div className="table-wrap">
+            <table>
                 <thead><tr><th>Concepto</th><th>Monto</th></tr></thead>
                 <tbody>
-                  <tr><td>Gastos operativos</td><td>{q(datos.desglose_egresos.gastos)}</td></tr>
-                  <tr><td>Compras de concentrado</td><td>{q(datos.desglose_egresos.concentrado)}</td></tr>
-                  <tr><td>Pagos de personal</td><td>{q(datos.desglose_egresos.personal)}</td></tr>
-                  <tr style={{ fontWeight: 600 }}><td>Total</td><td>{q(datos.egresos_total)}</td></tr>
+                  <tr><td data-label="Concepto">Gastos operativos</td><td data-label="Monto">{q(datos.desglose_egresos.gastos)}</td></tr>
+                  <tr><td data-label="Concepto">Compras de concentrado</td><td data-label="Monto">{q(datos.desglose_egresos.concentrado)}</td></tr>
+                  <tr><td data-label="Concepto">Pagos de personal</td><td data-label="Monto">{q(datos.desglose_egresos.personal)}</td></tr>
+                  <tr style={{ fontWeight: 600 }}><td data-label="Concepto">Total</td><td data-label="Monto">{q(datos.egresos_total)}</td></tr>
                 </tbody>
               </table>
+            </div>
               <p style={{ fontSize: '11px', color: 'var(--ink-soft)', marginTop: '10px' }}>
                 Nota: los pagos de personal se contabilizan según la fecha de fin de semana laboral, no día por día.
               </p>
