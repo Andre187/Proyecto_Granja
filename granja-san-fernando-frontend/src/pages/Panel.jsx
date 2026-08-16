@@ -13,7 +13,7 @@ function eggClass(pct, idx) {
 
 function Panel({ usuario }) {
   const esAdmin = usuario.rol === 'administrador';
-  const [periodo, setPeriodo] = useState('semana');
+  const [periodo, setPeriodo] = useState('hoy');
   const [datos, setDatos] = useState(null);
   const [cargando, setCargando] = useState(true);
   const [misTareas, setMisTareas] = useState([]);

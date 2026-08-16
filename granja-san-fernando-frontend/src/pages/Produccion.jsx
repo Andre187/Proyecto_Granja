@@ -1,7 +1,13 @@
 import { useState, useEffect } from 'react';
 import api from '../api/api';
 
-const hoy = () => new Date().toISOString().slice(0, 10);
+const hoy = () => {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dia = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dia}`;
+};
 
 function Produccion({ usuario }) {
   const esAdmin = usuario.rol === 'administrador';
@@ -23,18 +29,26 @@ function Produccion({ usuario }) {
   const [formPostura, setFormPostura] = useState({ id_lote: '', fecha: hoy(), cantidad_huevos: '' });
   const [formMortalidad, setFormMortalidad] = useState({ id_lote: '', fecha: hoy(), cantidad: '', causa: '' });
 
+  const [clasificacionesHuevo, setClasificacionesHuevo] = useState([]);
+  const [formClasificarHuevos, setFormClasificarHuevos] = useState({
+    fecha: hoy(),
+    items: [{ id_clasificacion: '', cantidad: '' }],
+  });
+
   const cargarTodo = async () => {
     try {
-      const [rGaleras, rLotes, rPostura, rMortalidad] = await Promise.all([
+      const [rGaleras, rLotes, rPostura, rMortalidad, rClasificaciones] = await Promise.all([
         api.get('/produccion/galeras'),
         api.get('/produccion/lotes'),
         api.get('/produccion/postura'),
         api.get('/produccion/mortalidad'),
+        api.get('/ventas/clasificaciones'),
       ]);
       setGaleras(rGaleras.data);
       setLotes(rLotes.data);
       setPostura(rPostura.data);
       setMortalidad(rMortalidad.data);
+      setClasificacionesHuevo(rClasificaciones.data);
     } catch (err) {
       console.error(err);
       setError('No se pudo cargar la información de producción');
@@ -44,7 +58,7 @@ function Produccion({ usuario }) {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     cargarTodo();
-  
+
   }, []);
 
   const mostrarMensaje = (texto) => {
@@ -131,6 +145,45 @@ function Produccion({ usuario }) {
       cargarTodo();
     } catch (err) {
       mostrarError(err.response?.data?.error || 'No se pudo registrar la mortalidad');
+    }
+  };
+
+  const agregarItemHuevo = () => {
+    setFormClasificarHuevos({
+      ...formClasificarHuevos,
+      items: [...formClasificarHuevos.items, { id_clasificacion: '', cantidad: '' }],
+    });
+  };
+
+  const quitarItemHuevo = (index) => {
+    if (formClasificarHuevos.items.length === 1) return;
+    setFormClasificarHuevos({
+      ...formClasificarHuevos,
+      items: formClasificarHuevos.items.filter((_, i) => i !== index),
+    });
+  };
+
+  const actualizarItemHuevo = (index, campo, valor) => {
+    const copia = [...formClasificarHuevos.items];
+    copia[index][campo] = valor;
+    setFormClasificarHuevos({ ...formClasificarHuevos, items: copia });
+  };
+
+  const handleRegistrarClasificacionHuevos = async (e) => {
+    e.preventDefault();
+    try {
+      await api.post('/inventario/huevos-clasificados', {
+        fecha: formClasificarHuevos.fecha,
+        items: formClasificarHuevos.items.map((it) => ({
+          id_clasificacion: it.id_clasificacion,
+          cantidad: parseInt(it.cantidad),
+        })),
+      });
+      setFormClasificarHuevos({ fecha: hoy(), items: [{ id_clasificacion: '', cantidad: '' }] });
+      mostrarMensaje('Clasificación de huevos registrada');
+      cargarTodo();
+    } catch (err) {
+      mostrarError(err.response?.data?.error || 'No se pudo registrar la clasificación');
     }
   };
 
@@ -315,6 +368,62 @@ function Produccion({ usuario }) {
           </form>
         </section>
       </div>
+
+      {/* ---- Clasificar huevos por tamaño: ambos roles ---- */}
+      <section className="card">
+        <div className="head"><h2>Clasificar huevos por tamaño</h2></div>
+        <form onSubmit={handleRegistrarClasificacionHuevos} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          <div className="field" style={{ maxWidth: '220px' }}>
+            <label>Fecha</label>
+            <input
+              type="date"
+              value={formClasificarHuevos.fecha}
+              onChange={(e) => setFormClasificarHuevos({ ...formClasificarHuevos, fecha: e.target.value })}
+              required
+            />
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {formClasificarHuevos.items.map((item, i) => (
+              <div key={i} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <select
+                  value={item.id_clasificacion}
+                  onChange={(e) => actualizarItemHuevo(i, 'id_clasificacion', e.target.value)}
+                  required
+                  style={{ flex: 2, background: '#F5F1E6', color: '#232019', border: '1px solid var(--line)', borderRadius: '7px', padding: '8px 10px', fontSize: '13px' }}
+                >
+                  <option value="">Tamaño...</option>
+                  {clasificacionesHuevo.map((c) => (
+                    <option key={c.id_clasificacion} value={c.id_clasificacion}>{c.nombre}</option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  placeholder="Cantidad"
+                  value={item.cantidad}
+                  onChange={(e) => actualizarItemHuevo(i, 'cantidad', e.target.value)}
+                  required
+                  style={{ flex: 1, minWidth: '80px', background: '#F5F1E6', color: '#232019', border: '1px solid var(--line)', borderRadius: '7px', padding: '8px 10px', fontSize: '13px' }}
+                />
+                {formClasificarHuevos.items.length > 1 && (
+                  <button type="button" onClick={() => quitarItemHuevo(i)}
+                    style={{ background: 'transparent', border: 'none', color: 'var(--red)', fontSize: '13px', cursor: 'pointer' }}>
+                    ✕
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+          <div>
+            <button type="button" onClick={agregarItemHuevo} className="btn"
+              style={{ background: 'transparent', color: 'var(--navy)', border: '1px solid var(--line)', fontSize: '12px', padding: '6px 12px' }}>
+              + Agregar tamaño
+            </button>
+          </div>
+          <div>
+            <button type="submit" className="btn" style={{ background: 'var(--green)' }}>Registrar clasificación</button>
+          </div>
+        </form>
+      </section>
 
       {/* ---- Historial: solo administrador ---- */}
       {esAdmin && (

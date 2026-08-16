@@ -1,7 +1,13 @@
 import { useState, useEffect } from 'react';
 import api from '../api/api';
 
-const hoy = () => new Date().toISOString().slice(0, 10);
+const hoy = () => {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dia = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dia}`;
+};
 
 function Sanidad() {
   const [lotes, setLotes] = useState([]);

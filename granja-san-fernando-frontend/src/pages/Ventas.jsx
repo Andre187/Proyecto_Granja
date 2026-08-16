@@ -1,7 +1,15 @@
 import { useState, useEffect } from 'react';
 import api from '../api/api';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
-const hoy = () => new Date().toISOString().slice(0, 10);
+const hoy = () => {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dia = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dia}`;
+};
 
 const estiloClaro = {
   background: '#F5F1E6',
@@ -16,6 +24,8 @@ function Ventas({ usuario }) {
   const [clientes, setClientes] = useState([]);
   const [clasificaciones, setClasificaciones] = useState([]);
   const [ventas, setVentas] = useState([]);
+
+  const [pestanaHistorial, setPestanaHistorial] = useState('pendientes');
 
   const [error, setError] = useState('');
   const [mensaje, setMensaje] = useState('');
@@ -114,7 +124,6 @@ function Ventas({ usuario }) {
           precio_unitario: parseFloat(it.precio_unitario),
         })),
       };
-
       if (clienteSeleccionado === 'nuevo') {
         payload.cliente_nombre = clienteNombre;
         payload.cliente_telefono = clienteTelefono;
@@ -122,7 +131,6 @@ function Ventas({ usuario }) {
       } else {
         payload.id_cliente = clienteSeleccionado;
       }
-
       await api.post('/ventas/ventas', payload);
       resetFormularioVenta();
       mostrarMensaje(formaPago === 'contado' ? 'Venta registrada y marcada como pagada' : 'Venta registrada correctamente');
@@ -147,8 +155,143 @@ function Ventas({ usuario }) {
     }
   };
 
+  const handleAnularVenta = async (id_venta) => {
+    if (!window.confirm('¿Anular esta venta? Se devolverá la existencia de huevos correspondiente. Esta acción no se puede deshacer.')) return;
+    try {
+      await api.put(`/ventas/ventas/${id_venta}/anular`);
+      mostrarMensaje('Venta anulada correctamente');
+      cargarTodo();
+    } catch (err) {
+      mostrarError(err.response?.data?.error || 'No se pudo anular la venta');
+    }
+  };
+
+  const handleGenerarRecibo = async (id_venta) => {
+    try {
+      const respuesta = await api.get(`/ventas/ventas/${id_venta}`);
+      const venta = respuesta.data;
+
+      const doc = new jsPDF();
+
+      doc.setFontSize(16);
+      doc.setTextColor(27, 59, 111); // var(--navy)
+      doc.text('Granja San Fernando', 14, 18);
+      doc.setFontSize(11);
+      doc.setTextColor(100);
+      doc.text('Recibo de venta', 14, 25);
+
+      doc.setFontSize(10);
+      doc.setTextColor(30);
+      doc.text(`Recibo No.: ${venta.id_venta}`, 14, 36);
+      doc.text(`Fecha: ${venta.fecha?.slice(0, 10)}`, 14, 42);
+      doc.text(`Cliente: ${venta.cliente_nombre}`, 14, 48);
+      if (venta.telefono) doc.text(`Teléfono: ${venta.telefono}`, 14, 54);
+
+      autoTable(doc, {
+        startY: 62,
+        head: [['Clasificación', 'Cantidad', 'Precio unitario', 'Subtotal']],
+        body: venta.detalle.map((d) => [
+          d.clasificacion,
+          d.cantidad,
+          q(d.precio_unitario),
+          q(d.subtotal),
+        ]),
+        headStyles: { fillColor: [27, 59, 111] },
+        styles: { fontSize: 10 },
+      });
+
+      const finalY = doc.lastAutoTable.finalY + 10;
+      doc.setFontSize(11);
+      doc.text(`Total: ${q(venta.monto_total)}`, 140, finalY);
+      doc.text(`Saldo pendiente: ${q(venta.saldo_pendiente)}`, 140, finalY + 7);
+      doc.text(`Estado: ${venta.estado}`, 140, finalY + 14);
+
+      if (venta.abonos && venta.abonos.length > 0) {
+        autoTable(doc, {
+          startY: finalY + 22,
+          head: [['Fecha de abono', 'Monto']],
+          body: venta.abonos.map((a) => [a.fecha?.slice(0, 10), q(a.monto)]),
+          headStyles: { fillColor: [92, 138, 58] },
+          styles: { fontSize: 9 },
+        });
+      }
+
+      doc.setFontSize(8);
+      doc.setTextColor(150);
+      doc.text('Documento generado por el sistema de Granja San Fernando', 14, 285);
+
+      doc.save(`recibo_venta_${venta.id_venta}.pdf`);
+    } catch (err) {
+      console.error(err);
+      mostrarError('No se pudo generar el recibo');
+    }
+  };
+
   const q = (n) => `Q ${Number(n || 0).toLocaleString('es-GT', { minimumFractionDigits: 2 })}`;
 
+  const ventasPendientes = ventas.filter((v) => Number(v.saldo_pendiente) > 0);
+  const ventasPagadas = ventas.filter((v) => Number(v.saldo_pendiente) <= 0);
+  const ventasAMostrar = pestanaHistorial === 'pendientes' ? ventasPendientes : ventasPagadas;
+
+  const filaVenta = (v) => (
+    <tr key={v.id_venta}>
+      <td data-label="Fecha">{v.fecha?.slice(0, 10)}</td>
+      <td data-label="Cliente">{v.cliente_nombre}</td>
+      <td data-label="Total">{q(v.monto_total)}</td>
+      <td data-label="Saldo pendiente">{q(v.saldo_pendiente)}</td>
+      <td data-label="Estado"><span className={`tag ${v.estado === 'cancelado' ? 'ok' : 'pend'}`}>{v.estado}</span></td>
+      <td data-label="Acción">
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {v.saldo_pendiente > 0 && v.estado !== 'anulado' && (
+            abonandoId === v.id_venta ? (
+              <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                <input
+                  type="number" step="0.01" placeholder="Monto"
+                  value={montoAbono} onChange={(e) => setMontoAbono(e.target.value)}
+                  style={{ ...estiloClaro, width: '90px', fontSize: '12px', padding: '5px 8px', border: '1px solid var(--line)', borderRadius: '6px' }}
+                />
+                <input
+                  type="date"
+                  value={fechaAbono} onChange={(e) => setFechaAbono(e.target.value)}
+                  style={{ ...estiloClaro, fontSize: '12px', padding: '5px 8px', border: '1px solid var(--line)', borderRadius: '6px' }}
+                />
+                <button className="btn" style={{ padding: '5px 10px', fontSize: '11px' }} onClick={() => handleRegistrarAbono(v.id_venta)}>
+                  Guardar
+                </button>
+                <button
+                  style={{ background: 'transparent', border: 'none', fontSize: '11px', color: 'var(--ink-soft)' }}
+                  onClick={() => { setAbonandoId(null); setMontoAbono(''); }}
+                >
+                  Cancelar
+                </button>
+              </div>
+            ) : (
+              <button
+                style={{ background: 'transparent', border: 'none', fontSize: '12px', color: 'var(--navy)', textDecoration: 'underline', padding: 0 }}
+                onClick={() => { setAbonandoId(v.id_venta); setMontoAbono(''); setFechaAbono(hoy()); }}
+              >
+                Registrar abono
+              </button>
+            )
+          )}
+          {esAdmin && v.estado !== 'anulado' && (
+            <button
+              style={{ background: 'transparent', border: 'none', fontSize: '12px', color: 'var(--red)', textDecoration: 'underline', padding: 0 }}
+              onClick={() => handleAnularVenta(v.id_venta)}
+            >
+              Anular
+            </button>
+          )}
+          <button
+            style={{ background: 'transparent', border: 'none', fontSize: '12px', color: 'var(--green)', textDecoration: 'underline', padding: 0 }}
+            onClick={() => handleGenerarRecibo(v.id_venta)}
+          >
+            Recibo
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
   return (
     <>
       {error && <p style={{ color: 'var(--red)', fontSize: '13px', marginBottom: '14px' }}>{error}</p>}
@@ -285,71 +428,42 @@ function Ventas({ usuario }) {
       <section className="card">
         <div className="head">
           <h2>Historial de ventas</h2>
-          <span className="sub">{ventas.length} ventas</span>
+          <span className="sub">{ventas.length} ventas totales</span>
         </div>
 
-        {ventas.length === 0 ? (
-          <p style={{ fontSize: '13px', color: 'var(--ink-soft)' }}>Aún no hay ventas registradas.</p>
+        <div style={{ marginBottom: '16px' }}>
+          <div className="period-tabs" style={{ display: 'inline-flex' }}>
+            <button className={pestanaHistorial === 'pendientes' ? 'active' : ''} onClick={() => setPestanaHistorial('pendientes')}>
+              Cuentas por cobrar ({ventasPendientes.length})
+            </button>
+            <button className={pestanaHistorial === 'pagadas' ? 'active' : ''} onClick={() => setPestanaHistorial('pagadas')}>
+              Pagadas ({ventasPagadas.length})
+            </button>
+          </div>
+        </div>
+
+        {ventasAMostrar.length === 0 ? (
+          <p style={{ fontSize: '13px', color: 'var(--ink-soft)' }}>
+            {pestanaHistorial === 'pendientes' ? 'No hay cuentas pendientes por cobrar.' : 'Aún no hay ventas pagadas.'}
+          </p>
         ) : (
           <div className="table-wrap">
             <table>
-            <thead>
-              <tr>
-                <th>Fecha</th>
-                <th>Cliente</th>
-                <th>Total</th>
-                <th>Saldo pendiente</th>
-                <th>Estado</th>
-                <th>Acción</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ventas.map((v) => (
-                <tr key={v.id_venta}>
-                  <td data-label="Fecha">{v.fecha?.slice(0, 10)}</td>
-                  <td data-label="Cliente">{v.cliente_nombre}</td>
-                  <td data-label="Total">{q(v.monto_total)}</td>
-                  <td data-label="Saldo pendiente">{q(v.saldo_pendiente)}</td>
-                  <td data-label="Estado"><span className={`tag ${v.estado === 'cancelado' ? 'ok' : 'pend'}`}>{v.estado}</span></td>
-                  <td data-label="Acción">
-                    {v.saldo_pendiente > 0 && (
-                      abonandoId === v.id_venta ? (
-                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                          <input
-                            type="number" step="0.01" placeholder="Monto"
-                            value={montoAbono} onChange={(e) => setMontoAbono(e.target.value)}
-                            style={{ ...estiloClaro, width: '90px', fontSize: '12px', padding: '5px 8px', border: '1px solid var(--line)', borderRadius: '6px' }}
-                          />
-                          <input
-                            type="date"
-                            value={fechaAbono} onChange={(e) => setFechaAbono(e.target.value)}
-                            style={{ ...estiloClaro, fontSize: '12px', padding: '5px 8px', border: '1px solid var(--line)', borderRadius: '6px' }}
-                          />
-                          <button className="btn" style={{ padding: '5px 10px', fontSize: '11px' }} onClick={() => handleRegistrarAbono(v.id_venta)}>
-                            Guardar
-                          </button>
-                          <button
-                            style={{ background: 'transparent', border: 'none', fontSize: '11px', color: 'var(--ink-soft)' }}
-                            onClick={() => { setAbonandoId(null); setMontoAbono(''); }}
-                          >
-                            Cancelar
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          style={{ background: 'transparent', border: 'none', fontSize: '12px', color: 'var(--navy)', textDecoration: 'underline', padding: 0 }}
-                          onClick={() => { setAbonandoId(v.id_venta); setMontoAbono(''); setFechaAbono(hoy()); }}
-                        >
-                          Registrar abono
-                        </button>
-                      )
-                    )}
-                  </td>
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Cliente</th>
+                  <th>Total</th>
+                  <th>Saldo pendiente</th>
+                  <th>Estado</th>
+                  <th>Acción</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-            </div>
+              </thead>
+              <tbody>
+                {ventasAMostrar.map(filaVenta)}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
     </>

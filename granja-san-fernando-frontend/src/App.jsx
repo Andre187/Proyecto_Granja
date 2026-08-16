@@ -20,7 +20,7 @@ const MINUTOS_RENOVACION = 15;
 
 function App() {
   const [usuarioActivo, setUsuarioActivo] = useState(() => {
-    const guardado = localStorage.getItem('usuario');
+    const guardado = sessionStorage.getItem('usuario');
     return guardado ? JSON.parse(guardado) : null;
   });
   const [avisoInactividad, setAvisoInactividad] = useState(false);
@@ -29,8 +29,8 @@ function App() {
   const intervaloRenovacion = useRef(null);
 
   const handleLogout = (motivo) => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('usuario');
+   sessionStorage.removeItem('token');
+    sessionStorage.removeItem('usuario');
     setUsuarioActivo(null);
     if (motivo === 'inactividad') setAvisoInactividad(true);
     // Regresamos la URL a la raíz, para que el próximo usuario que inicie sesión
@@ -66,7 +66,7 @@ function App() {
     const renovar = async () => {
       try {
         const respuesta = await api.post('/auth/renovar');
-        localStorage.setItem('token', respuesta.data.token);
+        sessionStorage.setItem('token', respuesta.data.token);
       } catch (err) {
         console.error('No se pudo renovar la sesión', err);
       }

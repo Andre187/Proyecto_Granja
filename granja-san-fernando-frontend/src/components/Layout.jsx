@@ -102,7 +102,9 @@ function Layout({ usuario, onLogout, children }) {
               </span>
             </div>
           </div>
-          <button onClick={onLogout}>Cerrar sesión</button>
+          <button onClick={() => { if (window.confirm('¿Cerrar sesión?')) onLogout(); }}>Cerrar sesión</button>
+
+          
         </div>
       </aside>
 

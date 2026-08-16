@@ -1,7 +1,13 @@
 import { useState, useEffect } from 'react';
 import api from '../api/api';
 
-const hoy = () => new Date().toISOString().slice(0, 10);
+const hoy = () => {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dia = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dia}`;
+};
 
 function Tareas({ usuario }) {
   const esAdmin = usuario.rol === 'administrador';
@@ -17,7 +23,12 @@ function Tareas({ usuario }) {
     id_trabajador: '', id_galera: '', descripcion: '', fecha_asignacion: hoy(), fecha_limite: '',
   });
 
+  const [pestanaEstado, setPestanaEstado] = useState('pendiente');
+
   const tareasVisibles = esAdmin ? tareas : tareas.filter((t) => t.estado !== 'finalizado');
+
+  const ETIQUETAS_ESTADO = { pendiente: 'Pendientes', 'en proceso': 'En proceso', finalizado: 'Finalizadas', todas: 'Todas' };
+  const tareasFiltradasPorEstado = pestanaEstado === 'todas' ? tareas : tareas.filter((t) => t.estado === pestanaEstado);
 
   const cargarTodo = async () => {
     try {
@@ -81,6 +92,49 @@ function Tareas({ usuario }) {
       mostrarError(err.response?.data?.error || 'No se pudo actualizar el estado');
     }
   };
+
+  const filaTarea = (t, i, total) => (
+    <div
+      key={t.id_tarea}
+      style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        padding: '13px 0', borderBottom: i < total - 1 ? '1px solid var(--line)' : 'none', gap: '14px'
+      }}
+    >
+      <div>
+        <div style={{ fontSize: '13.5px', fontWeight: 500 }}>
+          {t.descripcion}
+          {t.galera_nombre && (
+            <span style={{
+              marginLeft: '8px', fontSize: '11px', fontWeight: 600, color: 'var(--navy)',
+              background: 'var(--green-light)', padding: '2px 8px', borderRadius: '999px'
+            }}>
+              📍 {t.galera_nombre}
+            </span>
+          )}
+        </div>
+        <div style={{ fontSize: '11.5px', color: 'var(--ink-soft)', marginTop: '3px' }}>
+          Asignada: {t.fecha_asignacion?.slice(0, 10)}
+          {t.fecha_limite && ` · Vence: ${t.fecha_limite.slice(0, 10)}`}
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+        <span className={`status-pill ${t.estado}`}>{t.estado}</span>
+
+        {!esAdmin && t.estado === 'pendiente' && (
+          <button className="btn" style={{ padding: '6px 12px', fontSize: '11.5px' }} onClick={() => cambiarEstado(t.id_tarea, 'en proceso')}>
+            Iniciar
+          </button>
+        )}
+        {!esAdmin && t.estado === 'en proceso' && (
+          <button className="btn" style={{ padding: '6px 12px', fontSize: '11.5px', background: 'var(--green)' }} onClick={() => cambiarEstado(t.id_tarea, 'finalizado')}>
+            Marcar finalizada
+          </button>
+        )}
+      </div>
+    </div>
+  );
 
   return (
     <>
@@ -149,66 +203,61 @@ function Tareas({ usuario }) {
         </section>
       )}
 
-      <section className="card">
-        <div className="head">
-          <h2>{esAdmin ? 'Todas las tareas' : 'Mis tareas'}</h2>
-          <span className="sub">
-            {esAdmin ? `${tareasVisibles.length} tareas (historial completo)` : `${tareasVisibles.length} tareas pendientes`}
-          </span>
-        </div>
-
-        {tareasVisibles.length === 0 ? (
-          <p style={{ fontSize: '13px', color: 'var(--ink-soft)' }}>
-            {esAdmin ? 'No hay tareas para mostrar.' : '¡No tienes tareas pendientes! 🎉'}
-          </p>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {tareasVisibles.map((t, i) => (
-              <div
-                key={t.id_tarea}
-                style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: '13px 0', borderBottom: i < tareasVisibles.length - 1 ? '1px solid var(--line)' : 'none', gap: '14px'
-                }}
-              >
-                <div>
-                  <div style={{ fontSize: '13.5px', fontWeight: 500 }}>
-                    {t.descripcion}
-                    {t.galera_nombre && (
-                      <span style={{
-                        marginLeft: '8px', fontSize: '11px', fontWeight: 600, color: 'var(--navy)',
-                        background: 'var(--green-light)', padding: '2px 8px', borderRadius: '999px'
-                      }}>
-                        📍 {t.galera_nombre}
-                      </span>
-                    )}
-                  </div>
-                  <div style={{ fontSize: '11.5px', color: 'var(--ink-soft)', marginTop: '3px' }}>
-                    {esAdmin && `${t.trabajador_nombre} · `}
-                    Asignada: {t.fecha_asignacion?.slice(0, 10)}
-                    {t.fecha_limite && ` · Vence: ${t.fecha_limite.slice(0, 10)}`}
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
-                  <span className={`status-pill ${t.estado}`}>{t.estado}</span>
-
-                  {!esAdmin && t.estado === 'pendiente' && (
-                    <button className="btn" style={{ padding: '6px 12px', fontSize: '11.5px' }} onClick={() => cambiarEstado(t.id_tarea, 'en proceso')}>
-                      Iniciar
-                    </button>
-                  )}
-                  {!esAdmin && t.estado === 'en proceso' && (
-                    <button className="btn" style={{ padding: '6px 12px', fontSize: '11.5px', background: 'var(--green)' }} onClick={() => cambiarEstado(t.id_tarea, 'finalizado')}>
-                      Marcar finalizada
-                    </button>
-                  )}
-                </div>
-              </div>
+      {/* ---- Administrador: pestañas de estado + un panel separado por cada trabajador ---- */}
+      {esAdmin && trabajadores.length > 0 && (
+        <div style={{ marginBottom: '18px' }}>
+          <div className="period-tabs" style={{ display: 'inline-flex', flexWrap: 'wrap' }}>
+            {['pendiente', 'en proceso', 'finalizado', 'todas'].map((est) => (
+              <button key={est} className={pestanaEstado === est ? 'active' : ''} onClick={() => setPestanaEstado(est)}>
+                {ETIQUETAS_ESTADO[est]}
+              </button>
             ))}
           </div>
-        )}
-      </section>
+        </div>
+      )}
+
+      {esAdmin && (
+        trabajadores.length === 0 ? null : (
+          trabajadores.map((trabajador) => {
+            const tareasDeEste = tareasFiltradasPorEstado.filter((t) => t.id_trabajador === trabajador.id_trabajador);
+            return (
+              <section className="card" key={trabajador.id_trabajador}>
+                <div className="head">
+                  <h2>{trabajador.nombre}</h2>
+                  <span className="sub">{tareasDeEste.length} tareas</span>
+                </div>
+                {tareasDeEste.length === 0 ? (
+                  <p style={{ fontSize: '13px', color: 'var(--ink-soft)' }}>
+                    {pestanaEstado === 'todas' ? 'Sin tareas asignadas todavía.' : `Sin tareas en estado "${ETIQUETAS_ESTADO[pestanaEstado].toLowerCase()}".`}
+                  </p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    {tareasDeEste.map((t, i) => filaTarea(t, i, tareasDeEste.length))}
+                  </div>
+                )}
+              </section>
+            );
+          })
+        )
+      )}
+
+      {/* ---- Operador: solo sus propias tareas ---- */}
+      {!esAdmin && (
+        <section className="card">
+          <div className="head">
+            <h2>Mis tareas</h2>
+            <span className="sub">{tareasVisibles.length} tareas pendientes</span>
+          </div>
+
+          {tareasVisibles.length === 0 ? (
+            <p style={{ fontSize: '13px', color: 'var(--ink-soft)' }}>¡No tienes tareas pendientes! 🎉</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {tareasVisibles.map((t, i) => filaTarea(t, i, tareasVisibles.length))}
+            </div>
+          )}
+        </section>
+      )}
     </>
   );
 }

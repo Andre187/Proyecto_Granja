@@ -13,7 +13,7 @@ function Personal() {
   const [editandoCostoId, setEditandoCostoId] = useState(null);
   const [costoTemporal, setCostoTemporal] = useState('');
 
-  const [formPago, setFormPago] = useState({ id_trabajador: '', semana_inicio: '', semana_fin: '', dias_laborados: '' });
+  const [formPago, setFormPago] = useState({ id_trabajador: '', semana_inicio: '', semana_fin: '', dias_laborados: '', costo_dia_pago: '' });
 
   const cargarTodo = async () => {
     try {
@@ -32,7 +32,7 @@ function Personal() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     cargarTodo();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, []);
 
   const mostrarMensaje = (texto) => {
@@ -76,8 +76,9 @@ function Personal() {
       await api.post('/personal/pagos', {
         ...formPago,
         dias_laborados: parseInt(formPago.dias_laborados),
+        costo_dia_pago: formPago.costo_dia_pago ? parseFloat(formPago.costo_dia_pago) : null,
       });
-      setFormPago({ id_trabajador: '', semana_inicio: '', semana_fin: '', dias_laborados: '' });
+      setFormPago({ id_trabajador: '', semana_inicio: '', semana_fin: '', dias_laborados: '', costo_dia_pago: '' });
       mostrarMensaje('Pago registrado correctamente');
       cargarTodo();
     } catch (err) {
@@ -103,8 +104,7 @@ function Personal() {
             Aún no hay trabajadores. Se crean automáticamente al dar de alta un usuario operador en el módulo de Usuarios.
           </p>
         ) : (
-          <div className="table-wrap">
-            <table>
+          <table>
             <thead>
               <tr>
                 <th>Nombre</th>
@@ -117,9 +117,9 @@ function Personal() {
             <tbody>
               {trabajadores.map((t) => (
                 <tr key={t.id_trabajador}>
-                  <td data-label="Nombre">{t.nombre}</td>
-                  <td data-label="Usuario vinculado">{t.usuario_vinculado || <span style={{ color: 'var(--ink-soft)' }}>—</span>}</td>
-                  <td data-label="Costo por día">
+                  <td>{t.nombre}</td>
+                  <td>{t.usuario_vinculado || <span style={{ color: 'var(--ink-soft)' }}>—</span>}</td>
+                  <td>
                     {editandoCostoId === t.id_trabajador ? (
                       <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                         <input
@@ -142,8 +142,8 @@ function Personal() {
                       </span>
                     )}
                   </td>
-                  <td data-label="Estado"><span className={`tag ${t.estado === 'activo' ? 'ok' : 'low'}`}>{t.estado}</span></td>
-                  <td data-label="Acciones">
+                  <td><span className={`tag ${t.estado === 'activo' ? 'ok' : 'low'}`}>{t.estado}</span></td>
+                  <td>
                     <button
                       style={{ background: 'transparent', border: 'none', fontSize: '12px', color: t.estado === 'activo' ? 'var(--red)' : 'var(--green)', textDecoration: 'underline', padding: 0 }}
                       onClick={() => handleCambiarEstado(t.id_trabajador, t.estado)}
@@ -155,7 +155,6 @@ function Personal() {
               ))}
             </tbody>
           </table>
-            </div>
         )}
       </section>
 
@@ -167,10 +166,22 @@ function Personal() {
           <form onSubmit={handleRegistrarPago} style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <div className="field">
               <label>Trabajador</label>
-              <select value={formPago.id_trabajador} onChange={(e) => setFormPago({ ...formPago, id_trabajador: e.target.value })} required style={estiloClaro}>
+              <select
+                value={formPago.id_trabajador}
+                onChange={(e) => {
+                  const trabajadorElegido = trabajadoresActivos.find((t) => String(t.id_trabajador) === e.target.value);
+                  setFormPago({
+                    ...formPago,
+                    id_trabajador: e.target.value,
+                    costo_dia_pago: trabajadorElegido ? trabajadorElegido.costo_dia : '',
+                  });
+                }}
+                required
+                style={estiloClaro}
+              >
                 <option value="">Selecciona...</option>
                 {trabajadoresActivos.map((t) => (
-                  <option key={t.id_trabajador} value={t.id_trabajador}>{t.nombre} ({q(t.costo_dia)}/día)</option>
+                  <option key={t.id_trabajador} value={t.id_trabajador}>{t.nombre}</option>
                 ))}
               </select>
             </div>
@@ -186,6 +197,17 @@ function Personal() {
               <label>Días laborados</label>
               <input type="number" min="0" max="7" value={formPago.dias_laborados} onChange={(e) => setFormPago({ ...formPago, dias_laborados: e.target.value })} required style={estiloClaro} />
             </div>
+            <div className="field">
+              <label>Costo por día a pagar (Q)</label>
+              <input
+                type="number" step="0.01" min="0.01"
+                value={formPago.costo_dia_pago}
+                onChange={(e) => setFormPago({ ...formPago, costo_dia_pago: e.target.value })}
+                placeholder="ej. 75.00"
+                required
+                style={estiloClaro}
+              />
+            </div>
             <button type="submit" className="btn gold">Registrar pago</button>
           </form>
         )}
@@ -199,24 +221,22 @@ function Personal() {
         {pagos.length === 0 ? (
           <p style={{ fontSize: '13px', color: 'var(--ink-soft)' }}>Sin pagos registrados todavía.</p>
         ) : (
-          <div className="table-wrap">
-            <table>
+          <table>
             <thead>
               <tr><th>Trabajador</th><th>Semana</th><th>Días</th><th>Costo/día</th><th>Total</th></tr>
             </thead>
             <tbody>
               {pagos.map((p) => (
                 <tr key={p.id_pago}>
-                  <td data-label="Trabajador">{p.trabajador_nombre}</td>
-                  <td data-label="Semana">{p.semana_inicio?.slice(0, 10)} — {p.semana_fin?.slice(0, 10)}</td>
-                  <td data-label="Días">{p.dias_laborados}</td>
-                  <td data-label="Costo/día">{q(p.costo_dia_registrado)}</td>
-                  <td data-label="Total">{q(p.total_pagar)}</td>
+                  <td>{p.trabajador_nombre}</td>
+                  <td>{p.semana_inicio?.slice(0, 10)} — {p.semana_fin?.slice(0, 10)}</td>
+                  <td>{p.dias_laborados}</td>
+                  <td>{q(p.costo_dia_registrado)}</td>
+                  <td>{q(p.total_pagar)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-            </div>
         )}
       </section>
     </>
