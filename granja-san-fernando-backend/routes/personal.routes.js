@@ -74,17 +74,26 @@ router.get('/pagos', async (req, res) => {
 
 router.post('/pagos', reglasPago, validar, async (req, res) => {
   try {
-    const { id_trabajador, semana_inicio, semana_fin, dias_laborados } = req.body;
+    const { id_trabajador, semana_inicio, semana_fin, dias_laborados, costo_dia_pago } = req.body;
 
     const [trabajadorRows] = await pool.query('SELECT costo_dia FROM TRABAJADORES WHERE id_trabajador = ?', [id_trabajador]);
     if (trabajadorRows.length === 0) {
       return res.status(404).json({ error: 'Trabajador no encontrado' });
     }
-    const costoDiaActual = trabajadorRows[0].costo_dia;
+
+    // Si el admin especifica un costo por día para este pago en particular, se usa ese.
+    // Si no, se usa el costo guardado en el perfil del trabajador (comportamiento anterior).
+    const costoDiaFinal = (costo_dia_pago !== undefined && costo_dia_pago !== null && costo_dia_pago !== '')
+      ? parseFloat(costo_dia_pago)
+      : trabajadorRows[0].costo_dia;
+
+    if (!costoDiaFinal || costoDiaFinal <= 0) {
+      return res.status(400).json({ error: 'El costo por día debe ser mayor a 0. Edita el costo del trabajador o especifícalo en este pago.' });
+    }
 
     await pool.query(
       'INSERT INTO PAGOS_SEMANALES (id_trabajador, semana_inicio, semana_fin, dias_laborados, costo_dia_registrado) VALUES (?, ?, ?, ?, ?)',
-      [id_trabajador, semana_inicio, semana_fin, dias_laborados, costoDiaActual]
+      [id_trabajador, semana_inicio, semana_fin, dias_laborados, costoDiaFinal]
     );
     res.status(201).json({ mensaje: 'Pago registrado correctamente' });
   } catch (error) {

@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
 require('dotenv').config();
 const pool = require('./db');
 const { limitadorGeneral, limitadorLogin } = require('./middleware/rateLimit.middleware');
@@ -16,10 +17,9 @@ const gastosRoutes = require('./routes/gastos.routes');
 const superadminRoutes = require('./routes/superadmin.routes');
 
 const app = express();
-
+app.use(helmet());
 app.use(cors());
 app.use(express.json());
-app.use(limitadorGeneral);
 
 app.get('/', (req, res) => {
   res.json({ mensaje: 'API de Granja San Fernando funcionando correctamente' });
