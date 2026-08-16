@@ -7,9 +7,16 @@ const router = express.Router();
 // El resumen del panel es información administrativa (montos, alertas globales)
 router.use(verificarToken, soloAdministrador);
 
-function rangoFechas(periodo) {
+  function rangoFechas(periodo) {
   const hoy = new Date();
-  const fmt = (d) => d.toISOString().slice(0, 10);
+  // Usamos componentes de fecha LOCAL, nunca toISOString() (que convierte a UTC
+  // y puede "saltar" al día siguiente en horas de la tarde/noche en Guatemala).
+  const fmt = (d) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const dia = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${dia}`;
+  };
   let desde;
 
   if (periodo === 'semana') {
@@ -51,7 +58,7 @@ router.get('/resumen', async (req, res) => {
     );
 
     const [ventasTotal] = await pool.query(
-      'SELECT COALESCE(SUM(monto_total),0) AS total_ventas, COUNT(*) AS num_ventas FROM VENTAS WHERE fecha BETWEEN ? AND ?',
+      "SELECT COALESCE(SUM(monto_total),0) AS total_ventas, COUNT(*) AS num_ventas FROM VENTAS WHERE fecha BETWEEN ? AND ? AND estado != 'anulado'",
       [desde, hasta]
     );
 
@@ -80,7 +87,7 @@ router.get('/resumen', async (req, res) => {
 
     const [ventasPorDia] = await pool.query(
       `SELECT fecha, SUM(monto_total) AS monto
-       FROM VENTAS WHERE fecha BETWEEN ? AND ?
+       FROM VENTAS WHERE fecha BETWEEN ? AND ? AND estado != 'anulado'
        GROUP BY fecha ORDER BY fecha`,
       [desde, hasta]
     );
@@ -88,7 +95,7 @@ router.get('/resumen', async (req, res) => {
     const [ventasRecientes] = await pool.query(
       `SELECT v.id_venta, v.fecha, c.nombre AS cliente_nombre, v.monto_total, v.saldo_pendiente, v.estado
        FROM VENTAS v JOIN CLIENTES c ON c.id_cliente = v.id_cliente
-       WHERE v.fecha BETWEEN ? AND ?
+       WHERE v.fecha BETWEEN ? AND ? AND v.estado != 'anulado'
        ORDER BY v.fecha DESC, v.id_venta DESC LIMIT 6`,
       [desde, hasta]
     );
@@ -141,7 +148,7 @@ router.get('/financiero', async (req, res) => {
     }
 
     const [ventasTotal] = await pool.query(
-      'SELECT COALESCE(SUM(monto_total),0) AS total FROM VENTAS WHERE fecha BETWEEN ? AND ?',
+      "SELECT COALESCE(SUM(monto_total),0) AS total FROM VENTAS WHERE fecha BETWEEN ? AND ? AND estado != 'anulado'",
       [desde, hasta]
     );
     const [gastosTotal] = await pool.query(
@@ -182,7 +189,7 @@ router.get('/financiero', async (req, res) => {
 
     // Ingresos y egresos día por día (egresos diarios = gastos + concentrado; los pagos de personal son semanales y se ven en el desglose, no en esta gráfica diaria)
     const [ingresosPorDia] = await pool.query(
-      'SELECT fecha, SUM(monto_total) AS monto FROM VENTAS WHERE fecha BETWEEN ? AND ? GROUP BY fecha',
+      "SELECT fecha, SUM(monto_total) AS monto FROM VENTAS WHERE fecha BETWEEN ? AND ? AND estado != 'anulado' GROUP BY fecha",
       [desde, hasta]
     );
     const [gastosPorDia] = await pool.query(
@@ -211,6 +218,41 @@ router.get('/financiero', async (req, res) => {
     const ingresos_total = Number(ventasTotal[0].total);
     const egresos_total = Number(gastosTotal[0].total) + Number(concentradoTotal[0].total) + Number(personalTotal[0].total);
 
+    // Detalle por categoría, para las pestañas del módulo
+    const [ventasDetalle] = await pool.query(
+      `SELECT v.id_venta, v.fecha, c.nombre AS cliente_nombre, v.monto_total, v.estado
+       FROM VENTAS v JOIN CLIENTES c ON c.id_cliente = v.id_cliente
+       WHERE v.fecha BETWEEN ? AND ? AND v.estado != 'anulado'
+       ORDER BY v.fecha DESC, v.id_venta DESC`,
+      [desde, hasta]
+    );
+
+    const [gastosDetalle] = await pool.query(
+      'SELECT id_gasto, fecha, descripcion, monto FROM GASTOS WHERE fecha BETWEEN ? AND ? ORDER BY fecha DESC',
+      [desde, hasta]
+    );
+
+    const [concentradoDetalle] = await pool.query(
+      'SELECT id_concentrado, fecha, tipo_concentrado, cantidad_qq, costo_unitario, total FROM CONCENTRADO WHERE fecha BETWEEN ? AND ? ORDER BY fecha DESC',
+      [desde, hasta]
+    );
+
+    const [medicamentosDetalle] = await pool.query(
+      `SELECT mm.id_movimiento, mm.fecha, m.nombre AS medicamento_nombre, mm.tipo_movimiento, mm.cantidad, m.unidad_medida
+       FROM MOVIMIENTOS_MEDICAMENTO mm JOIN MEDICAMENTOS m ON m.id_medicamento = mm.id_medicamento
+       WHERE mm.fecha BETWEEN ? AND ?
+       ORDER BY mm.fecha DESC`,
+      [desde, hasta]
+    );
+
+    const [personalDetalle] = await pool.query(
+      `SELECT p.id_pago, t.nombre AS trabajador_nombre, p.semana_inicio, p.semana_fin, p.dias_laborados, p.costo_dia_registrado, p.total_pagar
+       FROM PAGOS_SEMANALES p JOIN TRABAJADORES t ON t.id_trabajador = p.id_trabajador
+       WHERE p.semana_fin BETWEEN ? AND ?
+       ORDER BY p.semana_fin DESC`,
+      [desde, hasta]
+    );
+
     res.json({
       periodo,
       rango: { desde, hasta },
@@ -229,6 +271,13 @@ router.get('/financiero', async (req, res) => {
       },
       postura_por_galera: posturaPorGalera,
       por_dia: porDia,
+      detalle: {
+        ventas: ventasDetalle,
+        gastos: gastosDetalle,
+        concentrado: concentradoDetalle,
+        medicamentos: medicamentosDetalle,
+        personal: personalDetalle,
+      },
     });
   } catch (error) {
     res.status(500).json({ error: error.message });

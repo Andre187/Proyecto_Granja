@@ -49,11 +49,17 @@ router.post('/clientes', async (req, res) => {
   }
 });
 
-// ---------- CLASIFICACIONES DE HUEVO (catálogo fijo) ----------
+// ---------- CLASIFICACIONES DE HUEVO (catálogo fijo, con existencia real) ----------
 
 router.get('/clasificaciones', async (req, res) => {
   try {
-    const [rows] = await pool.query('SELECT * FROM CLASIFICACIONES_HUEVO ORDER BY id_clasificacion');
+    const [rows] = await pool.query(`
+      SELECT ch.id_clasificacion, ch.nombre,
+             COALESCE(hs.existencia_actual, 0) AS existencia_actual
+      FROM CLASIFICACIONES_HUEVO ch
+      LEFT JOIN HUEVOS_STOCK hs ON hs.id_clasificacion = ch.id_clasificacion
+      ORDER BY ch.id_clasificacion
+    `);
     res.json(rows);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -188,8 +194,6 @@ router.post('/ventas', reglasVenta, validar, async (req, res) => {
   }
 });
 
-// ---------- ABONOS ----------
-
 router.post('/ventas/:id/abonos', reglasAbono, validar, async (req, res) => {
   try {
     const { fecha, monto } = req.body;
@@ -204,6 +208,48 @@ router.post('/ventas/:id/abonos', reglasAbono, validar, async (req, res) => {
     res.status(201).json({ mensaje: 'Abono registrado correctamente' });
   } catch (error) {
     res.status(400).json({ error: error.sqlMessage || error.message });
+  }
+});
+
+
+// Anula una venta y devuelve correctamente la existencia de huevos que se había descontado.
+// Esta es la ÚNICA forma segura de deshacer una venta -- nunca se debe borrar directamente en SQL,
+// porque eso descuadra la existencia (el trigger de descuento no se revierte solo).
+router.put('/ventas/:id/anular', soloAdministrador, async (req, res) => {
+  const conexion = await pool.getConnection();
+  try {
+    const [ventaRows] = await conexion.query('SELECT estado FROM VENTAS WHERE id_venta = ?', [req.params.id]);
+    if (ventaRows.length === 0) {
+      return res.status(404).json({ error: 'Venta no encontrada' });
+    }
+    if (ventaRows[0].estado === 'anulado') {
+      return res.status(400).json({ error: 'Esta venta ya estaba anulada' });
+    }
+
+    await conexion.beginTransaction();
+
+    const [detalle] = await conexion.query(
+      'SELECT id_clasificacion, cantidad FROM DETALLE_VENTA WHERE id_venta = ?',
+      [req.params.id]
+    );
+
+    // Devolvemos manualmente cada cantidad a HUEVOS_STOCK (el trigger solo descuenta al insertar, no al anular)
+    for (const item of detalle) {
+      await conexion.query(
+        'UPDATE HUEVOS_STOCK SET existencia_actual = existencia_actual + ? WHERE id_clasificacion = ?',
+        [item.cantidad, item.id_clasificacion]
+      );
+    }
+
+    await conexion.query("UPDATE VENTAS SET estado = 'anulado', saldo_pendiente = 0 WHERE id_venta = ?", [req.params.id]);
+
+    await conexion.commit();
+    res.json({ mensaje: 'Venta anulada correctamente. La existencia de huevos fue devuelta.' });
+  } catch (error) {
+    await conexion.rollback();
+    res.status(500).json({ error: error.message });
+  } finally {
+    conexion.release();
   }
 });
 
