@@ -3,13 +3,7 @@ import api from '../api/api';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-const hoy = () => {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const dia = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${dia}`;
-};
+const hoy = () => new Date().toISOString().slice(0, 10);
 
 const estiloClaro = {
   background: '#F5F1E6',
@@ -34,6 +28,7 @@ function Ventas({ usuario }) {
   const [clienteNombre, setClienteNombre] = useState('');
   const [clienteTelefono, setClienteTelefono] = useState('');
   const [clienteDireccion, setClienteDireccion] = useState('');
+  const [clienteNit, setClienteNit] = useState('');
   const [fechaVenta, setFechaVenta] = useState(hoy());
   const [formaPago, setFormaPago] = useState('credito');
   const [items, setItems] = useState([{ id_clasificacion: '', cantidad: '', precio_unitario: '' }]);
@@ -41,6 +36,9 @@ function Ventas({ usuario }) {
   const [abonandoId, setAbonandoId] = useState(null);
   const [montoAbono, setMontoAbono] = useState('');
   const [fechaAbono, setFechaAbono] = useState(hoy());
+
+  const [mostrarEditarCliente, setMostrarEditarCliente] = useState(false);
+  const [edicionCliente, setEdicionCliente] = useState({ nombre: '', telefono: '', nit: '', direccion: '' });
 
   const cargarTodo = async () => {
     try {
@@ -106,6 +104,7 @@ function Ventas({ usuario }) {
     setClienteSeleccionado('');
     setClienteNombre('');
     setClienteTelefono('');
+    setClienteNit('');
     setClienteDireccion('');
     setFechaVenta(hoy());
     setFormaPago('credito');
@@ -127,6 +126,7 @@ function Ventas({ usuario }) {
       if (clienteSeleccionado === 'nuevo') {
         payload.cliente_nombre = clienteNombre;
         payload.cliente_telefono = clienteTelefono;
+        payload.cliente_nit = clienteNit;
         payload.cliente_direccion = clienteDireccion;
       } else {
         payload.id_cliente = clienteSeleccionado;
@@ -166,15 +166,54 @@ function Ventas({ usuario }) {
     }
   };
 
+  const clienteActual = clientes.find((c) => String(c.id_cliente) === String(clienteSeleccionado));
+
+  const abrirEdicionCliente = () => {
+    if (!clienteActual) return;
+    setEdicionCliente({
+      nombre: clienteActual.nombre || '',
+      telefono: clienteActual.telefono || '',
+      nit: clienteActual.nit || '',
+      direccion: clienteActual.direccion || '',
+    });
+    setMostrarEditarCliente(true);
+  };
+
+  const guardarEdicionCliente = async () => {
+    try {
+      await api.put(`/ventas/clientes/${clienteSeleccionado}`, edicionCliente);
+      setMostrarEditarCliente(false);
+      mostrarMensaje('Datos del cliente actualizados');
+      cargarTodo();
+    } catch (err) {
+      mostrarError(err.response?.data?.error || 'No se pudo actualizar el cliente');
+    }
+  };
+
   const handleGenerarRecibo = async (id_venta) => {
     try {
       const respuesta = await api.get(`/ventas/ventas/${id_venta}`);
       const venta = respuesta.data;
 
+      const faltantes = [];
+      if (!venta.cliente_nombre) faltantes.push('nombre del cliente');
+      if (!venta.nit) faltantes.push('NIT');
+      if (!venta.direccion) faltantes.push('dirección');
+
+      if (faltantes.length > 0) {
+        const continuar = window.confirm(
+          `A este cliente le falta: ${faltantes.join(', ')}.
+Sin estos datos, el comprador NO podrá usar este recibo para facturar.
+
+¿Generar el recibo de todas formas (sin esos datos)?`
+        );
+        if (!continuar) return;
+      }
+
       const doc = new jsPDF();
 
       doc.setFontSize(16);
-      doc.setTextColor(27, 59, 111); // var(--navy)
+      doc.setTextColor(27, 59, 111);
       doc.text('Granja San Fernando', 14, 18);
       doc.setFontSize(11);
       doc.setTextColor(100);
@@ -185,10 +224,12 @@ function Ventas({ usuario }) {
       doc.text(`Recibo No.: ${venta.id_venta}`, 14, 36);
       doc.text(`Fecha: ${venta.fecha?.slice(0, 10)}`, 14, 42);
       doc.text(`Cliente: ${venta.cliente_nombre}`, 14, 48);
-      if (venta.telefono) doc.text(`Teléfono: ${venta.telefono}`, 14, 54);
+      doc.text(`NIT: ${venta.nit || 'N/A (no válido para facturar)'}`, 14, 54);
+      doc.text(`Dirección: ${venta.direccion || 'N/A'}`, 14, 60);
+      if (venta.telefono) doc.text(`Teléfono: ${venta.telefono}`, 14, 66);
 
       autoTable(doc, {
-        startY: 62,
+        startY: 74,
         head: [['Clasificación', 'Cantidad', 'Precio unitario', 'Subtotal']],
         body: venta.detalle.map((d) => [
           d.clasificacion,
@@ -292,6 +333,7 @@ function Ventas({ usuario }) {
       </td>
     </tr>
   );
+
   return (
     <>
       {error && <p style={{ color: 'var(--red)', fontSize: '13px', marginBottom: '14px' }}>{error}</p>}
@@ -327,7 +369,12 @@ function Ventas({ usuario }) {
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <div className="field">
               <label>Cliente</label>
-              <select value={clienteSeleccionado} onChange={(e) => setClienteSeleccionado(e.target.value)} required style={estiloClaro}>
+              <select
+                value={clienteSeleccionado}
+                onChange={(e) => { setClienteSeleccionado(e.target.value); setMostrarEditarCliente(false); }}
+                required
+                style={estiloClaro}
+              >
                 <option value="">Selecciona un cliente...</option>
                 {clientes.map((c) => (
                   <option key={c.id_cliente} value={c.id_cliente}>{c.nombre}</option>
@@ -335,6 +382,39 @@ function Ventas({ usuario }) {
                 <option value="nuevo">+ Crear nuevo cliente</option>
               </select>
             </div>
+
+            {clienteActual && !mostrarEditarCliente && (
+              <div className="field">
+                <label>&nbsp;</label>
+                {clienteActual.nit ? (
+                  <button
+                    type="button"
+                    onClick={abrirEdicionCliente}
+                    style={{
+                      background: 'transparent', color: 'var(--navy)', border: '1px solid var(--line)',
+                      borderRadius: '7px', fontSize: '12px', padding: '9px 14px', fontWeight: 500,
+                      transition: 'background 0.15s ease',
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(27,59,111,0.06)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                  >
+                    ✏️ Editar datos de facturación
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={abrirEdicionCliente}
+                    style={{
+                      background: 'linear-gradient(180deg, #d6b366 0%, var(--gold) 100%)',
+                      color: '#fff', border: 'none', borderRadius: '7px', fontSize: '12px', fontWeight: 600,
+                      padding: '9px 14px', boxShadow: '0 2px 6px rgba(138, 95, 23, 0.35)',
+                    }}
+                  >
+                    ⚠️ Completar NIT / dirección
+                  </button>
+                )}
+              </div>
+            )}
 
             {clienteSeleccionado === 'nuevo' && (
               <>
@@ -347,7 +427,11 @@ function Ventas({ usuario }) {
                   <input value={clienteTelefono} onChange={(e) => setClienteTelefono(e.target.value)} style={estiloClaro} />
                 </div>
                 <div className="field">
-                  <label>Dirección (opcional)</label>
+                  <label>NIT (para poder facturar)</label>
+                  <input value={clienteNit} onChange={(e) => setClienteNit(e.target.value)} placeholder="ej. 1234567-8" style={estiloClaro} />
+                </div>
+                <div className="field">
+                  <label>Dirección (para poder facturar)</label>
                   <input value={clienteDireccion} onChange={(e) => setClienteDireccion(e.target.value)} style={estiloClaro} />
                 </div>
               </>
@@ -366,6 +450,40 @@ function Ventas({ usuario }) {
               </select>
             </div>
           </div>
+
+          {mostrarEditarCliente && (
+            <div style={{ background: 'var(--cream)', padding: '16px', borderRadius: '10px', border: '1px solid var(--line)' }}>
+              <p style={{ fontSize: '12px', color: 'var(--ink-soft)', marginBottom: '12px', fontWeight: 500 }}>
+                Datos de facturación del cliente
+              </p>
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                <div className="field" style={{ flex: 1, minWidth: '140px' }}>
+                  <label>Teléfono</label>
+                  <input value={edicionCliente.telefono} onChange={(e) => setEdicionCliente({ ...edicionCliente, telefono: e.target.value })} style={estiloClaro} />
+                </div>
+                <div className="field" style={{ flex: 1, minWidth: '140px' }}>
+                  <label>NIT</label>
+                  <input value={edicionCliente.nit} onChange={(e) => setEdicionCliente({ ...edicionCliente, nit: e.target.value })} placeholder="ej. 1234567-8" style={estiloClaro} />
+                </div>
+                <div className="field" style={{ flex: 1, minWidth: '180px' }}>
+                  <label>Dirección</label>
+                  <input value={edicionCliente.direccion} onChange={(e) => setEdicionCliente({ ...edicionCliente, direccion: e.target.value })} style={estiloClaro} />
+                </div>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', marginTop: '16px' }}>
+                <button type="button" className="btn gold" style={{ padding: '10px 28px', fontSize: '13px' }} onClick={guardarEdicionCliente}>
+                  Guardar
+                </button>
+                <button
+                  type="button"
+                  style={{ background: 'transparent', border: 'none', fontSize: '12px', color: 'var(--ink-soft)', textDecoration: 'underline' }}
+                  onClick={() => setMostrarEditarCliente(false)}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
 
           <div>
             <label style={{ fontSize: '11px', color: 'var(--ink-soft)', textTransform: 'uppercase', letterSpacing: '.03em' }}>

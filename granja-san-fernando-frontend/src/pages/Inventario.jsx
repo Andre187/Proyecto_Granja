@@ -12,7 +12,7 @@ const hoy = () => {
 const estiloClaro = { background: '#F5F1E6', color: '#232019', colorScheme: 'light' };
 
 function Inventario({ usuario }) {
-  const esAdmin = usuario.rol === 'administrador';
+  const esAdmin = usuario.rol === 'administrador' || usuario.rol === 'superadministrador';
 
   const [pestana, setPestana] = useState('concentrado');
 

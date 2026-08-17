@@ -10,7 +10,7 @@ const hoy = () => {
 };
 
 function Produccion({ usuario }) {
-  const esAdmin = usuario.rol === 'administrador';
+  const esAdmin = usuario.rol === 'administrador' || usuario.rol === 'superadministrador';
 
   const [galeras, setGaleras] = useState([]);
   const [lotes, setLotes] = useState([]);

@@ -35,15 +35,32 @@ router.get('/clientes', async (req, res) => {
 
 router.post('/clientes', async (req, res) => {
   try {
-    const { nombre, telefono, direccion } = req.body;
+    const { nombre, telefono, nit, direccion } = req.body;
     if (!nombre) {
       return res.status(400).json({ error: 'El nombre del cliente es requerido' });
     }
     const [result] = await pool.query(
-      'INSERT INTO CLIENTES (nombre, telefono, direccion) VALUES (?, ?, ?)',
-      [nombre, telefono || null, direccion || null]
+      'INSERT INTO CLIENTES (nombre, telefono, nit, direccion) VALUES (?, ?, ?, ?)',
+      [nombre, telefono || null, nit || null, direccion || null]
     );
-    res.status(201).json({ id_cliente: result.insertId, nombre, telefono, direccion });
+    res.status(201).json({ id_cliente: result.insertId, nombre, telefono, nit, direccion });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Permite completar/editar los datos fiscales de un cliente ya existente
+router.put('/clientes/:id', async (req, res) => {
+  try {
+    const { nombre, telefono, nit, direccion } = req.body;
+    if (!nombre) {
+      return res.status(400).json({ error: 'El nombre del cliente es requerido' });
+    }
+    await pool.query(
+      'UPDATE CLIENTES SET nombre = ?, telefono = ?, nit = ?, direccion = ? WHERE id_cliente = ?',
+      [nombre, telefono || null, nit || null, direccion || null, req.params.id]
+    );
+    res.json({ mensaje: 'Cliente actualizado correctamente' });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -103,7 +120,7 @@ router.get('/ventas', async (req, res) => {
 router.get('/ventas/:id', async (req, res) => {
   try {
     const [ventaRows] = await pool.query(`
-      SELECT v.id_venta, v.fecha, v.id_cliente, c.nombre AS cliente_nombre, c.telefono, c.direccion,
+      SELECT v.id_venta, v.fecha, v.id_cliente, c.nombre AS cliente_nombre, c.telefono, c.nit, c.direccion,
              v.monto_total, v.saldo_pendiente, v.estado
       FROM VENTAS v
       JOIN CLIENTES c ON c.id_cliente = v.id_cliente

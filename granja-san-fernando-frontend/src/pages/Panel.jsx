@@ -12,7 +12,7 @@ function eggClass(pct, idx) {
 }
 
 function Panel({ usuario }) {
-  const esAdmin = usuario.rol === 'administrador';
+  const esAdmin = usuario.rol === 'administrador' || usuario.rol === 'superadministrador';
   const [periodo, setPeriodo] = useState('hoy');
   const [datos, setDatos] = useState(null);
   const [cargando, setCargando] = useState(true);

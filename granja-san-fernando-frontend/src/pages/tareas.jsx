@@ -10,7 +10,7 @@ const hoy = () => {
 };
 
 function Tareas({ usuario }) {
-  const esAdmin = usuario.rol === 'administrador';
+  const esAdmin = usuario.rol === 'administrador' || usuario.rol === 'superadministrador';
 
   const [tareas, setTareas] = useState([]);
   const [trabajadores, setTrabajadores] = useState([]);
