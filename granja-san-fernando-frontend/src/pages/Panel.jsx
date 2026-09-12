@@ -18,6 +18,8 @@ function Panel({ usuario }) {
   const [cargando, setCargando] = useState(true);
   const [misTareas, setMisTareas] = useState([]);
   const [cargandoTareas, setCargandoTareas] = useState(true);
+  const [clasificaciones, setClasificaciones] = useState([]);
+  const [cargandoClasificaciones, setCargandoClasificaciones] = useState(true);
   const [mostrarPersonalizado, setMostrarPersonalizado] = useState(false);
   const [fechaDesde, setFechaDesde] = useState('');
   const [fechaHasta, setFechaHasta] = useState('');
@@ -69,6 +71,17 @@ function Panel({ usuario }) {
           setCargandoTareas(false);
         }
       })();
+
+      (async () => {
+        try {
+          const respuesta = await api.get('/ventas/clasificaciones');
+          setClasificaciones(respuesta.data);
+        } catch (err) {
+          console.error(err);
+        } finally {
+          setCargandoClasificaciones(false);
+        }
+      })();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -78,6 +91,7 @@ function Panel({ usuario }) {
 
   if (!esAdmin) {
     return (
+      <>
       <section className="card">
         <div className="head">
           <h2>Tus tareas pendientes</h2>
@@ -117,6 +131,29 @@ function Panel({ usuario }) {
           </div>
         )}
       </section>
+
+      <section className="card" style={{ marginTop: '20px' }}>
+        <div className="head">
+          <h2>Existencia de huevos</h2>
+          <span className="sub">Por clasificación</span>
+        </div>
+        {cargandoClasificaciones ? (
+          <p style={{ fontSize: '13px', color: 'var(--ink-soft)' }}>Cargando...</p>
+        ) : clasificaciones.length === 0 ? (
+          <p style={{ fontSize: '13px', color: 'var(--ink-soft)' }}>No hay clasificaciones de huevo registradas.</p>
+        ) : (
+          <div className="egg-stock-grid">
+            {clasificaciones.map((c) => (
+              <div key={c.id_clasificacion} className={`egg-stock-item ${c.existencia_actual > 0 ? '' : 'empty'}`}>
+                <div className="es-nombre">{c.nombre}</div>
+                <div className="es-cantidad">{c.existencia_actual}</div>
+                <div className="es-label">disponibles</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+      </>
     );
   }
 

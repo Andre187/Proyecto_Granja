@@ -123,13 +123,11 @@ nav.side-nav { display: flex; flex-direction: column; gap: 3px; }
   display: flex; align-items: center; justify-content: center; gap: 6px;
   transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
 }
-.role-card button::before {
-  content: '⏻';
-  font-size: 12px;
-  opacity: 0.85;
-}
-.role-card button:hover { background: rgba(178, 59, 52, 0.35); border-color: rgba(178, 59, 52, 0.4); }
-.role-card button:active { transform: scale(0.98); }
+.role-card-divider { border: none; border-top: 1px solid rgba(255,255,255,0.1); margin: 14px 0 12px; }
+.role-card .logout-btn svg { opacity: 0.75; transition: opacity 0.15s ease; }
+.role-card .logout-btn:hover { background: rgba(178, 59, 52, 0.35); border-color: rgba(178, 59, 52, 0.4); }
+.role-card .logout-btn:hover svg { opacity: 1; color: #F3B4AC; }
+.role-card .logout-btn:active { transform: scale(0.98); }
 
 /* ---------- Main content ---------- */
 main.content { flex: 1; padding: 30px 40px 60px; max-width: 1180px; }
@@ -148,6 +146,58 @@ header.top p { color: var(--ink-soft); font-size: 13.5px; margin-top: 4px; }
 .kpi .delta { font-size: 12px; margin-top: 5px; }
 .delta.up { color: var(--green); }
 .delta.warn { color: var(--red); }
+
+/* ---------- Existencia de huevos por clasificación (panel operador) ---------- */
+.egg-stock-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.egg-stock-item {
+  background: var(--cream); border: 1px solid var(--line); border-radius: 10px;
+  padding: 14px 10px; text-align: center;
+}
+.egg-stock-item .es-nombre {
+  font-size: 11px; text-transform: capitalize; color: var(--ink-soft);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.egg-stock-item .es-cantidad { font-size: 24px; font-weight: 700; color: var(--navy-deep); margin-top: 4px; }
+.egg-stock-item .es-label { font-size: 9.5px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .03em; margin-top: 2px; }
+.egg-stock-item.empty .es-cantidad { color: var(--red); }
+.egg-stock-item.empty { background: var(--red-light); border-color: transparent; }
+@media (max-width: 900px) { .egg-stock-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 480px) { .egg-stock-grid { grid-template-columns: repeat(2, 1fr); } }
+
+/* ---------- Selector de lotes (tarjetas tipo galpón) ---------- */
+.lote-cards { display: flex; gap: 12px; overflow-x: auto; padding: 2px 2px 10px; margin-bottom: 4px; }
+.lote-card {
+  flex: 0 0 156px; text-align: left; cursor: pointer;
+  background: var(--cream); border: 1px solid var(--line); border-radius: 12px;
+  padding: 14px 16px; transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+}
+.lote-card:hover { border-color: var(--gold); box-shadow: 0 2px 8px rgba(35, 32, 25, 0.08); transform: translateY(-1px); }
+.lote-card.selected {
+  background: linear-gradient(160deg, var(--navy) 0%, var(--navy-deep) 100%);
+  border-color: var(--navy-deep);
+  box-shadow: 0 4px 14px rgba(18, 41, 79, 0.3);
+}
+.lote-card .lc-icon {
+  width: 34px; height: 34px; border-radius: 50%; background: var(--gold-light);
+  display: flex; align-items: center; justify-content: center; font-size: 16px; margin-bottom: 10px;
+}
+.lote-card.selected .lc-icon { background: rgba(255,255,255,0.15); }
+.lote-card .lc-name {
+  font-size: 14px; font-weight: 600; color: var(--navy-deep); margin-bottom: 4px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.lote-card.selected .lc-name { color: #fff; }
+.lote-card .lc-meta { font-size: 11px; color: var(--ink-soft); }
+.lote-card.selected .lc-meta { color: #C9D4E8; }
+.lote-card .lc-tag { margin-top: 9px; }
+
+.lote-detail {
+  background: var(--cream-card); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 18px 20px; display: flex; flex-direction: column; gap: 14px;
+}
+.lote-detail .head { margin-bottom: 0; }
+.lote-detail .head h3 { font-size: 15.5px; color: var(--navy-deep); font-weight: 600; text-transform: capitalize; }
+.lote-detail .kpi-row { margin-bottom: 0; }
 
 /* ---------- Cards / tables ---------- */
 section.card {
@@ -294,6 +344,61 @@ tr:last-child td { border-bottom: none; }
 .grid-2col-wide-r { display: grid; grid-template-columns: 1fr 1.3fr; gap: 20px; }
 .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100%; }
 .table-wrap table { min-width: 480px; }
+
+/* ---------- Modal de confirmación ---------- */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(18, 41, 79, 0.55);
+  backdrop-filter: blur(2px);
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+  animation: modal-fade 0.15s ease;
+}
+.modal-card {
+  background: var(--cream-card); border-radius: 16px;
+  padding: 28px 26px; max-width: 360px; width: 100%;
+  text-align: center;
+  box-shadow: 0 20px 45px rgba(18, 41, 79, 0.35);
+  animation: modal-pop 0.16s ease;
+}
+@keyframes modal-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes modal-pop {
+  from { opacity: 0; transform: scale(0.94); }
+  to { opacity: 1; transform: scale(1); }
+}
+.modal-icon {
+  width: 52px; height: 52px; border-radius: 50%; margin: 0 auto 14px;
+  background: var(--red-light); color: var(--red);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+}
+.modal-icon.navy { background: rgba(27, 59, 111, 0.1); color: var(--navy); }
+.modal-title { font-size: 17px; font-weight: 600; color: var(--navy-deep); margin-bottom: 8px; }
+.modal-text { font-size: 13px; color: var(--ink-soft); line-height: 1.5; margin-bottom: 22px; }
+.modal-actions { display: flex; gap: 10px; }
+.modal-actions .btn { flex: 1; }
+
+.btn.outline {
+  background: var(--cream); color: var(--ink); border: 1px solid var(--line);
+  box-shadow: none;
+}
+.btn.outline:hover { filter: none; background: var(--line); box-shadow: none; }
+
+.btn.danger {
+  background: linear-gradient(180deg, #c24940 0%, var(--red) 100%);
+  box-shadow: 0 2px 6px rgba(139, 51, 31, 0.35), inset 0 1px 0 rgba(255,255,255,0.15);
+}
+.btn.danger:hover { filter: brightness(1.08); box-shadow: 0 4px 10px rgba(139, 51, 31, 0.4); }
+
+/* ---------- Historiales de sanidad agrupados por galpón ---------- */
+.sanidad-grupo { padding-bottom: 16px; margin-bottom: 16px; border-bottom: 1px dashed var(--line); }
+.sanidad-grupo:last-child { padding-bottom: 0; margin-bottom: 0; border-bottom: none; }
+.sanidad-grupo-titulo {
+  display: inline-block; font-size: 11.5px; font-weight: 700; color: var(--navy-deep);
+  background: var(--cream); border: 1px solid var(--line); border-radius: 999px;
+  padding: 3px 12px; margin-bottom: 10px; text-transform: capitalize;
+}
+.sanidad-sin-registros { font-size: 12px; color: var(--ink-soft); font-style: italic; }
 
 /* ---------- Menú hamburguesa (solo en móvil) ---------- */
 .menu-toggle {

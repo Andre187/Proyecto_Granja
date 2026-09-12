@@ -106,7 +106,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Panel usuario={usuarioActivo} />} />
           <Route path="/produccion" element={<Produccion usuario={usuarioActivo} />} />
-          <Route path="/sanidad" element={<Sanidad />} />
+          <Route path="/sanidad" element={<Sanidad usuario={usuarioActivo} />} />
           <Route path="/tareas" element={<Tareas usuario={usuarioActivo} />} />
           <Route path="/inventario" element={<Inventario usuario={usuarioActivo} />} />
           <Route path="/ventas" element={<Ventas usuario={usuarioActivo} />} />

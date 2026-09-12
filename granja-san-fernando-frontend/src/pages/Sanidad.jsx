@@ -9,7 +9,9 @@ const hoy = () => {
   return `${y}-${m}-${dia}`;
 };
 
-function Sanidad() {
+function Sanidad({ usuario }) {
+  const esAdmin = usuario.rol === 'administrador' || usuario.rol === 'superadministrador';
+
   const [lotes, setLotes] = useState([]);
   const [vacunaciones, setVacunaciones] = useState([]);
   const [pesos, setPesos] = useState([]);
@@ -51,6 +53,15 @@ function Sanidad() {
     setError(texto);
     setTimeout(() => setError(''), 4000);
   };
+
+  // Lista de galpones a mostrar en los historiales: los lotes activos actuales
+  // (para que aparezcan aunque todavía no tengan registros) + cualquier galera
+  // que ya tenga historial aunque su lote haya sido finalizado.
+  const galpones = [...new Set([
+    ...lotes.map((l) => l.galera_nombre),
+    ...vacunaciones.map((v) => v.galera_nombre),
+    ...pesos.map((p) => p.galera_nombre),
+  ])].sort((a, b) => a.localeCompare(b));
 
   const handleRegistrarVacuna = async (e) => {
     e.preventDefault();
@@ -159,55 +170,87 @@ function Sanidad() {
         </section>
       </div>
 
+      {esAdmin && (
       <div className="grid-2col" style={{ marginTop: '20px' }}>
         <section className="card">
           <div className="head">
             <h2>Historial de vacunación</h2>
-            <span className="sub">Últimos 20 registros</span>
+            <span className="sub">Últimos 20 registros, por galpón</span>
           </div>
-          <div className="table-wrap">
-            <table>
-            <thead>
-              <tr><th>Galera</th><th>Fecha</th><th>Vacuna</th><th>Semana</th></tr>
-            </thead>
-            <tbody>
-              {vacunaciones.map((v) => (
-                <tr key={v.id_vacunacion}>
-                  <td data-label="Galera">{v.galera_nombre}</td>
-                  <td data-label="Fecha">{v.fecha?.slice(0, 10)}</td>
-                  <td data-label="Vacuna">{v.tipo_vacuna}</td>
-                  <td data-label="Semana">{v.semana_aplicacion}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-            </div>
+          {galpones.length === 0 ? (
+            <p style={{ fontSize: '13px', color: 'var(--ink-soft)' }}>No hay galpones registrados todavía.</p>
+          ) : (
+            galpones.map((nombre) => {
+              const registros = vacunaciones.filter((v) => v.galera_nombre === nombre);
+              return (
+                <div key={nombre} className="sanidad-grupo">
+                  <div className="sanidad-grupo-titulo">{nombre}</div>
+                  {registros.length === 0 ? (
+                    <p className="sanidad-sin-registros">Sin vacunaciones registradas</p>
+                  ) : (
+                    <div className="table-wrap">
+                      <table>
+                        <thead>
+                          <tr><th>Fecha</th><th>Vacuna</th><th>Semana</th></tr>
+                        </thead>
+                        <tbody>
+                          {registros.map((v) => (
+                            <tr key={v.id_vacunacion}>
+                              <td data-label="Fecha">{v.fecha?.slice(0, 10)}</td>
+                              <td data-label="Vacuna">{v.tipo_vacuna}</td>
+                              <td data-label="Semana">{v.semana_aplicacion}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
         </section>
 
         <section className="card">
           <div className="head">
             <h2>Historial de peso</h2>
-            <span className="sub">Últimos 20 registros</span>
+            <span className="sub">Últimos 20 registros, por galpón</span>
           </div>
-          <div className="table-wrap">
-            <table>
-            <thead>
-              <tr><th>Galera</th><th>Semana</th><th>Peso (kg)</th><th>Uniformidad</th></tr>
-            </thead>
-            <tbody>
-              {pesos.map((p) => (
-                <tr key={p.id_seguimiento}>
-                  <td data-label="Galera">{p.galera_nombre}</td>
-                  <td data-label="Semana">{p.semana}</td>
-                  <td data-label="Peso (kg)">{p.peso_promedio}</td>
-                  <td data-label="Uniformidad">{p.uniformidad}%</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-            </div>
+          {galpones.length === 0 ? (
+            <p style={{ fontSize: '13px', color: 'var(--ink-soft)' }}>No hay galpones registrados todavía.</p>
+          ) : (
+            galpones.map((nombre) => {
+              const registros = pesos.filter((p) => p.galera_nombre === nombre);
+              return (
+                <div key={nombre} className="sanidad-grupo">
+                  <div className="sanidad-grupo-titulo">{nombre}</div>
+                  {registros.length === 0 ? (
+                    <p className="sanidad-sin-registros">Sin seguimiento de peso registrado</p>
+                  ) : (
+                    <div className="table-wrap">
+                      <table>
+                        <thead>
+                          <tr><th>Semana</th><th>Peso (kg)</th><th>Uniformidad</th></tr>
+                        </thead>
+                        <tbody>
+                          {registros.map((p) => (
+                            <tr key={p.id_seguimiento}>
+                              <td data-label="Semana">{p.semana}</td>
+                              <td data-label="Peso (kg)">{p.peso_promedio}</td>
+                              <td data-label="Uniformidad">{p.uniformidad}%</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
         </section>
       </div>
+      )}
     </>
   );
 }

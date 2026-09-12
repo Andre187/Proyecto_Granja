@@ -8,7 +8,7 @@ const NAV = [
   { group: 'Operación', to: '/sanidad', label: 'Sanidad y vacunación', icon: '💉', roles: ['administrador', 'operador'] },
   { group: 'Operación', to: '/tareas', label: 'Tareas', icon: '✅', roles: ['administrador', 'operador'] },
   { group: 'Operación', to: '/ventas', label: 'Ventas', icon: '💰', roles: ['administrador', 'operador'] },
-  { group: 'Operación', to: '/inventario', label: 'Inventario (consulta)', icon: '📦', roles: ['administrador', 'operador'] },
+  { group: 'Operación', to: '/inventario', label: 'Inventario', icon: '📦', roles: ['administrador', 'operador'] },
   { group: 'Administración', to: '/personal', label: 'Personal', icon: '👥', roles: ['administrador'] },
   { group: 'Administración', to: '/gastos', label: 'Gastos', icon: '🧾', roles: ['administrador'] },
   { group: 'Administración', to: '/reportes', label: 'Reportes', icon: '📈', roles: ['administrador'] },
@@ -34,6 +34,7 @@ function Layout({ usuario, onLogout, children }) {
   const location = useLocation();
   const [title, subtitle] = TITLES[location.pathname] || ['Granja San Fernando', ''];
   const [menuAbierto, setMenuAbierto] = useState(false);
+  const [confirmarSalir, setConfirmarSalir] = useState(false);
 
   // El superadministrador también ve todo lo que ve un administrador normal
   const itemsVisibles = NAV.filter((item) =>
@@ -102,9 +103,14 @@ function Layout({ usuario, onLogout, children }) {
               </span>
             </div>
           </div>
-          <button onClick={() => { if (window.confirm('¿Cerrar sesión?')) onLogout(); }}>Cerrar sesión</button>
-
-          
+          <hr className="role-card-divider" />
+          <button className="logout-btn" onClick={() => setConfirmarSalir(true)}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 4v7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+              <path d="M6.5 6.5a8 8 0 1 0 11 0" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" fill="none" />
+            </svg>
+            Cerrar sesión
+          </button>
         </div>
       </aside>
 
@@ -118,6 +124,27 @@ function Layout({ usuario, onLogout, children }) {
 
         {children}
       </main>
+
+      {confirmarSalir && (
+        <div className="modal-overlay" onClick={() => setConfirmarSalir(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 4v7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+                <path d="M6.5 6.5a8 8 0 1 0 11 0" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" fill="none" />
+              </svg>
+            </div>
+            <h3 className="modal-title">¿Cerrar sesión?</h3>
+            <p className="modal-text">
+              Tu sesión actual se cerrará y tendrás que volver a iniciar sesión para continuar.
+            </p>
+            <div className="modal-actions">
+              <button className="btn outline" onClick={() => setConfirmarSalir(false)}>Cancelar</button>
+              <button className="btn danger" onClick={onLogout}>Cerrar sesión</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

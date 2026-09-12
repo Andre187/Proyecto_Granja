@@ -35,14 +35,14 @@ function Tareas({ usuario }) {
       const peticiones = [api.get('/tareas/tareas')];
       if (esAdmin) {
         peticiones.push(api.get('/tareas/trabajadores'));
-        peticiones.push(api.get('/produccion/galeras'));
+        peticiones.push(api.get('/produccion/lotes'));
       }
 
-      const [rTareas, rTrabajadores, rGaleras] = await Promise.all(peticiones);
+      const [rTareas, rTrabajadores, rLotes] = await Promise.all(peticiones);
       setTareas(rTareas.data);
       if (esAdmin) {
         setTrabajadores(rTrabajadores.data);
-        setGaleras(rGaleras.data);
+        setGaleras(rLotes.data.filter((l) => l.estado === 'activo'));
       }
     } catch (err) {
       console.error(err);
@@ -178,7 +178,7 @@ function Tareas({ usuario }) {
                   <select value={formTarea.id_galera} onChange={(e) => setFormTarea({ ...formTarea, id_galera: e.target.value })}>
                     <option value="">Sin galera específica</option>
                     {galeras.map((g) => (
-                      <option key={g.id_galera} value={g.id_galera}>{g.nombre}</option>
+                      <option key={g.id_galera} value={g.id_galera}>{g.galera_nombre}</option>
                     ))}
                   </select>
                 </div>

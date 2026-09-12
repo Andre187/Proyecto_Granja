@@ -175,6 +175,10 @@ router.post('/postura', reglasPostura, validar, async (req, res) => {
     }
     const avesActivasDia = loteRows[0].aves_activas;
 
+    if (cantidad_huevos > avesActivasDia) {
+      return res.status(400).json({ error: 'Error: la cantidad de huevos no puede superar la cantidad de aves activas del lote' });
+    }
+
     await pool.query(
       'INSERT INTO POSTURA_DIARIA (id_lote, fecha, cantidad_huevos, aves_activas_dia) VALUES (?, ?, ?, ?)',
       [id_lote, fecha, cantidad_huevos, avesActivasDia]

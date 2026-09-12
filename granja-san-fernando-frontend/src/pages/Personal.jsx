@@ -13,7 +13,9 @@ function Personal() {
   const [editandoCostoId, setEditandoCostoId] = useState(null);
   const [costoTemporal, setCostoTemporal] = useState('');
 
-  const [formPago, setFormPago] = useState({ id_trabajador: '', semana_inicio: '', semana_fin: '', dias_laborados: '', costo_dia_pago: '' });
+  const [formPago, setFormPago] = useState({ id_trabajador: '', semana_inicio: '', semana_fin: '', dias_laborados: '', costo_dia_pago: '', horas_extra: '', costo_hora_extra: '' });
+
+  const [trabajadorSeleccionado, setTrabajadorSeleccionado] = useState(null);
 
   const cargarTodo = async () => {
     try {
@@ -48,6 +50,18 @@ function Personal() {
 
   const trabajadoresActivos = trabajadores.filter((t) => t.estado === 'activo');
 
+  useEffect(() => {
+    if (trabajadores.length === 0) return;
+    if (!trabajadorSeleccionado || !trabajadores.some((t) => t.id_trabajador === trabajadorSeleccionado)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setTrabajadorSeleccionado(trabajadores[0].id_trabajador);
+    }
+  }, [trabajadores, trabajadorSeleccionado]);
+
+  const trabajador = trabajadores.find((t) => t.id_trabajador === trabajadorSeleccionado) || null;
+  const pagosDelTrabajador = trabajador ? pagos.filter((p) => p.id_trabajador === trabajador.id_trabajador) : [];
+  const ultimoPago = pagosDelTrabajador[0] || null;
+
   const handleGuardarCosto = async (id) => {
     try {
       await api.put(`/personal/trabajadores/${id}`, { costo_dia: parseFloat(costoTemporal) });
@@ -77,8 +91,10 @@ function Personal() {
         ...formPago,
         dias_laborados: parseInt(formPago.dias_laborados),
         costo_dia_pago: formPago.costo_dia_pago ? parseFloat(formPago.costo_dia_pago) : null,
+        horas_extra: formPago.horas_extra ? parseInt(formPago.horas_extra) : 0,
+        costo_hora_extra: formPago.costo_hora_extra ? parseFloat(formPago.costo_hora_extra) : 0,
       });
-      setFormPago({ id_trabajador: '', semana_inicio: '', semana_fin: '', dias_laborados: '', costo_dia_pago: '' });
+      setFormPago({ id_trabajador: '', semana_inicio: '', semana_fin: '', dias_laborados: '', costo_dia_pago: '', horas_extra: '', costo_hora_extra: '' });
       mostrarMensaje('Pago registrado correctamente');
       cargarTodo();
     } catch (err) {
@@ -104,57 +120,86 @@ function Personal() {
             Aún no hay trabajadores. Se crean automáticamente al dar de alta un usuario operador en el módulo de Usuarios.
           </p>
         ) : (
-          <table>
-            <thead>
-              <tr>
-                <th>Nombre</th>
-                <th>Usuario vinculado</th>
-                <th>Costo por día</th>
-                <th>Estado</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
+          <>
+            <div className="lote-cards">
               {trabajadores.map((t) => (
-                <tr key={t.id_trabajador}>
-                  <td>{t.nombre}</td>
-                  <td>{t.usuario_vinculado || <span style={{ color: 'var(--ink-soft)' }}>—</span>}</td>
-                  <td>
-                    {editandoCostoId === t.id_trabajador ? (
-                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                <button
+                  key={t.id_trabajador}
+                  className={`lote-card ${trabajadorSeleccionado === t.id_trabajador ? 'selected' : ''}`}
+                  onClick={() => setTrabajadorSeleccionado(t.id_trabajador)}
+                >
+                  <div className="lc-icon">👤</div>
+                  <div className="lc-name">{t.nombre}</div>
+                  <div className="lc-meta">{q(t.costo_dia)} / día</div>
+                  <span className={`tag lc-tag ${t.estado === 'activo' ? 'ok' : 'low'}`}>{t.estado}</span>
+                </button>
+              ))}
+            </div>
+
+            {trabajador && (
+              <div className="lote-detail">
+                <div className="head">
+                  <h3>{trabajador.nombre}</h3>
+                  <span className="sub">{trabajador.usuario_vinculado ? `Usuario: ${trabajador.usuario_vinculado}` : 'Sin usuario vinculado'}</span>
+                </div>
+                <div className="kpi-row" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+                  <div className="kpi">
+                    <div className="label">Costo por día</div>
+                    {editandoCostoId === trabajador.id_trabajador ? (
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginTop: '6px' }}>
                         <input
                           type="number" step="0.01" value={costoTemporal}
                           onChange={(e) => setCostoTemporal(e.target.value)}
                           style={{ ...estiloClaro, width: '80px', fontSize: '12px', padding: '5px 8px', border: '1px solid var(--line)', borderRadius: '6px' }}
                         />
-                        <button className="btn" style={{ padding: '5px 10px', fontSize: '11px' }} onClick={() => handleGuardarCosto(t.id_trabajador)}>Guardar</button>
+                        <button className="btn" style={{ padding: '5px 10px', fontSize: '11px' }} onClick={() => handleGuardarCosto(trabajador.id_trabajador)}>Guardar</button>
                         <button style={{ background: 'transparent', border: 'none', fontSize: '11px', color: 'var(--ink-soft)' }} onClick={() => setEditandoCostoId(null)}>Cancelar</button>
                       </div>
                     ) : (
-                      <span>
-                        {q(t.costo_dia)}{' '}
-                        <button
-                          style={{ background: 'transparent', border: 'none', fontSize: '11px', color: 'var(--navy)', textDecoration: 'underline', padding: 0, marginLeft: '4px' }}
-                          onClick={() => { setEditandoCostoId(t.id_trabajador); setCostoTemporal(t.costo_dia); }}
-                        >
-                          editar
-                        </button>
-                      </span>
+                      <>
+                        <div className="value">{q(trabajador.costo_dia)}</div>
+                        <div className="delta">
+                          <button
+                            style={{ background: 'transparent', border: 'none', fontSize: '11px', color: 'var(--navy)', textDecoration: 'underline', padding: 0 }}
+                            onClick={() => { setEditandoCostoId(trabajador.id_trabajador); setCostoTemporal(trabajador.costo_dia); }}
+                          >
+                            editar costo
+                          </button>
+                        </div>
+                      </>
                     )}
-                  </td>
-                  <td><span className={`tag ${t.estado === 'activo' ? 'ok' : 'low'}`}>{t.estado}</span></td>
-                  <td>
-                    <button
-                      style={{ background: 'transparent', border: 'none', fontSize: '12px', color: t.estado === 'activo' ? 'var(--red)' : 'var(--green)', textDecoration: 'underline', padding: 0 }}
-                      onClick={() => handleCambiarEstado(t.id_trabajador, t.estado)}
-                    >
-                      {t.estado === 'activo' ? 'Desactivar' : 'Reactivar'}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </div>
+                  <div className="kpi">
+                    <div className="label">Último pago</div>
+                    <div className="value">{ultimoPago ? q(ultimoPago.total_pagar) : '—'}</div>
+                    <div className="delta">{ultimoPago ? `semana ${ultimoPago.semana_fin?.slice(0, 10)}` : 'Sin pagos registrados'}</div>
+                  </div>
+                  <div className="kpi">
+                    <div className="label">Días pagados (último)</div>
+                    <div className="value">{ultimoPago ? ultimoPago.dias_laborados : '—'}</div>
+                    <div className="delta">{ultimoPago ? `a ${q(ultimoPago.costo_dia_registrado)}/día` : ''}</div>
+                  </div>
+                  <div className="kpi">
+                    <div className="label">Horas extra (último pago)</div>
+                    <div className="value">{ultimoPago?.horas_extra > 0 ? ultimoPago.horas_extra : '—'}</div>
+                    <div className="delta">{ultimoPago?.horas_extra > 0 ? `a ${q(ultimoPago.costo_hora_extra)}/hora` : 'Sin horas extra'}</div>
+                  </div>
+                </div>
+                <button
+                  className="btn"
+                  style={{
+                    background: 'transparent',
+                    color: trabajador.estado === 'activo' ? 'var(--red)' : 'var(--green)',
+                    border: `1px solid ${trabajador.estado === 'activo' ? 'var(--red-light)' : 'var(--green-light)'}`,
+                    marginTop: '4px',
+                  }}
+                  onClick={() => handleCambiarEstado(trabajador.id_trabajador, trabajador.estado)}
+                >
+                  {trabajador.estado === 'activo' ? 'Desactivar trabajador' : 'Reactivar trabajador'}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </section>
 
@@ -208,6 +253,27 @@ function Personal() {
                 style={estiloClaro}
               />
             </div>
+            <div className="field">
+              <label>Horas extra (opcional)</label>
+              <input
+                type="number" min="0"
+                value={formPago.horas_extra}
+                onChange={(e) => setFormPago({ ...formPago, horas_extra: e.target.value })}
+                placeholder="ej. 5"
+                style={estiloClaro}
+              />
+            </div>
+            <div className="field">
+              <label>Costo por hora extra (Q)</label>
+              <input
+                type="number" step="0.01" min="0"
+                value={formPago.costo_hora_extra}
+                onChange={(e) => setFormPago({ ...formPago, costo_hora_extra: e.target.value })}
+                placeholder="ej. 15.00"
+                disabled={!formPago.horas_extra}
+                style={estiloClaro}
+              />
+            </div>
             <button type="submit" className="btn gold">Registrar pago</button>
           </form>
         )}
@@ -223,7 +289,7 @@ function Personal() {
         ) : (
           <table>
             <thead>
-              <tr><th>Trabajador</th><th>Semana</th><th>Días</th><th>Costo/día</th><th>Total</th></tr>
+              <tr><th>Trabajador</th><th>Semana</th><th>Días</th><th>Costo/día</th><th>Horas extra</th><th>Total</th></tr>
             </thead>
             <tbody>
               {pagos.map((p) => (
@@ -232,6 +298,7 @@ function Personal() {
                   <td>{p.semana_inicio?.slice(0, 10)} — {p.semana_fin?.slice(0, 10)}</td>
                   <td>{p.dias_laborados}</td>
                   <td>{q(p.costo_dia_registrado)}</td>
+                  <td>{p.horas_extra > 0 ? `${p.horas_extra} h × ${q(p.costo_hora_extra)}` : '—'}</td>
                   <td>{q(p.total_pagar)}</td>
                 </tr>
               ))}

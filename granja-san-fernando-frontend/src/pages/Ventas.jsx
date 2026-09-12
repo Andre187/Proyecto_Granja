@@ -31,7 +31,10 @@ function Ventas({ usuario }) {
   const [clienteNit, setClienteNit] = useState('');
   const [fechaVenta, setFechaVenta] = useState(hoy());
   const [formaPago, setFormaPago] = useState('credito');
-  const [items, setItems] = useState([{ id_clasificacion: '', cantidad: '', precio_unitario: '' }]);
+  const [items, setItems] = useState([{ id_clasificacion: '', presentacion: 'unidad', cantidadPresentacion: '', precio_unitario: '' }]);
+
+  const CARTONES_POR_PRESENTACION = { caja: 12, media: 6, unidad: 1 };
+  const cartonesDeItem = (item) => (parseInt(item.cantidadPresentacion) || 0) * CARTONES_POR_PRESENTACION[item.presentacion];
 
   const [abonandoId, setAbonandoId] = useState(null);
   const [montoAbono, setMontoAbono] = useState('');
@@ -39,6 +42,8 @@ function Ventas({ usuario }) {
 
   const [mostrarEditarCliente, setMostrarEditarCliente] = useState(false);
   const [edicionCliente, setEdicionCliente] = useState({ nombre: '', telefono: '', nit: '', direccion: '' });
+
+  const [stockInsuficiente, setStockInsuficiente] = useState(null);
 
   const cargarTodo = async () => {
     try {
@@ -86,7 +91,7 @@ function Ventas({ usuario }) {
   };
 
   const agregarItem = () => {
-    setItems([...items, { id_clasificacion: '', cantidad: '', precio_unitario: '' }]);
+    setItems([...items, { id_clasificacion: '', presentacion: 'unidad', cantidadPresentacion: '', precio_unitario: '' }]);
   };
 
   const quitarItem = (index) => {
@@ -108,18 +113,33 @@ function Ventas({ usuario }) {
     setClienteDireccion('');
     setFechaVenta(hoy());
     setFormaPago('credito');
-    setItems([{ id_clasificacion: '', cantidad: '', precio_unitario: '' }]);
+    setItems([{ id_clasificacion: '', presentacion: 'unidad', cantidadPresentacion: '', precio_unitario: '' }]);
   };
 
   const handleRegistrarVenta = async (e) => {
     e.preventDefault();
+
+    const totalesPorClasificacion = {};
+    for (const it of items) {
+      const cant = cartonesDeItem(it);
+      totalesPorClasificacion[it.id_clasificacion] = (totalesPorClasificacion[it.id_clasificacion] || 0) + cant;
+    }
+    for (const idClasificacion of Object.keys(totalesPorClasificacion)) {
+      const clasificacion = clasificaciones.find((c) => String(c.id_clasificacion) === String(idClasificacion));
+      const solicitado = totalesPorClasificacion[idClasificacion];
+      if (clasificacion && solicitado > clasificacion.existencia_actual) {
+        setStockInsuficiente({ nombre: clasificacion.nombre, disponible: clasificacion.existencia_actual, solicitado });
+        return;
+      }
+    }
+
     try {
       const payload = {
         fecha: fechaVenta,
         forma_pago: formaPago,
         items: items.map((it) => ({
           id_clasificacion: it.id_clasificacion,
-          cantidad: parseInt(it.cantidad),
+          cantidad: cartonesDeItem(it),
           precio_unitario: parseFloat(it.precio_unitario),
         })),
       };
@@ -136,7 +156,12 @@ function Ventas({ usuario }) {
       mostrarMensaje(formaPago === 'contado' ? 'Venta registrada y marcada como pagada' : 'Venta registrada correctamente');
       cargarTodo();
     } catch (err) {
-      mostrarError(err.response?.data?.error || 'No se pudo registrar la venta');
+      const mensajeError = err.response?.data?.error || '';
+      if (mensajeError.includes('existencia disponible')) {
+        setStockInsuficiente({ nombre: null, disponible: null, solicitado: null });
+      } else {
+        mostrarError(mensajeError || 'No se pudo registrar la venta');
+      }
     }
   };
 
@@ -272,7 +297,7 @@ Sin estos datos, el comprador NO podrá usar este recibo para facturar.
 
   const ventasPendientes = ventas.filter((v) => Number(v.saldo_pendiente) > 0);
   const ventasPagadas = ventas.filter((v) => Number(v.saldo_pendiente) <= 0);
-  const ventasAMostrar = pestanaHistorial === 'pendientes' ? ventasPendientes : ventasPagadas;
+  const ventasAMostrar = (esAdmin && pestanaHistorial === 'pagadas') ? ventasPagadas : ventasPendientes;
 
   const filaVenta = (v) => (
     <tr key={v.id_venta}>
@@ -445,8 +470,8 @@ Sin estos datos, el comprador NO podrá usar este recibo para facturar.
             <div className="field">
               <label>Forma de pago</label>
               <select value={formaPago} onChange={(e) => setFormaPago(e.target.value)} style={estiloClaro}>
-                <option value="credito">Crédito (queda pendiente)</option>
-                <option value="contado">Contado (pagó todo)</option>
+                <option value="credito">Crédito</option>
+                <option value="contado">Contado</option>
               </select>
             </div>
           </div>
@@ -505,14 +530,29 @@ Sin estos datos, el comprador NO podrá usar este recibo para facturar.
                       </option>
                     ))}
                   </select>
-                  <input
-                    type="number"
-                    placeholder="Cantidad"
-                    value={item.cantidad}
-                    onChange={(e) => actualizarItem(i, 'cantidad', e.target.value)}
-                    required
-                    style={{ ...estiloClaro, flex: 1, minWidth: '80px', padding: '8px 10px', border: '1px solid var(--line)', borderRadius: '7px', fontSize: '13px' }}
-                  />
+                  <select
+                    value={item.presentacion}
+                    onChange={(e) => actualizarItem(i, 'presentacion', e.target.value)}
+                    style={{ ...estiloClaro, flex: 1, minWidth: '110px', padding: '8px 10px', border: '1px solid var(--line)', borderRadius: '7px', fontSize: '13px' }}
+                  >
+                    <option value="caja">Caja</option>
+                    <option value="media">Media caja</option>
+                    <option value="unidad">Unidad</option>
+                  </select>
+                  <div style={{ flex: 1, minWidth: '110px' }}>
+                    <input
+                      type="number"
+                      min="1"
+                      placeholder={`Cantidad de ${item.presentacion === 'caja' ? 'cajas' : item.presentacion === 'media' ? 'medias cajas' : 'unidades'}`}
+                      value={item.cantidadPresentacion}
+                      onChange={(e) => actualizarItem(i, 'cantidadPresentacion', e.target.value)}
+                      required
+                      style={{ ...estiloClaro, width: '100%', padding: '8px 10px', border: '1px solid var(--line)', borderRadius: '7px', fontSize: '13px' }}
+                    />
+                    {item.presentacion !== 'unidad' && item.cantidadPresentacion > 0 && (
+                      <span style={{ fontSize: '10.5px', color: 'var(--ink-soft)' }}>= {cartonesDeItem(item)} cartones</span>
+                    )}
+                  </div>
                   <input
                     type="number"
                     step="0.01"
@@ -545,24 +585,26 @@ Sin estos datos, el comprador NO podrá usar este recibo para facturar.
 
       <section className="card">
         <div className="head">
-          <h2>Historial de ventas</h2>
-          <span className="sub">{ventas.length} ventas totales</span>
+          <h2>{esAdmin ? 'Historial de ventas' : 'Cuentas por cobrar'}</h2>
+          <span className="sub">{esAdmin ? `${ventas.length} ventas totales` : `${ventasPendientes.length} pendientes`}</span>
         </div>
 
-        <div style={{ marginBottom: '16px' }}>
-          <div className="period-tabs" style={{ display: 'inline-flex' }}>
-            <button className={pestanaHistorial === 'pendientes' ? 'active' : ''} onClick={() => setPestanaHistorial('pendientes')}>
-              Cuentas por cobrar ({ventasPendientes.length})
-            </button>
-            <button className={pestanaHistorial === 'pagadas' ? 'active' : ''} onClick={() => setPestanaHistorial('pagadas')}>
-              Pagadas ({ventasPagadas.length})
-            </button>
+        {esAdmin && (
+          <div style={{ marginBottom: '16px' }}>
+            <div className="period-tabs" style={{ display: 'inline-flex' }}>
+              <button className={pestanaHistorial === 'pendientes' ? 'active' : ''} onClick={() => setPestanaHistorial('pendientes')}>
+                Cuentas por cobrar ({ventasPendientes.length})
+              </button>
+              <button className={pestanaHistorial === 'pagadas' ? 'active' : ''} onClick={() => setPestanaHistorial('pagadas')}>
+                Pagadas ({ventasPagadas.length})
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
         {ventasAMostrar.length === 0 ? (
           <p style={{ fontSize: '13px', color: 'var(--ink-soft)' }}>
-            {pestanaHistorial === 'pendientes' ? 'No hay cuentas pendientes por cobrar.' : 'Aún no hay ventas pagadas.'}
+            {(!esAdmin || pestanaHistorial === 'pendientes') ? 'No hay cuentas pendientes por cobrar.' : 'Aún no hay ventas pagadas.'}
           </p>
         ) : (
           <div className="table-wrap">
@@ -584,6 +626,34 @@ Sin estos datos, el comprador NO podrá usar este recibo para facturar.
           </div>
         )}
       </section>
+
+      {stockInsuficiente && (
+        <div className="modal-overlay" onClick={() => setStockInsuficiente(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 8v5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+                <path d="M12 16.5h.01" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
+                <path d="M10.3 3.9 2.6 17.3c-.6 1 .1 2.2 1.3 2.2h16.2c1.2 0 1.9-1.2 1.3-2.2L13.7 3.9c-.6-1-2-1-2.6 0Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+              </svg>
+            </div>
+            <h3 className="modal-title">Existencia no disponible</h3>
+            <p className="modal-text">
+              {stockInsuficiente.nombre ? (
+                <>
+                  La cantidad de huevos que quieres vender de <b>{stockInsuficiente.nombre}</b> no está disponible:
+                  pediste {stockInsuficiente.solicitado} y solo hay {stockInsuficiente.disponible} en existencia.
+                </>
+              ) : (
+                'La cantidad de huevos que quieres vender no está disponible en existencia para ese tamaño.'
+              )}
+            </p>
+            <div className="modal-actions">
+              <button className="btn" style={{ width: '100%' }} onClick={() => setStockInsuficiente(null)}>Entendido</button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

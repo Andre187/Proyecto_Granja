@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "granja-backend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "granja-san-fernando-backend"],
+      "port": 4000
+    },
+    {
+      "name": "granja-frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "granja-san-fernando-frontend"],
+      "port": 5173
+    }
+  ]
+}

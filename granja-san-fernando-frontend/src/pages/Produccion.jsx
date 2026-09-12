@@ -29,6 +29,8 @@ function Produccion({ usuario }) {
   const [formPostura, setFormPostura] = useState({ id_lote: '', fecha: hoy(), cantidad_huevos: '' });
   const [formMortalidad, setFormMortalidad] = useState({ id_lote: '', fecha: hoy(), cantidad: '', causa: '' });
 
+  const [loteSeleccionado, setLoteSeleccionado] = useState(null);
+
   const [clasificacionesHuevo, setClasificacionesHuevo] = useState([]);
   const [formClasificarHuevos, setFormClasificarHuevos] = useState({
     fecha: hoy(),
@@ -73,6 +75,20 @@ function Produccion({ usuario }) {
   };
 
   const lotesActivos = lotes.filter((l) => l.estado === 'activo');
+
+  useEffect(() => {
+    if (lotes.length === 0) return;
+    if (!loteSeleccionado || !lotes.some((l) => l.id_lote === loteSeleccionado)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLoteSeleccionado(lotes[0].id_lote);
+    }
+  }, [lotes, loteSeleccionado]);
+
+  const lote = lotes.find((l) => l.id_lote === loteSeleccionado) || null;
+  const posturaDelLote = lote ? postura.filter((p) => p.id_lote === lote.id_lote) : [];
+  const mortalidadDelLote = lote ? mortalidad.filter((m) => m.id_lote === lote.id_lote) : [];
+  const ultimaPostura = posturaDelLote[0] || null;
+  const ultimaMortalidad = mortalidadDelLote[0] || null;
 
   const handleCrearGalera = async (e) => {
     e.preventDefault();
@@ -267,41 +283,74 @@ function Produccion({ usuario }) {
           {lotes.length === 0 ? (
             <p style={{ fontSize: '13px', color: 'var(--ink-soft)' }}>Aún no hay lotes registrados. Crea primero una galera y luego un lote.</p>
           ) : (
-            <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Galera</th>
-                  <th>Fecha ingreso</th>
-                  <th>Aves recibidas</th>
-                  <th>Aves activas</th>
-                  <th>Estado</th>
-                  <th>Acción</th>
-                </tr>
-              </thead>
-              <tbody>
+            <>
+              <div className="lote-cards">
                 {lotes.map((l) => (
-                  <tr key={l.id_lote}>
-                    <td data-label="Galera">{l.galera_nombre}</td>
-                    <td data-label="Fecha ingreso">{l.fecha_ingreso?.slice(0, 10)}</td>
-                    <td data-label="Aves recibidas">{l.aves_recibidas}</td>
-                    <td data-label="Aves activas">{l.aves_activas}</td>
-                    <td data-label="Estado"><span className={`tag ${l.estado === 'activo' ? 'ok' : 'low'}`}>{l.estado}</span></td>
-                    <td data-label="Acción">
-                      {l.estado === 'activo' && (
-                        <button
-                          style={{ background: 'transparent', border: 'none', fontSize: '12px', color: 'var(--red)', textDecoration: 'underline', padding: 0 }}
-                          onClick={() => handleFinalizarLote(l.id_lote, l.galera_nombre)}
-                        >
-                          Finalizar
-                        </button>
-                      )}
-                    </td>
-                  </tr>
+                  <button
+                    key={l.id_lote}
+                    className={`lote-card ${loteSeleccionado === l.id_lote ? 'selected' : ''}`}
+                    onClick={() => setLoteSeleccionado(l.id_lote)}
+                  >
+                    <div className="lc-icon">🐔</div>
+                    <div className="lc-name">{l.galera_nombre}</div>
+                    <div className="lc-meta">{l.aves_activas} / {l.aves_recibidas} aves</div>
+                    <span className={`tag lc-tag ${l.estado === 'activo' ? 'ok' : 'low'}`}>{l.estado}</span>
+                  </button>
                 ))}
-              </tbody>
-            </table>
-            </div>
+              </div>
+
+              {lote && (
+                <div className="lote-detail">
+                  <div className="head">
+                    <h3>{lote.galera_nombre}</h3>
+                    <span className="sub">Lote desde {lote.fecha_ingreso?.slice(0, 10)}</span>
+                  </div>
+                  <div className="kpi-row" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
+                    <div className="kpi">
+                      <div className="label">Existencia actual</div>
+                      <div className="value">{lote.aves_activas}</div>
+                      <div className="delta">de {lote.aves_recibidas} recibidas</div>
+                    </div>
+                    <div className="kpi">
+                      <div className="label">Última postura</div>
+                      <div className="value">{ultimaPostura ? ultimaPostura.cantidad_huevos : '—'}</div>
+                      <div className="delta">{ultimaPostura ? ultimaPostura.fecha?.slice(0, 10) : 'Sin registros'}</div>
+                    </div>
+                    <div className="kpi">
+                      <div className="label">Tasa de postura</div>
+                      <div className="value">{ultimaPostura ? `${ultimaPostura.tasa_postura}%` : '—'}</div>
+                      <div className="delta">último registro</div>
+                    </div>
+                    <div className="kpi">
+                      <div className="label">Última mortalidad</div>
+                      <div className="value">{ultimaMortalidad ? ultimaMortalidad.cantidad : '—'}</div>
+                      <div className="delta warn">{ultimaMortalidad ? ultimaMortalidad.fecha?.slice(0, 10) : 'Sin registros'}</div>
+                    </div>
+                  </div>
+                  {lote.estado === 'finalizado' ? (
+                    <div className="alert">
+                      <div className="a-mark">✕</div>
+                      <div>
+                        <div className="a-title">Este lote ya fue finalizado</div>
+                        <div className="a-sub">
+                          No se pueden registrar más datos de postura ni mortalidad para {lote.galera_nombre}. Su historial se conserva únicamente para consulta.
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    esAdmin && (
+                      <button
+                        className="btn"
+                        style={{ background: 'transparent', color: 'var(--red)', border: '1px solid var(--red-light)', marginTop: '4px' }}
+                        onClick={() => handleFinalizarLote(lote.id_lote, lote.galera_nombre)}
+                      >
+                        Finalizar este lote
+                      </button>
+                    )
+                  )}
+                </div>
+              )}
+            </>
           )}
         </section>
       )}
@@ -431,49 +480,59 @@ function Produccion({ usuario }) {
           <section className="card">
             <div className="head">
               <h2>Historial de postura</h2>
-              <span className="sub">Últimos 20 registros</span>
+              <span className="sub">{lote ? `${lote.galera_nombre} · últimos 20 registros` : 'Últimos 20 registros'}</span>
             </div>
-            <div className="table-wrap">
-            <table>
-              <thead>
-                <tr><th>Galera</th><th>Fecha</th><th>Huevos</th><th>Tasa</th></tr>
-              </thead>
-              <tbody>
-                {postura.map((p) => (
-                  <tr key={p.id_postura}>
-                    <td data-label="Galera">{p.galera_nombre}</td>
-                    <td data-label="Fecha">{p.fecha?.slice(0, 10)}</td>
-                    <td data-label="Huevos">{p.cantidad_huevos}</td>
-                    <td data-label="Tasa">{p.tasa_postura}%</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            </div>
+            {posturaDelLote.length === 0 ? (
+              <p style={{ fontSize: '13px', color: 'var(--ink-soft)' }}>
+                {lote ? 'Sin registros de postura para este lote.' : 'Selecciona un lote arriba para ver su historial.'}
+              </p>
+            ) : (
+              <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>Fecha</th><th>Huevos</th><th>Tasa</th></tr>
+                </thead>
+                <tbody>
+                  {posturaDelLote.map((p) => (
+                    <tr key={p.id_postura}>
+                      <td data-label="Fecha">{p.fecha?.slice(0, 10)}</td>
+                      <td data-label="Huevos">{p.cantidad_huevos}</td>
+                      <td data-label="Tasa">{p.tasa_postura}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              </div>
+            )}
           </section>
 
           <section className="card">
             <div className="head">
               <h2>Historial de mortalidad</h2>
-              <span className="sub">Últimos 20 registros</span>
+              <span className="sub">{lote ? `${lote.galera_nombre} · últimos 20 registros` : 'Últimos 20 registros'}</span>
             </div>
-            <div className="table-wrap">
-            <table>
-              <thead>
-                <tr><th>Galera</th><th>Fecha</th><th>Cantidad</th><th>Causa</th></tr>
-              </thead>
-              <tbody>
-                {mortalidad.map((m) => (
-                  <tr key={m.id_mortalidad}>
-                    <td data-label="Galera">{m.galera_nombre}</td>
-                    <td data-label="Fecha">{m.fecha?.slice(0, 10)}</td>
-                    <td data-label="Cantidad">{m.cantidad}</td>
-                    <td data-label="Causa">{m.causa || '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            </div>
+            {mortalidadDelLote.length === 0 ? (
+              <p style={{ fontSize: '13px', color: 'var(--ink-soft)' }}>
+                {lote ? 'Sin registros de mortalidad para este lote.' : 'Selecciona un lote arriba para ver su historial.'}
+              </p>
+            ) : (
+              <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>Fecha</th><th>Cantidad</th><th>Causa</th></tr>
+                </thead>
+                <tbody>
+                  {mortalidadDelLote.map((m) => (
+                    <tr key={m.id_mortalidad}>
+                      <td data-label="Fecha">{m.fecha?.slice(0, 10)}</td>
+                      <td data-label="Cantidad">{m.cantidad}</td>
+                      <td data-label="Causa">{m.causa || '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              </div>
+            )}
           </section>
         </div>
       )}
