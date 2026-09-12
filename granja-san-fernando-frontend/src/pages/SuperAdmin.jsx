@@ -199,7 +199,7 @@ function SuperAdmin({ usuario: usuarioActivo }) {
 
       <section className="card">
         <div className="head">
-          <h2>Auditoría de cambios en usuarios</h2>
+          <h2> registrados de cambios en usuarios</h2>
           <span className="sub">Últimos 100 movimientos</span>
         </div>
         {auditoria.length === 0 ? (

@@ -11,8 +11,14 @@ function Usuarios({ usuario: usuarioActivo }) {
   const [nuevaContrasena, setNuevaContrasena] = useState('');
   const [nuevoRol, setNuevoRol] = useState('operador');
 
-  const [editandoPasswordId, setEditandoPasswordId] = useState(null);
+  const [usuarioCambiandoPassword, setUsuarioCambiandoPassword] = useState(null);
   const [passwordTemporal, setPasswordTemporal] = useState('');
+  const [errorPassword, setErrorPassword] = useState('');
+
+  const [usuarioGestionando, setUsuarioGestionando] = useState(null);
+  const [rolPermisoTemp, setRolPermisoTemp] = useState('operador');
+  const [activoPermisoTemp, setActivoPermisoTemp] = useState(true);
+  const [errorPermisos, setErrorPermisos] = useState('');
 
   const cargarUsuarios = async () => {
     try {
@@ -56,17 +62,6 @@ function Usuarios({ usuario: usuarioActivo }) {
     }
   };
 
-  const handleCambiarRol = async (id, rolActual) => {
-    const nuevoRolCambio = rolActual === 'administrador' ? 'operador' : 'administrador';
-    try {
-      await api.put(`/usuarios/${id}`, { rol: nuevoRolCambio });
-      mostrarMensaje('Rol actualizado');
-      cargarUsuarios();
-    } catch (err) {
-      setError(err.response?.data?.error || 'No se pudo actualizar el rol');
-    }
-  };
-
   const handleVincularTrabajador = async (id) => {
     try {
       await api.post(`/usuarios/${id}/vincular-trabajador`);
@@ -77,39 +72,50 @@ function Usuarios({ usuario: usuarioActivo }) {
     }
   };
 
-  const handleGuardarPassword = async (id) => {
+  const cerrarModalPassword = () => {
+    setUsuarioCambiandoPassword(null);
+    setPasswordTemporal('');
+    setErrorPassword('');
+  };
+
+  const handleGuardarPassword = async () => {
     if (passwordTemporal.length < 6) {
-      setError('La contraseña debe tener al menos 6 caracteres');
+      setErrorPassword('La contraseña debe tener al menos 6 caracteres');
       return;
     }
     try {
-      await api.put(`/usuarios/${id}/password`, { contrasena: passwordTemporal });
-      setEditandoPasswordId(null);
-      setPasswordTemporal('');
-      mostrarMensaje('Contraseña actualizada');
+      await api.put(`/usuarios/${usuarioCambiandoPassword.id_usuario}/password`, { contrasena: passwordTemporal });
+      mostrarMensaje(`Contraseña actualizada para ${usuarioCambiandoPassword.usuario}`);
+      cerrarModalPassword();
     } catch (err) {
-      setError(err.response?.data?.error || 'No se pudo actualizar la contraseña');
+      setErrorPassword(err.response?.data?.error || 'No se pudo actualizar la contraseña');
     }
   };
 
-  const handleDesactivar = async (id, nombre) => {
-    if (!window.confirm(`¿Desactivar al usuario "${nombre}"? No podrá iniciar sesión hasta que lo reactives. Su historial se conserva.`)) return;
-    try {
-      await api.put(`/usuarios/${id}/desactivar`);
-      mostrarMensaje('Usuario desactivado');
-      cargarUsuarios();
-    } catch (err) {
-      setError(err.response?.data?.error || 'No se pudo desactivar el usuario');
-    }
+  const cerrarModalPermisos = () => {
+    setUsuarioGestionando(null);
+    setErrorPermisos('');
   };
 
-  const handleReactivar = async (id) => {
+  const handleGuardarPermisos = async () => {
+    setErrorPermisos('');
     try {
-      await api.put(`/usuarios/${id}/reactivar`);
-      mostrarMensaje('Usuario reactivado');
+      if (rolPermisoTemp !== usuarioGestionando.rol) {
+        await api.put(`/usuarios/${usuarioGestionando.id_usuario}`, { rol: rolPermisoTemp });
+      }
+      const esUnoMismo = usuarioGestionando.id_usuario === usuarioActivo.id_usuario;
+      if (!esUnoMismo && activoPermisoTemp !== !!usuarioGestionando.activo) {
+        if (activoPermisoTemp) {
+          await api.put(`/usuarios/${usuarioGestionando.id_usuario}/reactivar`);
+        } else {
+          await api.put(`/usuarios/${usuarioGestionando.id_usuario}/desactivar`);
+        }
+      }
+      mostrarMensaje(`Permisos actualizados para ${usuarioGestionando.usuario}`);
+      cerrarModalPermisos();
       cargarUsuarios();
     } catch (err) {
-      setError(err.response?.data?.error || 'No se pudo reactivar el usuario');
+      setErrorPermisos(err.response?.data?.error || 'No se pudo actualizar los permisos');
     }
   };
 
@@ -198,63 +204,25 @@ function Usuarios({ usuario: usuarioActivo }) {
                       )}
                     </td>
                     <td>
-                      {editandoPasswordId === u.id_usuario ? (
-                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                          <input
-                            type="password"
-                            value={passwordTemporal}
-                            onChange={(e) => setPasswordTemporal(e.target.value)}
-                            placeholder="nueva contraseña"
-                            style={{
-                              fontSize: '12px', padding: '5px 8px', border: '1px solid var(--line)',
-                              borderRadius: '6px', minWidth: '120px'
-                            }}
-                          />
-                          <button className="btn" style={{ padding: '5px 10px', fontSize: '11px' }} onClick={() => handleGuardarPassword(u.id_usuario)}>
-                            Guardar
-                          </button>
-                          <button
-                            style={{ background: 'transparent', border: 'none', fontSize: '11px', color: 'var(--ink-soft)' }}
-                            onClick={() => { setEditandoPasswordId(null); setPasswordTemporal(''); }}
-                          >
-                            Cancelar
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          style={{ background: 'transparent', border: 'none', fontSize: '12px', color: 'var(--navy)', textDecoration: 'underline', padding: 0 }}
-                          onClick={() => { setEditandoPasswordId(u.id_usuario); setPasswordTemporal(''); }}
-                        >
-                          Cambiar contraseña
-                        </button>
-                      )}
+                      <button
+                        style={{ background: 'transparent', border: 'none', fontSize: '12px', color: 'var(--navy)', textDecoration: 'underline', padding: 0 }}
+                        onClick={() => { setUsuarioCambiandoPassword(u); setPasswordTemporal(''); setErrorPassword(''); }}
+                      >
+                        Cambiar contraseña
+                      </button>
                     </td>
                     <td>
-                      <div style={{ display: 'flex', gap: '10px' }}>
-                        <button
-                          style={{ background: 'transparent', border: 'none', fontSize: '12px', color: 'var(--ink-soft)', textDecoration: 'underline', padding: 0 }}
-                          onClick={() => handleCambiarRol(u.id_usuario, u.rol)}
-                        >
-                          Cambiar rol
-                        </button>
-                        {u.id_usuario !== usuarioActivo.id_usuario && (
-                          u.activo ? (
-                            <button
-                              style={{ background: 'transparent', border: 'none', fontSize: '12px', color: 'var(--red)', textDecoration: 'underline', padding: 0 }}
-                              onClick={() => handleDesactivar(u.id_usuario, u.usuario)}
-                            >
-                              Desactivar
-                            </button>
-                          ) : (
-                            <button
-                              style={{ background: 'transparent', border: 'none', fontSize: '12px', color: 'var(--green)', textDecoration: 'underline', padding: 0 }}
-                              onClick={() => handleReactivar(u.id_usuario)}
-                            >
-                              Reactivar
-                            </button>
-                          )
-                        )}
-                      </div>
+                      <button
+                        style={{ background: 'transparent', border: 'none', fontSize: '12px', color: 'var(--navy)', textDecoration: 'underline', padding: 0 }}
+                        onClick={() => {
+                          setUsuarioGestionando(u);
+                          setRolPermisoTemp(u.rol);
+                          setActivoPermisoTemp(!!u.activo);
+                          setErrorPermisos('');
+                        }}
+                      >
+                        Permisos
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -263,6 +231,80 @@ function Usuarios({ usuario: usuarioActivo }) {
           </div>
         )}
       </section>
+
+      {usuarioCambiandoPassword && (
+        <div className="modal-overlay" onClick={cerrarModalPassword}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-icon navy">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="5" y="11" width="14" height="9" rx="2" stroke="currentColor" strokeWidth="2" />
+                <path d="M8 11V7a4 4 0 0 1 8 0v4" stroke="currentColor" strokeWidth="2" />
+              </svg>
+            </div>
+            <h3 className="modal-title">Cambiar contraseña</h3>
+            <p className="modal-text">
+              Vas a establecer una nueva contraseña para <b>{usuarioCambiandoPassword.usuario}</b>.
+            </p>
+            <div className="field" style={{ textAlign: 'left', marginBottom: '18px' }}>
+              <label>Nueva contraseña</label>
+              <input
+                type="password"
+                autoFocus
+                value={passwordTemporal}
+                onChange={(e) => setPasswordTemporal(e.target.value)}
+                placeholder="mínimo 6 caracteres"
+                onKeyDown={(e) => e.key === 'Enter' && handleGuardarPassword()}
+              />
+            </div>
+            {errorPassword && <p style={{ color: 'var(--red)', fontSize: '12.5px', marginTop: '-10px', marginBottom: '16px' }}>{errorPassword}</p>}
+            <div className="modal-actions">
+              <button className="btn outline" onClick={cerrarModalPassword}>Cancelar</button>
+              <button className="btn" onClick={handleGuardarPassword}>Confirmar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {usuarioGestionando && (
+        <div className="modal-overlay" onClick={cerrarModalPermisos}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-icon navy">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 3.5 18.5 6v5.2c0 4.4-2.9 7.6-6.5 8.8-3.6-1.2-6.5-4.4-6.5-8.8V6L12 3.5Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+              </svg>
+            </div>
+            <h3 className="modal-title">Permisos de {usuarioGestionando.usuario}</h3>
+            <p className="modal-text">
+              Cambia el rol o el estado de la cuenta.
+            </p>
+            <div className="field" style={{ textAlign: 'left', marginBottom: '14px' }}>
+              <label>Rol</label>
+              <select value={rolPermisoTemp} onChange={(e) => setRolPermisoTemp(e.target.value)}>
+                <option value="operador">Operador</option>
+                <option value="administrador">Administrador</option>
+              </select>
+            </div>
+            {usuarioGestionando.id_usuario !== usuarioActivo.id_usuario ? (
+              <div className="field" style={{ textAlign: 'left', marginBottom: '18px' }}>
+                <label>Estado de la cuenta</label>
+                <select value={activoPermisoTemp ? 'activo' : 'inactivo'} onChange={(e) => setActivoPermisoTemp(e.target.value === 'activo')}>
+                  <option value="activo">Activo</option>
+                  <option value="inactivo">Inactivo (no podrá iniciar sesión)</option>
+                </select>
+              </div>
+            ) : (
+              <p style={{ fontSize: '12px', color: 'var(--ink-soft)', marginBottom: '18px' }}>
+                No puedes desactivar tu propia cuenta.
+              </p>
+            )}
+            {errorPermisos && <p style={{ color: 'var(--red)', fontSize: '12.5px', marginTop: '-10px', marginBottom: '16px' }}>{errorPermisos}</p>}
+            <div className="modal-actions">
+              <button className="btn outline" onClick={cerrarModalPermisos}>Cancelar</button>
+              <button className="btn" onClick={handleGuardarPermisos}>Guardar</button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

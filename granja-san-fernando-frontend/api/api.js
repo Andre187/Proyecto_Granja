@@ -6,7 +6,7 @@ const api = axios.create({
 
 // Antes de cada petición, si hay un token guardado, lo agrega automáticamente
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
+  const token = sessionStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -20,8 +20,8 @@ api.interceptors.response.use(
   (respuesta) => respuesta,
   (error) => {
     if (error.response && error.response.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('usuario');
+sessionStorage.removeItem('token');
+      sessionStorage.removeItem('usuario');
       if (window.location.pathname !== '/') {
         window.location.href = '/';
       } else {

@@ -23,9 +23,9 @@ function Login({ onLoginSuccess }) {
         contrasena
       });
 
-      // Guardamos el token y los datos del usuario para futuras peticiones
-      localStorage.setItem('token', respuesta.data.token);
-      localStorage.setItem('usuario', JSON.stringify(respuesta.data.usuario));
+      
+      sessionStorage.setItem('token', respuesta.data.token);
+      sessionStorage.setItem('usuario', JSON.stringify(respuesta.data.usuario));
 
       onLoginSuccess(respuesta.data.usuario);
     } catch (err) {

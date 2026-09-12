@@ -23,6 +23,8 @@ const reglasPago = [
     return true;
   }),
   body('dias_laborados').isInt({ min: 0, max: 7 }).withMessage('Los días laborados deben ser un número entre 0 y 7'),
+  body('horas_extra').optional({ checkFalsy: true }).isInt({ min: 0, max: 168 }).withMessage('Las horas extra deben ser un número entero válido'),
+  body('costo_hora_extra').optional({ checkFalsy: true }).isFloat({ min: 0, max: 10000 }).withMessage('El costo por hora extra debe ser un número válido'),
 ];
 
 router.get('/trabajadores', async (req, res) => {
@@ -60,7 +62,8 @@ router.get('/pagos', async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT p.id_pago, p.id_trabajador, t.nombre AS trabajador_nombre,
-             p.semana_inicio, p.semana_fin, p.dias_laborados, p.costo_dia_registrado, p.total_pagar
+             p.semana_inicio, p.semana_fin, p.dias_laborados, p.costo_dia_registrado,
+             p.horas_extra, p.costo_hora_extra, p.total_pagar
       FROM PAGOS_SEMANALES p
       JOIN TRABAJADORES t ON t.id_trabajador = p.id_trabajador
       ORDER BY p.semana_inicio DESC, p.id_pago DESC
@@ -74,7 +77,7 @@ router.get('/pagos', async (req, res) => {
 
 router.post('/pagos', reglasPago, validar, async (req, res) => {
   try {
-    const { id_trabajador, semana_inicio, semana_fin, dias_laborados, costo_dia_pago } = req.body;
+    const { id_trabajador, semana_inicio, semana_fin, dias_laborados, costo_dia_pago, horas_extra, costo_hora_extra } = req.body;
 
     const [trabajadorRows] = await pool.query('SELECT costo_dia FROM TRABAJADORES WHERE id_trabajador = ?', [id_trabajador]);
     if (trabajadorRows.length === 0) {
@@ -92,8 +95,8 @@ router.post('/pagos', reglasPago, validar, async (req, res) => {
     }
 
     await pool.query(
-      'INSERT INTO PAGOS_SEMANALES (id_trabajador, semana_inicio, semana_fin, dias_laborados, costo_dia_registrado) VALUES (?, ?, ?, ?, ?)',
-      [id_trabajador, semana_inicio, semana_fin, dias_laborados, costoDiaFinal]
+      'INSERT INTO PAGOS_SEMANALES (id_trabajador, semana_inicio, semana_fin, dias_laborados, costo_dia_registrado, horas_extra, costo_hora_extra) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [id_trabajador, semana_inicio, semana_fin, dias_laborados, costoDiaFinal, horas_extra || 0, costo_hora_extra || 0]
     );
     res.status(201).json({ mensaje: 'Pago registrado correctamente' });
   } catch (error) {
