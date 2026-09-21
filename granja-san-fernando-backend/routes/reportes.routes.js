@@ -1,6 +1,7 @@
 const express = require('express');
 const pool = require('../db');
 const { verificarToken, soloAdministrador } = require('../middleware/auth.middleware');
+const { manejarError } = require('../utils/manejarError');
 
 const router = express.Router();
 
@@ -129,7 +130,7 @@ router.get('/resumen', async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   }
 });
 
@@ -152,7 +153,7 @@ router.get('/financiero', async (req, res) => {
       [desde, hasta]
     );
     const [gastosTotal] = await pool.query(
-      'SELECT COALESCE(SUM(monto),0) AS total FROM GASTOS WHERE fecha BETWEEN ? AND ?',
+      "SELECT COALESCE(SUM(monto),0) AS total FROM GASTOS WHERE fecha BETWEEN ? AND ? AND estado != 'anulado'",
       [desde, hasta]
     );
     const [concentradoTotal] = await pool.query(
@@ -193,7 +194,7 @@ router.get('/financiero', async (req, res) => {
       [desde, hasta]
     );
     const [gastosPorDia] = await pool.query(
-      'SELECT fecha, SUM(monto) AS monto FROM GASTOS WHERE fecha BETWEEN ? AND ? GROUP BY fecha',
+      "SELECT fecha, SUM(monto) AS monto FROM GASTOS WHERE fecha BETWEEN ? AND ? AND estado != 'anulado' GROUP BY fecha",
       [desde, hasta]
     );
     const [concentradoPorDia] = await pool.query(
@@ -228,7 +229,7 @@ router.get('/financiero', async (req, res) => {
     );
 
     const [gastosDetalle] = await pool.query(
-      'SELECT id_gasto, fecha, descripcion, monto FROM GASTOS WHERE fecha BETWEEN ? AND ? ORDER BY fecha DESC',
+      "SELECT id_gasto, fecha, descripcion, monto FROM GASTOS WHERE fecha BETWEEN ? AND ? AND estado != 'anulado' ORDER BY fecha DESC",
       [desde, hasta]
     );
 
@@ -280,7 +281,7 @@ router.get('/financiero', async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   }
 });
 

@@ -128,7 +128,7 @@ function Tareas({ usuario }) {
           </button>
         )}
         {!esAdmin && t.estado === 'en proceso' && (
-          <button className="btn" style={{ padding: '6px 12px', fontSize: '11.5px', background: 'var(--green)' }} onClick={() => cambiarEstado(t.id_tarea, 'finalizado')}>
+          <button className="btn" style={{ padding: '6px 12px', fontSize: '11.5px' }} onClick={() => cambiarEstado(t.id_tarea, 'finalizado')}>
             Marcar finalizada
           </button>
         )}
@@ -197,7 +197,7 @@ function Tareas({ usuario }) {
                   <input type="date" value={formTarea.fecha_limite} onChange={(e) => setFormTarea({ ...formTarea, fecha_limite: e.target.value })} />
                 </div>
               </div>
-              <button type="submit" className="btn gold">Asignar tarea</button>
+              <button type="submit" className="btn">Asignar tarea</button>
             </form>
           )}
         </section>

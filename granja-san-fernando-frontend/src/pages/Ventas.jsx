@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react';
 import api from '../api/api';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
 
 const hoy = () => new Date().toISOString().slice(0, 10);
 
@@ -28,7 +26,6 @@ function Ventas({ usuario }) {
   const [clienteNombre, setClienteNombre] = useState('');
   const [clienteTelefono, setClienteTelefono] = useState('');
   const [clienteDireccion, setClienteDireccion] = useState('');
-  const [clienteNit, setClienteNit] = useState('');
   const [fechaVenta, setFechaVenta] = useState(hoy());
   const [formaPago, setFormaPago] = useState('credito');
   const [items, setItems] = useState([{ id_clasificacion: '', presentacion: 'unidad', cantidadPresentacion: '', precio_unitario: '' }]);
@@ -41,7 +38,7 @@ function Ventas({ usuario }) {
   const [fechaAbono, setFechaAbono] = useState(hoy());
 
   const [mostrarEditarCliente, setMostrarEditarCliente] = useState(false);
-  const [edicionCliente, setEdicionCliente] = useState({ nombre: '', telefono: '', nit: '', direccion: '' });
+  const [edicionCliente, setEdicionCliente] = useState({ nombre: '', telefono: '', direccion: '' });
 
   const [stockInsuficiente, setStockInsuficiente] = useState(null);
 
@@ -109,7 +106,6 @@ function Ventas({ usuario }) {
     setClienteSeleccionado('');
     setClienteNombre('');
     setClienteTelefono('');
-    setClienteNit('');
     setClienteDireccion('');
     setFechaVenta(hoy());
     setFormaPago('credito');
@@ -146,7 +142,6 @@ function Ventas({ usuario }) {
       if (clienteSeleccionado === 'nuevo') {
         payload.cliente_nombre = clienteNombre;
         payload.cliente_telefono = clienteTelefono;
-        payload.cliente_nit = clienteNit;
         payload.cliente_direccion = clienteDireccion;
       } else {
         payload.id_cliente = clienteSeleccionado;
@@ -180,11 +175,15 @@ function Ventas({ usuario }) {
     }
   };
 
-  const handleAnularVenta = async (id_venta) => {
-    if (!window.confirm('¿Anular esta venta? Se devolverá la existencia de huevos correspondiente. Esta acción no se puede deshacer.')) return;
+  const [ventaAAnular, setVentaAAnular] = useState(null);
+  const [motivoAnulacion, setMotivoAnulacion] = useState('');
+
+  const confirmarAnularVenta = async () => {
     try {
-      await api.put(`/ventas/ventas/${id_venta}/anular`);
+      await api.put(`/ventas/ventas/${ventaAAnular}/anular`, { motivo: motivoAnulacion.trim() });
       mostrarMensaje('Venta anulada correctamente');
+      setVentaAAnular(null);
+      setMotivoAnulacion('');
       cargarTodo();
     } catch (err) {
       mostrarError(err.response?.data?.error || 'No se pudo anular la venta');
@@ -198,7 +197,6 @@ function Ventas({ usuario }) {
     setEdicionCliente({
       nombre: clienteActual.nombre || '',
       telefono: clienteActual.telefono || '',
-      nit: clienteActual.nit || '',
       direccion: clienteActual.direccion || '',
     });
     setMostrarEditarCliente(true);
@@ -215,84 +213,6 @@ function Ventas({ usuario }) {
     }
   };
 
-  const handleGenerarRecibo = async (id_venta) => {
-    try {
-      const respuesta = await api.get(`/ventas/ventas/${id_venta}`);
-      const venta = respuesta.data;
-
-      const faltantes = [];
-      if (!venta.cliente_nombre) faltantes.push('nombre del cliente');
-      if (!venta.nit) faltantes.push('NIT');
-      if (!venta.direccion) faltantes.push('dirección');
-
-      if (faltantes.length > 0) {
-        const continuar = window.confirm(
-          `A este cliente le falta: ${faltantes.join(', ')}.
-Sin estos datos, el comprador NO podrá usar este recibo para facturar.
-
-¿Generar el recibo de todas formas (sin esos datos)?`
-        );
-        if (!continuar) return;
-      }
-
-      const doc = new jsPDF();
-
-      doc.setFontSize(16);
-      doc.setTextColor(27, 59, 111);
-      doc.text('Granja San Fernando', 14, 18);
-      doc.setFontSize(11);
-      doc.setTextColor(100);
-      doc.text('Recibo de venta', 14, 25);
-
-      doc.setFontSize(10);
-      doc.setTextColor(30);
-      doc.text(`Recibo No.: ${venta.id_venta}`, 14, 36);
-      doc.text(`Fecha: ${venta.fecha?.slice(0, 10)}`, 14, 42);
-      doc.text(`Cliente: ${venta.cliente_nombre}`, 14, 48);
-      doc.text(`NIT: ${venta.nit || 'N/A (no válido para facturar)'}`, 14, 54);
-      doc.text(`Dirección: ${venta.direccion || 'N/A'}`, 14, 60);
-      if (venta.telefono) doc.text(`Teléfono: ${venta.telefono}`, 14, 66);
-
-      autoTable(doc, {
-        startY: 74,
-        head: [['Clasificación', 'Cantidad', 'Precio unitario', 'Subtotal']],
-        body: venta.detalle.map((d) => [
-          d.clasificacion,
-          d.cantidad,
-          q(d.precio_unitario),
-          q(d.subtotal),
-        ]),
-        headStyles: { fillColor: [27, 59, 111] },
-        styles: { fontSize: 10 },
-      });
-
-      const finalY = doc.lastAutoTable.finalY + 10;
-      doc.setFontSize(11);
-      doc.text(`Total: ${q(venta.monto_total)}`, 140, finalY);
-      doc.text(`Saldo pendiente: ${q(venta.saldo_pendiente)}`, 140, finalY + 7);
-      doc.text(`Estado: ${venta.estado}`, 140, finalY + 14);
-
-      if (venta.abonos && venta.abonos.length > 0) {
-        autoTable(doc, {
-          startY: finalY + 22,
-          head: [['Fecha de abono', 'Monto']],
-          body: venta.abonos.map((a) => [a.fecha?.slice(0, 10), q(a.monto)]),
-          headStyles: { fillColor: [92, 138, 58] },
-          styles: { fontSize: 9 },
-        });
-      }
-
-      doc.setFontSize(8);
-      doc.setTextColor(150);
-      doc.text('Documento generado por el sistema de Granja San Fernando', 14, 285);
-
-      doc.save(`recibo_venta_${venta.id_venta}.pdf`);
-    } catch (err) {
-      console.error(err);
-      mostrarError('No se pudo generar el recibo');
-    }
-  };
-
   const q = (n) => `Q ${Number(n || 0).toLocaleString('es-GT', { minimumFractionDigits: 2 })}`;
 
   const ventasPendientes = ventas.filter((v) => Number(v.saldo_pendiente) > 0);
@@ -305,7 +225,14 @@ Sin estos datos, el comprador NO podrá usar este recibo para facturar.
       <td data-label="Cliente">{v.cliente_nombre}</td>
       <td data-label="Total">{q(v.monto_total)}</td>
       <td data-label="Saldo pendiente">{q(v.saldo_pendiente)}</td>
-      <td data-label="Estado"><span className={`tag ${v.estado === 'cancelado' ? 'ok' : 'pend'}`}>{v.estado}</span></td>
+      <td data-label="Estado">
+        <span
+          className={`tag ${v.estado === 'cancelado' ? 'ok' : 'pend'}`}
+          title={v.estado === 'anulado' && v.motivo_anulacion ? `Motivo: ${v.motivo_anulacion}` : undefined}
+        >
+          {v.estado}
+        </span>
+      </td>
       <td data-label="Acción">
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
           {v.saldo_pendiente > 0 && v.estado !== 'anulado' && (
@@ -343,17 +270,11 @@ Sin estos datos, el comprador NO podrá usar este recibo para facturar.
           {esAdmin && v.estado !== 'anulado' && (
             <button
               style={{ background: 'transparent', border: 'none', fontSize: '12px', color: 'var(--red)', textDecoration: 'underline', padding: 0 }}
-              onClick={() => handleAnularVenta(v.id_venta)}
+              onClick={() => { setVentaAAnular(v.id_venta); setMotivoAnulacion(''); }}
             >
               Anular
             </button>
           )}
-          <button
-            style={{ background: 'transparent', border: 'none', fontSize: '12px', color: 'var(--green)', textDecoration: 'underline', padding: 0 }}
-            onClick={() => handleGenerarRecibo(v.id_venta)}
-          >
-            Recibo
-          </button>
         </div>
       </td>
     </tr>
@@ -411,33 +332,19 @@ Sin estos datos, el comprador NO podrá usar este recibo para facturar.
             {clienteActual && !mostrarEditarCliente && (
               <div className="field">
                 <label>&nbsp;</label>
-                {clienteActual.nit ? (
-                  <button
-                    type="button"
-                    onClick={abrirEdicionCliente}
-                    style={{
-                      background: 'transparent', color: 'var(--navy)', border: '1px solid var(--line)',
-                      borderRadius: '7px', fontSize: '12px', padding: '9px 14px', fontWeight: 500,
-                      transition: 'background 0.15s ease',
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(27,59,111,0.06)'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                  >
-                    ✏️ Editar datos de facturación
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={abrirEdicionCliente}
-                    style={{
-                      background: 'linear-gradient(180deg, #d6b366 0%, var(--gold) 100%)',
-                      color: '#fff', border: 'none', borderRadius: '7px', fontSize: '12px', fontWeight: 600,
-                      padding: '9px 14px', boxShadow: '0 2px 6px rgba(138, 95, 23, 0.35)',
-                    }}
-                  >
-                    ⚠️ Completar NIT / dirección
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={abrirEdicionCliente}
+                  style={{
+                    background: 'transparent', color: 'var(--navy)', border: '1px solid var(--line)',
+                    borderRadius: '7px', fontSize: '12px', padding: '9px 14px', fontWeight: 500,
+                    transition: 'background 0.15s ease',
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(27,59,111,0.06)'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                  ✏️ Editar datos de contacto
+                </button>
               </div>
             )}
 
@@ -452,11 +359,7 @@ Sin estos datos, el comprador NO podrá usar este recibo para facturar.
                   <input value={clienteTelefono} onChange={(e) => setClienteTelefono(e.target.value)} style={estiloClaro} />
                 </div>
                 <div className="field">
-                  <label>NIT (para poder facturar)</label>
-                  <input value={clienteNit} onChange={(e) => setClienteNit(e.target.value)} placeholder="ej. 1234567-8" style={estiloClaro} />
-                </div>
-                <div className="field">
-                  <label>Dirección (para poder facturar)</label>
+                  <label>Dirección (opcional)</label>
                   <input value={clienteDireccion} onChange={(e) => setClienteDireccion(e.target.value)} style={estiloClaro} />
                 </div>
               </>
@@ -479,16 +382,12 @@ Sin estos datos, el comprador NO podrá usar este recibo para facturar.
           {mostrarEditarCliente && (
             <div style={{ background: 'var(--cream)', padding: '16px', borderRadius: '10px', border: '1px solid var(--line)' }}>
               <p style={{ fontSize: '12px', color: 'var(--ink-soft)', marginBottom: '12px', fontWeight: 500 }}>
-                Datos de facturación del cliente
+                Datos de contacto del cliente
               </p>
               <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                 <div className="field" style={{ flex: 1, minWidth: '140px' }}>
                   <label>Teléfono</label>
                   <input value={edicionCliente.telefono} onChange={(e) => setEdicionCliente({ ...edicionCliente, telefono: e.target.value })} style={estiloClaro} />
-                </div>
-                <div className="field" style={{ flex: 1, minWidth: '140px' }}>
-                  <label>NIT</label>
-                  <input value={edicionCliente.nit} onChange={(e) => setEdicionCliente({ ...edicionCliente, nit: e.target.value })} placeholder="ej. 1234567-8" style={estiloClaro} />
                 </div>
                 <div className="field" style={{ flex: 1, minWidth: '180px' }}>
                   <label>Dirección</label>
@@ -496,7 +395,7 @@ Sin estos datos, el comprador NO podrá usar este recibo para facturar.
                 </div>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', marginTop: '16px' }}>
-                <button type="button" className="btn gold" style={{ padding: '10px 28px', fontSize: '13px' }} onClick={guardarEdicionCliente}>
+                <button type="button" className="btn" style={{ padding: '10px 28px', fontSize: '13px' }} onClick={guardarEdicionCliente}>
                   Guardar
                 </button>
                 <button
@@ -578,7 +477,7 @@ Sin estos datos, el comprador NO podrá usar este recibo para facturar.
           </div>
 
           <div>
-            <button type="submit" className="btn gold">Registrar venta</button>
+            <button type="submit" className="btn">Registrar venta</button>
           </div>
         </form>
       </section>
@@ -626,6 +525,43 @@ Sin estos datos, el comprador NO podrá usar este recibo para facturar.
           </div>
         )}
       </section>
+
+      {ventaAAnular && (
+        <div className="modal-overlay" onClick={() => setVentaAAnular(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 8v5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+                <path d="M12 16.5h.01" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
+                <path d="M10.3 3.9 2.6 17.3c-.6 1 .1 2.2 1.3 2.2h16.2c1.2 0 1.9-1.2 1.3-2.2L13.7 3.9c-.6-1-2-1-2.6 0Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+              </svg>
+            </div>
+            <h3 className="modal-title">Anular venta</h3>
+            <p className="modal-text">
+              Se devolverá la existencia de huevos correspondiente. Esta acción no se puede deshacer.
+            </p>
+            <div className="field" style={{ textAlign: 'left', marginTop: '4px' }}>
+              <label>Motivo (opcional)</label>
+              <textarea
+                value={motivoAnulacion}
+                onChange={(e) => setMotivoAnulacion(e.target.value)}
+                rows={3}
+                maxLength={255}
+                placeholder="Ej. Cliente canceló el pedido, error al registrar..."
+                style={{ ...estiloClaro, width: '100%', border: '1px solid var(--line)', borderRadius: '7px', padding: '8px 10px', fontSize: '13px', fontFamily: 'inherit', resize: 'vertical' }}
+              />
+            </div>
+            <div className="modal-actions" style={{ marginTop: '14px' }}>
+              <button type="button" className="btn outline" onClick={() => setVentaAAnular(null)}>
+                Cancelar
+              </button>
+              <button type="button" className="btn danger" onClick={confirmarAnularVenta}>
+                Anular
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {stockInsuficiente && (
         <div className="modal-overlay" onClick={() => setStockInsuficiente(null)}>

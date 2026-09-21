@@ -3,6 +3,7 @@ const { body } = require('express-validator');
 const pool = require('../db');
 const { verificarToken, soloAdministrador } = require('../middleware/auth.middleware');
 const { validar } = require('../middleware/validacion.middleware');
+const { manejarError } = require('../utils/manejarError');
 
 const reglasVenta = [
   body('fecha').isISO8601().withMessage('Fecha inválida'),
@@ -29,40 +30,40 @@ router.get('/clientes', async (req, res) => {
     const [rows] = await pool.query('SELECT * FROM CLIENTES ORDER BY nombre');
     res.json(rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   }
 });
 
 router.post('/clientes', async (req, res) => {
   try {
-    const { nombre, telefono, nit, direccion } = req.body;
+    const { nombre, telefono, direccion } = req.body;
     if (!nombre) {
       return res.status(400).json({ error: 'El nombre del cliente es requerido' });
     }
     const [result] = await pool.query(
-      'INSERT INTO CLIENTES (nombre, telefono, nit, direccion) VALUES (?, ?, ?, ?)',
-      [nombre, telefono || null, nit || null, direccion || null]
+      'INSERT INTO CLIENTES (nombre, telefono, direccion) VALUES (?, ?, ?)',
+      [nombre, telefono || null, direccion || null]
     );
-    res.status(201).json({ id_cliente: result.insertId, nombre, telefono, nit, direccion });
+    res.status(201).json({ id_cliente: result.insertId, nombre, telefono, direccion });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   }
 });
 
-// Permite completar/editar los datos fiscales de un cliente ya existente
+// Permite completar/editar los datos de contacto de un cliente ya existente
 router.put('/clientes/:id', async (req, res) => {
   try {
-    const { nombre, telefono, nit, direccion } = req.body;
+    const { nombre, telefono, direccion } = req.body;
     if (!nombre) {
       return res.status(400).json({ error: 'El nombre del cliente es requerido' });
     }
     await pool.query(
-      'UPDATE CLIENTES SET nombre = ?, telefono = ?, nit = ?, direccion = ? WHERE id_cliente = ?',
-      [nombre, telefono || null, nit || null, direccion || null, req.params.id]
+      'UPDATE CLIENTES SET nombre = ?, telefono = ?, direccion = ? WHERE id_cliente = ?',
+      [nombre, telefono || null, direccion || null, req.params.id]
     );
     res.json({ mensaje: 'Cliente actualizado correctamente' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   }
 });
 
@@ -72,14 +73,15 @@ router.get('/clasificaciones', async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT ch.id_clasificacion, ch.nombre,
-             COALESCE(hs.existencia_actual, 0) AS existencia_actual
+             COALESCE(hs.existencia_actual, 0) AS existencia_actual,
+             COALESCE(hs.nivel_minimo, 0) AS nivel_minimo
       FROM CLASIFICACIONES_HUEVO ch
       LEFT JOIN HUEVOS_STOCK hs ON hs.id_clasificacion = ch.id_clasificacion
       ORDER BY ch.id_clasificacion
     `);
     res.json(rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   }
 });
 
@@ -97,7 +99,7 @@ router.get('/resumen', soloAdministrador, async (req, res) => {
     `);
     res.json(rows[0]);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   }
 });
 
@@ -106,21 +108,21 @@ router.get('/resumen', soloAdministrador, async (req, res) => {
 router.get('/ventas', async (req, res) => {
   try {
     const [rows] = await pool.query(`
-      SELECT v.id_venta, v.fecha, c.nombre AS cliente_nombre, v.monto_total, v.saldo_pendiente, v.estado
+      SELECT v.id_venta, v.fecha, c.nombre AS cliente_nombre, v.monto_total, v.saldo_pendiente, v.estado, v.motivo_anulacion
       FROM VENTAS v
       JOIN CLIENTES c ON c.id_cliente = v.id_cliente
       ORDER BY v.fecha DESC, v.id_venta DESC
     `);
     res.json(rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   }
 });
 
 router.get('/ventas/:id', async (req, res) => {
   try {
     const [ventaRows] = await pool.query(`
-      SELECT v.id_venta, v.fecha, v.id_cliente, c.nombre AS cliente_nombre, c.telefono, c.nit, c.direccion,
+      SELECT v.id_venta, v.fecha, v.id_cliente, c.nombre AS cliente_nombre, c.telefono, c.direccion,
              v.monto_total, v.saldo_pendiente, v.estado
       FROM VENTAS v
       JOIN CLIENTES c ON c.id_cliente = v.id_cliente
@@ -145,7 +147,7 @@ router.get('/ventas/:id', async (req, res) => {
 
     res.json({ ...ventaRows[0], detalle, abonos });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   }
 });
 
@@ -205,7 +207,7 @@ router.post('/ventas', reglasVenta, validar, async (req, res) => {
     res.status(201).json({ id_venta: idVenta, mensaje: 'Venta registrada correctamente' });
   } catch (error) {
     await conexion.rollback();
-    res.status(400).json({ error: error.sqlMessage || error.message });
+    manejarError(res, error);
   } finally {
     conexion.release();
   }
@@ -224,7 +226,7 @@ router.post('/ventas/:id/abonos', reglasAbono, validar, async (req, res) => {
     );
     res.status(201).json({ mensaje: 'Abono registrado correctamente' });
   } catch (error) {
-    res.status(400).json({ error: error.sqlMessage || error.message });
+    manejarError(res, error);
   }
 });
 
@@ -235,6 +237,8 @@ router.post('/ventas/:id/abonos', reglasAbono, validar, async (req, res) => {
 router.put('/ventas/:id/anular', soloAdministrador, async (req, res) => {
   const conexion = await pool.getConnection();
   try {
+    const motivo = (req.body.motivo || '').trim().slice(0, 255) || null;
+
     const [ventaRows] = await conexion.query('SELECT estado FROM VENTAS WHERE id_venta = ?', [req.params.id]);
     if (ventaRows.length === 0) {
       return res.status(404).json({ error: 'Venta no encontrada' });
@@ -258,13 +262,16 @@ router.put('/ventas/:id/anular', soloAdministrador, async (req, res) => {
       );
     }
 
-    await conexion.query("UPDATE VENTAS SET estado = 'anulado', saldo_pendiente = 0 WHERE id_venta = ?", [req.params.id]);
+    await conexion.query(
+      "UPDATE VENTAS SET estado = 'anulado', saldo_pendiente = 0, motivo_anulacion = ? WHERE id_venta = ?",
+      [motivo, req.params.id]
+    );
 
     await conexion.commit();
     res.json({ mensaje: 'Venta anulada correctamente. La existencia de huevos fue devuelta.' });
   } catch (error) {
     await conexion.rollback();
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   } finally {
     conexion.release();
   }

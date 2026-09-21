@@ -3,6 +3,7 @@ const { body } = require('express-validator');
 const pool = require('../db');
 const { verificarToken, soloAdministrador } = require('../middleware/auth.middleware');
 const { validar } = require('../middleware/validacion.middleware');
+const { manejarError } = require('../utils/manejarError');
 
 const router = express.Router();
 
@@ -53,7 +54,7 @@ router.get('/concentrado', async (req, res) => {
     const [rows] = await pool.query('SELECT * FROM CONCENTRADO ORDER BY fecha DESC, id_concentrado DESC LIMIT 30');
     res.json(rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   }
 });
 
@@ -66,7 +67,7 @@ router.post('/concentrado', soloAdministrador, reglasConcentrado, validar, async
     );
     res.status(201).json({ mensaje: 'Compra de concentrado registrada correctamente' });
   } catch (error) {
-    res.status(400).json({ error: error.sqlMessage || error.message });
+    manejarError(res, error);
   }
 });
 
@@ -77,7 +78,7 @@ router.get('/concentrado-stock', async (req, res) => {
     const [rows] = await pool.query('SELECT * FROM CONCENTRADO_STOCK ORDER BY tipo_concentrado');
     res.json(rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   }
 });
 
@@ -87,7 +88,7 @@ router.put('/concentrado-stock/:id', soloAdministrador, reglasNivelMinimo, valid
     await pool.query('UPDATE CONCENTRADO_STOCK SET nivel_minimo = ? WHERE id_stock = ?', [nivel_minimo, req.params.id]);
     res.json({ mensaje: 'Nivel mínimo actualizado' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   }
 });
 
@@ -104,7 +105,7 @@ router.get('/concentrado-consumo', async (req, res) => {
     `);
     res.json(rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   }
 });
 
@@ -117,7 +118,7 @@ router.post('/concentrado-consumo', reglasConsumoConcentrado, validar, async (re
     );
     res.status(201).json({ mensaje: 'Consumo registrado correctamente' });
   } catch (error) {
-    res.status(400).json({ error: error.sqlMessage || error.message });
+    manejarError(res, error);
   }
 });
 
@@ -128,7 +129,7 @@ router.get('/medicamentos', async (req, res) => {
     const [rows] = await pool.query('SELECT * FROM MEDICAMENTOS ORDER BY nombre');
     res.json(rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   }
 });
 
@@ -144,7 +145,7 @@ router.post('/medicamentos', soloAdministrador, reglasMedicamento, validar, asyn
     if (error.code === 'ER_DUP_ENTRY') {
       return res.status(409).json({ error: 'Ya existe un medicamento con ese nombre' });
     }
-    res.status(400).json({ error: error.sqlMessage || error.message });
+    manejarError(res, error);
   }
 });
 
@@ -162,7 +163,7 @@ router.get('/movimientos', async (req, res) => {
     `);
     res.json(rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   }
 });
 
@@ -180,7 +181,7 @@ router.post('/movimientos', reglasMovimiento, validar, async (req, res) => {
     );
     res.status(201).json({ mensaje: 'Movimiento registrado correctamente' });
   } catch (error) {
-    res.status(400).json({ error: error.sqlMessage || error.message });
+    manejarError(res, error);
   }
 });
 
@@ -197,7 +198,7 @@ router.get('/huevos-stock', async (req, res) => {
     `);
     res.json(rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   }
 });
 
@@ -208,7 +209,7 @@ router.put('/huevos-stock/:id', soloAdministrador, reglasNivelMinimo, validar, a
     await pool.query('UPDATE HUEVOS_STOCK SET nivel_minimo = ? WHERE id_stock = ?', [nivel_minimo, req.params.id]);
     res.json({ mensaje: 'Nivel mínimo actualizado' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   }
 });
 
@@ -225,7 +226,7 @@ router.get('/huevos-clasificados', async (req, res) => {
     `);
     res.json(rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   }
 });
 
@@ -245,7 +246,7 @@ router.post('/huevos-clasificados', reglasClasificarHuevos, validar, async (req,
     res.status(201).json({ mensaje: 'Clasificación de huevos registrada correctamente' });
   } catch (error) {
     await conexion.rollback();
-    res.status(400).json({ error: error.sqlMessage || error.message });
+    manejarError(res, error);
   } finally {
     conexion.release();
   }

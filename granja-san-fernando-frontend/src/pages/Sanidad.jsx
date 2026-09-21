@@ -133,7 +133,7 @@ function Sanidad({ usuario }) {
               <label>Semana de aplicación</label>
               <input type="number" value={formVacuna.semana_aplicacion} onChange={(e) => setFormVacuna({ ...formVacuna, semana_aplicacion: e.target.value })} required />
             </div>
-            <button type="submit" className="btn gold">Registrar vacunación</button>
+            <button type="submit" className="btn">Registrar vacunación</button>
           </form>
         </section>
 
@@ -165,7 +165,7 @@ function Sanidad({ usuario }) {
               <label>Uniformidad (%)</label>
               <input type="number" step="0.1" value={formPeso.uniformidad} onChange={(e) => setFormPeso({ ...formPeso, uniformidad: e.target.value })} required />
             </div>
-            <button type="submit" className="btn" style={{ background: 'var(--green)' }}>Registrar peso</button>
+            <button type="submit" className="btn">Registrar peso</button>
           </form>
         </section>
       </div>

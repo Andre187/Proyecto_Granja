@@ -5,6 +5,7 @@ import Layout from './components/Layout';
 import Panel from './pages/Panel';
 import Usuarios from './pages/Usuarios';
 import Produccion from './pages/Produccion';
+import Galeras from './pages/Galeras';
 import Sanidad from './pages/Sanidad';
 import Tareas from './pages/Tareas';
 import Ventas from './pages/Ventas';
@@ -106,6 +107,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Panel usuario={usuarioActivo} />} />
           <Route path="/produccion" element={<Produccion usuario={usuarioActivo} />} />
+          <Route path="/galeras" element={<Galeras />} />
           <Route path="/sanidad" element={<Sanidad usuario={usuarioActivo} />} />
           <Route path="/tareas" element={<Tareas usuario={usuarioActivo} />} />
           <Route path="/inventario" element={<Inventario usuario={usuarioActivo} />} />

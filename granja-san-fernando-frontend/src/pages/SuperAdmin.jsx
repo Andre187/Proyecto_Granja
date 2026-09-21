@@ -5,21 +5,22 @@ const estiloClaro = { background: '#F5F1E6', color: '#232019', colorScheme: 'lig
 
 function SuperAdmin({ usuario: usuarioActivo }) {
   const [usuarios, setUsuarios] = useState([]);
-  const [auditoria, setAuditoria] = useState([]);
+  const [registros, setRegistros] = useState([]);
   const [error, setError] = useState('');
   const [mensaje, setMensaje] = useState('');
 
-  const [editandoPasswordId, setEditandoPasswordId] = useState(null);
-  const [passwordTemporal, setPasswordTemporal] = useState('');
+  const [gestionando, setGestionando] = useState(null);
+  const [rolSeleccionado, setRolSeleccionado] = useState('');
+  const [passwordNueva, setPasswordNueva] = useState('');
 
   const cargarTodo = async () => {
     try {
-      const [rUsuarios, rAuditoria] = await Promise.all([
+      const [rUsuarios, rRegistros] = await Promise.all([
         api.get('/superadmin/usuarios'),
         api.get('/superadmin/auditoria'),
       ]);
       setUsuarios(rUsuarios.data);
-      setAuditoria(rAuditoria.data);
+      setRegistros(rRegistros.data);
     } catch (err) {
       console.error(err);
       setError('No se pudo cargar la información');
@@ -43,52 +44,54 @@ function SuperAdmin({ usuario: usuarioActivo }) {
     setTimeout(() => setError(''), 4000);
   };
 
-  const handleCambiarRol = async (id, rolActual) => {
-    const opciones = ['operador', 'administrador', 'superadministrador'];
-    const siguiente = opciones[(opciones.indexOf(rolActual) + 1) % opciones.length];
-    if (!window.confirm(`¿Cambiar el rol a "${siguiente}"?`)) return;
+  const abrirGestion = (u) => {
+    setGestionando(u);
+    setRolSeleccionado(u.rol);
+    setPasswordNueva('');
+  };
+
+  const cerrarGestion = () => {
+    setGestionando(null);
+    setRolSeleccionado('');
+    setPasswordNueva('');
+  };
+
+  const handleGuardarRol = async () => {
+    if (rolSeleccionado === gestionando.rol) return;
     try {
-      await api.put(`/superadmin/usuarios/${id}/rol`, { rol: siguiente });
+      await api.put(`/superadmin/usuarios/${gestionando.id_usuario}/rol`, { rol: rolSeleccionado });
       mostrarMensaje('Rol actualizado');
+      setGestionando({ ...gestionando, rol: rolSeleccionado });
       cargarTodo();
     } catch (err) {
       mostrarError(err.response?.data?.error || 'No se pudo actualizar el rol');
     }
   };
 
-  const handleGuardarPassword = async (id) => {
-    if (passwordTemporal.length < 6) {
-      setError('La contraseña debe tener al menos 6 caracteres');
+  const handleGuardarPassword = async () => {
+    if (passwordNueva.length < 8) {
+      mostrarError('La contraseña debe tener al menos 8 caracteres, con letras y números');
       return;
     }
     try {
-      await api.put(`/superadmin/usuarios/${id}/password`, { contrasena: passwordTemporal });
-      setEditandoPasswordId(null);
-      setPasswordTemporal('');
+      await api.put(`/superadmin/usuarios/${gestionando.id_usuario}/password`, { contrasena: passwordNueva });
+      setPasswordNueva('');
       mostrarMensaje('Contraseña actualizada');
     } catch (err) {
-      setError(err.response?.data?.error || 'No se pudo actualizar la contraseña');
+      mostrarError(err.response?.data?.error || 'No se pudo actualizar la contraseña');
     }
   };
 
-  const handleDesactivar = async (id, nombre) => {
-    if (!window.confirm(`¿Desactivar al usuario "${nombre}"? No podrá iniciar sesión hasta que lo reactives.`)) return;
+  const handleToggleActivo = async () => {
+    const accion = gestionando.activo ? 'desactivar' : 'reactivar';
+    if (accion === 'desactivar' && !window.confirm(`¿Desactivar al usuario "${gestionando.usuario}"? No podrá iniciar sesión hasta que lo reactives.`)) return;
     try {
-      await api.put(`/superadmin/usuarios/${id}/desactivar`);
-      mostrarMensaje('Usuario desactivado');
+      await api.put(`/superadmin/usuarios/${gestionando.id_usuario}/${accion}`);
+      mostrarMensaje(accion === 'desactivar' ? 'Usuario desactivado' : 'Usuario reactivado');
+      setGestionando({ ...gestionando, activo: accion === 'reactivar' });
       cargarTodo();
     } catch (err) {
-      mostrarError(err.response?.data?.error || 'No se pudo desactivar el usuario');
-    }
-  };
-
-  const handleReactivar = async (id) => {
-    try {
-      await api.put(`/superadmin/usuarios/${id}/reactivar`);
-      mostrarMensaje('Usuario reactivado');
-      cargarTodo();
-    } catch (err) {
-      mostrarError(err.response?.data?.error || 'No se pudo reactivar el usuario');
+      mostrarError(err.response?.data?.error || `No se pudo ${accion} el usuario`);
     }
   };
 
@@ -113,17 +116,18 @@ function SuperAdmin({ usuario: usuarioActivo }) {
           <table>
             <thead>
               <tr>
+                <th>Nombre</th>
                 <th>Usuario</th>
                 <th>Rol</th>
                 <th>Estado</th>
                 <th>Trabajador</th>
-                <th>Contraseña</th>
                 <th>Acciones</th>
               </tr>
             </thead>
             <tbody>
               {usuarios.map((u) => (
                 <tr key={u.id_usuario} style={{ opacity: u.activo ? 1 : 0.6 }}>
+                  <td>{u.nombre ? `${u.nombre} ${u.apellido || ''}`.trim() : <span style={{ color: 'var(--ink-soft)' }}>—</span>}</td>
                   <td>{u.usuario}</td>
                   <td>
                     <span className={`tag ${u.rol === 'superadministrador' ? 'low' : u.rol === 'administrador' ? 'ok' : 'pend'}`}>
@@ -135,60 +139,12 @@ function SuperAdmin({ usuario: usuarioActivo }) {
                   </td>
                   <td>{u.trabajador_nombre || <span style={{ color: 'var(--ink-soft)' }}>—</span>}</td>
                   <td>
-                    {editandoPasswordId === u.id_usuario ? (
-                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                        <input
-                          type="password"
-                          value={passwordTemporal}
-                          onChange={(e) => setPasswordTemporal(e.target.value)}
-                          placeholder="nueva contraseña"
-                          style={{ ...estiloClaro, fontSize: '12px', padding: '5px 8px', border: '1px solid var(--line)', borderRadius: '6px', minWidth: '120px' }}
-                        />
-                        <button className="btn" style={{ padding: '5px 10px', fontSize: '11px' }} onClick={() => handleGuardarPassword(u.id_usuario)}>
-                          Guardar
-                        </button>
-                        <button
-                          style={{ background: 'transparent', border: 'none', fontSize: '11px', color: 'var(--ink-soft)' }}
-                          onClick={() => { setEditandoPasswordId(null); setPasswordTemporal(''); }}
-                        >
-                          Cancelar
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        style={{ background: 'transparent', border: 'none', fontSize: '12px', color: 'var(--navy)', textDecoration: 'underline', padding: 0 }}
-                        onClick={() => { setEditandoPasswordId(u.id_usuario); setPasswordTemporal(''); }}
-                      >
-                        Resetear contraseña
-                      </button>
-                    )}
-                  </td>
-                  <td>
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                      <button
-                        style={{ background: 'transparent', border: 'none', fontSize: '12px', color: 'var(--ink-soft)', textDecoration: 'underline', padding: 0 }}
-                        onClick={() => handleCambiarRol(u.id_usuario, u.rol)}
-                      >
-                        Cambiar rol
-                      </button>
-                      {u.id_usuario !== usuarioActivo.id_usuario && (
-                        u.activo ? (
-                          <button
-                            style={{ background: 'transparent', border: 'none', fontSize: '12px', color: 'var(--red)', textDecoration: 'underline', padding: 0 }}
-                            onClick={() => handleDesactivar(u.id_usuario, u.usuario)}
-                          >
-                            Desactivar
-                          </button>
-                        ) : (
-                          <button
-                            style={{ background: 'transparent', border: 'none', fontSize: '12px', color: 'var(--green)', textDecoration: 'underline', padding: 0 }}
-                            onClick={() => handleReactivar(u.id_usuario)}
-                          >
-                            Reactivar
-                          </button>
-                        )
-                      )}
-                    </div>
+                    <button
+                      style={{ background: 'transparent', border: 'none', fontSize: '12px', color: 'var(--navy)', textDecoration: 'underline', padding: 0 }}
+                      onClick={() => abrirGestion(u)}
+                    >
+                      ⚙️ Gestionar cuenta
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -199,10 +155,10 @@ function SuperAdmin({ usuario: usuarioActivo }) {
 
       <section className="card">
         <div className="head">
-          <h2> registrados de cambios en usuarios</h2>
+          <h2>Registro de cambios en usuarios</h2>
           <span className="sub">Últimos 100 movimientos</span>
         </div>
-        {auditoria.length === 0 ? (
+        {registros.length === 0 ? (
           <p style={{ fontSize: '13px', color: 'var(--ink-soft)' }}>Sin movimientos registrados todavía.</p>
         ) : (
           <div className="table-wrap">
@@ -211,7 +167,7 @@ function SuperAdmin({ usuario: usuarioActivo }) {
                 <tr><th>Fecha</th><th>Acción</th><th>Usuario afectado</th><th>Rol anterior</th><th>Rol nuevo</th></tr>
               </thead>
               <tbody>
-                {auditoria.map((a) => (
+                {registros.map((a) => (
                   <tr key={a.id_auditoria}>
                     <td>{new Date(a.fecha_hora).toLocaleString('es-GT')}</td>
                     <td><span className={`tag ${a.accion === 'DELETE' ? 'low' : a.accion === 'INSERT' ? 'ok' : 'pend'}`}>{a.accion}</span></td>
@@ -225,6 +181,86 @@ function SuperAdmin({ usuario: usuarioActivo }) {
           </div>
         )}
       </section>
+
+      {gestionando && (
+        <div className="modal-overlay" onClick={cerrarGestion}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '420px', textAlign: 'left' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '22px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div className="role-avatar">{gestionando.usuario.charAt(0).toUpperCase()}</div>
+                <div>
+                  <h3 className="modal-title" style={{ marginBottom: '6px' }}>{gestionando.usuario}</h3>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <span className={`tag ${gestionando.rol === 'superadministrador' ? 'low' : gestionando.rol === 'administrador' ? 'ok' : 'pend'}`}>
+                      {gestionando.rol}
+                    </span>
+                    <span className={`tag ${gestionando.activo ? 'ok' : 'low'}`}>{gestionando.activo ? 'activo' : 'inactivo'}</span>
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={cerrarGestion}
+                aria-label="Cerrar"
+                style={{ background: 'transparent', border: 'none', fontSize: '20px', lineHeight: 1, color: 'var(--ink-soft)', padding: '4px' }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="field" style={{ marginBottom: '16px' }}>
+              <label>Rol</label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <select
+                  value={rolSeleccionado}
+                  onChange={(e) => setRolSeleccionado(e.target.value)}
+                  style={{ ...estiloClaro, flex: 1, padding: '8px 10px', border: '1px solid var(--line)', borderRadius: '7px', fontSize: '13px' }}
+                >
+                  <option value="operador">operador</option>
+                  <option value="administrador">administrador</option>
+                  <option value="superadministrador">superadministrador</option>
+                </select>
+                <button
+                  type="button" className="btn" style={{ padding: '8px 14px', fontSize: '12px' }}
+                  disabled={rolSeleccionado === gestionando.rol}
+                  onClick={handleGuardarRol}
+                >
+                  Guardar
+                </button>
+              </div>
+            </div>
+
+            <div className="field" style={{ marginBottom: '22px', borderTop: '1px solid var(--line)', paddingTop: '16px' }}>
+              <label>Nueva contraseña</label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  type="password"
+                  value={passwordNueva}
+                  onChange={(e) => setPasswordNueva(e.target.value)}
+                  placeholder="mínimo 8 caracteres, letras y números"
+                  style={{ ...estiloClaro, flex: 1, padding: '8px 10px', border: '1px solid var(--line)', borderRadius: '7px', fontSize: '13px' }}
+                />
+                <button type="button" className="btn" style={{ padding: '8px 14px', fontSize: '12px' }} onClick={handleGuardarPassword}>
+                  Actualizar
+                </button>
+              </div>
+            </div>
+
+            {gestionando.id_usuario !== usuarioActivo.id_usuario && (
+              <div style={{ borderTop: '1px solid var(--line)', paddingTop: '16px' }}>
+                <button
+                  type="button"
+                  className={`btn ${gestionando.activo ? 'danger' : ''}`}
+                  style={{ width: '100%' }}
+                  onClick={handleToggleActivo}
+                >
+                  {gestionando.activo ? 'Desactivar cuenta' : 'Reactivar cuenta'}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 }
