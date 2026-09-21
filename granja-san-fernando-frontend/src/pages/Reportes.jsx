@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import api from '../api/api';
+import SelectorRangoFechas from '../components/SelectorRangoFechas';
 
 const LABELS = { hoy: 'Hoy', semana: 'Últimos 7 días', mes: 'Este mes', personalizado: 'Personalizado' };
 
@@ -15,7 +16,6 @@ function Reportes() {
   const [periodo, setPeriodo] = useState('hoy');
   const [datos, setDatos] = useState(null);
   const [cargando, setCargando] = useState(true);
-  const [mostrarPersonalizado, setMostrarPersonalizado] = useState(false);
   const [fechaDesde, setFechaDesde] = useState('');
   const [fechaHasta, setFechaHasta] = useState('');
   const [pestana, setPestana] = useState('resumen');
@@ -32,12 +32,13 @@ function Reportes() {
     }
   };
 
-  const cargarPersonalizado = async () => {
-    if (!fechaDesde || !fechaHasta) return;
+  const cargarPersonalizado = async (desde, hasta) => {
     try {
       setCargando(true);
-      const respuesta = await api.get(`/reportes/financiero?desde=${fechaDesde}&hasta=${fechaHasta}`);
+      const respuesta = await api.get(`/reportes/financiero?desde=${desde}&hasta=${hasta}`);
       setDatos(respuesta.data);
+      setFechaDesde(desde);
+      setFechaHasta(hasta);
       setPeriodo('personalizado');
     } catch (err) {
       console.error(err);
@@ -60,25 +61,18 @@ function Reportes() {
   return (
     <>
       <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '10px', marginBottom: '18px', flexWrap: 'wrap' }}>
-        {mostrarPersonalizado && (
-          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-            <input type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)}
-              style={{ fontSize: '12px', padding: '6px 8px', border: '1px solid var(--line)', borderRadius: '6px', background: '#F5F1E6', colorScheme: 'light' }} />
-            <span style={{ fontSize: '12px', color: 'var(--ink-soft)' }}>a</span>
-            <input type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)}
-              style={{ fontSize: '12px', padding: '6px 8px', border: '1px solid var(--line)', borderRadius: '6px', background: '#F5F1E6', colorScheme: 'light' }} />
-            <button className="btn" style={{ padding: '6px 14px', fontSize: '12px' }} onClick={cargarPersonalizado}>Ver</button>
-          </div>
-        )}
         <div className="period-tabs">
           {['hoy', 'semana', 'mes'].map((p) => (
-            <button key={p} className={periodo === p ? 'active' : ''} onClick={() => { setPeriodo(p); setMostrarPersonalizado(false); }}>
+            <button key={p} className={periodo === p ? 'active' : ''} onClick={() => { setPeriodo(p); setFechaDesde(''); setFechaHasta(''); }}>
               {LABELS[p]}
             </button>
           ))}
-          <button className={periodo === 'personalizado' ? 'active' : ''} onClick={() => setMostrarPersonalizado(!mostrarPersonalizado)}>
-            Personalizado
-          </button>
+          <SelectorRangoFechas
+            desde={fechaDesde}
+            hasta={fechaHasta}
+            activo={periodo === 'personalizado'}
+            onAplicar={cargarPersonalizado}
+          />
         </div>
       </div>
 

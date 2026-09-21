@@ -3,6 +3,7 @@ const { body } = require('express-validator');
 const pool = require('../db');
 const { verificarToken } = require('../middleware/auth.middleware');
 const { validar } = require('../middleware/validacion.middleware');
+const { manejarError } = require('../utils/manejarError');
 
 const router = express.Router();
 
@@ -41,7 +42,7 @@ router.get('/lotes', async (req, res) => {
     `);
     res.json(rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   }
 });
 
@@ -57,7 +58,7 @@ router.get('/vacunacion', async (req, res) => {
     `);
     res.json(rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   }
 });
 
@@ -70,7 +71,7 @@ router.post('/vacunacion', reglasVacunacion, validar, async (req, res) => {
     );
     res.status(201).json({ mensaje: 'Vacunación registrada correctamente' });
   } catch (error) {
-    res.status(400).json({ error: error.sqlMessage || error.message });
+    manejarError(res, error);
   }
 });
 
@@ -86,7 +87,7 @@ router.get('/peso', async (req, res) => {
     `);
     res.json(rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   }
 });
 
@@ -99,7 +100,7 @@ router.post('/peso', reglasPeso, validar, async (req, res) => {
     );
     res.status(201).json({ mensaje: 'Seguimiento de peso registrado correctamente' });
   } catch (error) {
-    res.status(400).json({ error: error.sqlMessage || error.message });
+    manejarError(res, error);
   }
 });
 

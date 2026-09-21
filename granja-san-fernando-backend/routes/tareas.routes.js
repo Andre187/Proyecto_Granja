@@ -3,6 +3,7 @@ const { body } = require('express-validator');
 const pool = require('../db');
 const { verificarToken, soloAdministrador } = require('../middleware/auth.middleware');
 const { validar } = require('../middleware/validacion.middleware');
+const { manejarError } = require('../utils/manejarError');
 
 const router = express.Router();
 
@@ -32,7 +33,7 @@ router.get('/trabajadores', async (req, res) => {
     `);
     res.json(rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   }
 });
 
@@ -61,7 +62,7 @@ router.get('/tareas', async (req, res) => {
     const [rows] = await pool.query(query, params);
     res.json(rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   }
 });
 
@@ -74,7 +75,7 @@ router.post('/tareas', soloAdministrador, reglasTarea, validar, async (req, res)
     );
     res.status(201).json({ mensaje: 'Tarea asignada correctamente' });
   } catch (error) {
-    res.status(400).json({ error: error.sqlMessage || error.message });
+    manejarError(res, error);
   }
 });
 
@@ -95,7 +96,7 @@ router.put('/tareas/:id/estado', reglasEstado, validar, async (req, res) => {
     await pool.query('UPDATE TAREAS SET estado = ? WHERE id_tarea = ?', [estado, req.params.id]);
     res.json({ mensaje: 'Estado actualizado correctamente' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   }
 });
 

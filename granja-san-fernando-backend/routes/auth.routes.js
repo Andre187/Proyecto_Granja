@@ -5,6 +5,7 @@ const { body } = require('express-validator');
 const pool = require('../db');
 const { verificarToken } = require('../middleware/auth.middleware');
 const { validar } = require('../middleware/validacion.middleware');
+const { manejarError } = require('../utils/manejarError');
 
 const router = express.Router();
 
@@ -66,8 +67,7 @@ router.post('/login', reglasLogin, validar, async (req, res) => {
     });
 
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Error en el servidor', detalle: error.message });
+    manejarError(res, error, 'No se pudo iniciar sesión, inténtalo de nuevo');
   }
 });
 

@@ -274,7 +274,7 @@ function Personal() {
                 style={estiloClaro}
               />
             </div>
-            <button type="submit" className="btn gold">Registrar pago</button>
+            <button type="submit" className="btn">Registrar pago</button>
           </form>
         )}
       </section>

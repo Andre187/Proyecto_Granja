@@ -4,6 +4,8 @@ const { body } = require('express-validator');
 const pool = require('../db');
 const { verificarToken, soloAdministrador } = require('../middleware/auth.middleware');
 const { validar } = require('../middleware/validacion.middleware');
+const { manejarError } = require('../utils/manejarError');
+const { REGEX_CONTRASENA_SEGURA, MENSAJE_CONTRASENA_SEGURA, esContrasenaSegura } = require('../utils/contrasenaSegura');
 
 const router = express.Router();
 
@@ -13,8 +15,17 @@ const reglasCrearUsuario = [
     .notEmpty().withMessage('El usuario es requerido')
     .isLength({ min: 3, max: 50 }).withMessage('El usuario debe tener entre 3 y 50 caracteres')
     .matches(/^[a-zA-Z0-9._-]+$/).withMessage('El usuario solo puede contener letras, números, puntos, guiones y guiones bajos'),
+  body('nombre')
+    .trim()
+    .notEmpty().withMessage('El nombre es requerido')
+    .isLength({ min: 2, max: 50 }).withMessage('El nombre debe tener entre 2 y 50 caracteres'),
+  body('apellido')
+    .trim()
+    .notEmpty().withMessage('El apellido es requerido')
+    .isLength({ min: 2, max: 50 }).withMessage('El apellido debe tener entre 2 y 50 caracteres'),
   body('contrasena')
-    .isLength({ min: 6, max: 100 }).withMessage('La contraseña debe tener entre 6 y 100 caracteres'),
+    .isLength({ max: 100 })
+    .matches(REGEX_CONTRASENA_SEGURA).withMessage(MENSAJE_CONTRASENA_SEGURA),
   body('rol')
     .isIn(['administrador', 'operador']).withMessage('Rol inválido'),
 ];
@@ -25,7 +36,7 @@ router.use(verificarToken, soloAdministrador);
 router.get('/', async (req, res) => {
   try {
     const [rows] = await pool.query(`
-      SELECT u.id_usuario, u.usuario, u.rol, u.activo, u.id_trabajador, t.nombre AS trabajador_nombre
+      SELECT u.id_usuario, u.usuario, u.nombre, u.apellido, u.rol, u.activo, u.id_trabajador, t.nombre AS trabajador_nombre
       FROM USUARIOS u
       LEFT JOIN TRABAJADORES t ON t.id_trabajador = u.id_trabajador
       WHERE u.rol != 'superadministrador'
@@ -33,7 +44,7 @@ router.get('/', async (req, res) => {
     `);
     res.json(rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   }
 });
 
@@ -48,14 +59,15 @@ router.get('/trabajadores', async (req, res) => {
     `);
     res.json(rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   }
 });
 
 router.post('/', reglasCrearUsuario, validar, async (req, res) => {
   const conexion = await pool.getConnection();
   try {
-    const { usuario, contrasena, rol } = req.body;
+    const { usuario, nombre, apellido, contrasena, rol } = req.body;
+    const nombreCompleto = `${nombre.trim()} ${apellido.trim()}`.trim();
 
     await conexion.beginTransaction();
 
@@ -64,7 +76,7 @@ router.post('/', reglasCrearUsuario, validar, async (req, res) => {
     if (rol === 'operador') {
       const [resultTrabajador] = await conexion.query(
         'INSERT INTO TRABAJADORES (nombre, costo_dia, estado) VALUES (?, 0, "activo")',
-        [usuario]
+        [nombreCompleto]
       );
       idTrabajador = resultTrabajador.insertId;
     }
@@ -72,18 +84,18 @@ router.post('/', reglasCrearUsuario, validar, async (req, res) => {
     const hash = await bcrypt.hash(contrasena, 10);
 
     const [result] = await conexion.query(
-      'INSERT INTO USUARIOS (usuario, contrasena, rol, id_trabajador) VALUES (?, ?, ?, ?)',
-      [usuario, hash, rol, idTrabajador]
+      'INSERT INTO USUARIOS (usuario, nombre, apellido, contrasena, rol, id_trabajador) VALUES (?, ?, ?, ?, ?, ?)',
+      [usuario, nombre.trim(), apellido.trim(), hash, rol, idTrabajador]
     );
 
     await conexion.commit();
-    res.status(201).json({ id_usuario: result.insertId, usuario, rol, id_trabajador: idTrabajador });
+    res.status(201).json({ id_usuario: result.insertId, usuario, nombre, apellido, rol, id_trabajador: idTrabajador });
   } catch (error) {
     await conexion.rollback();
     if (error.code === 'ER_DUP_ENTRY') {
       return res.status(409).json({ error: 'Ese nombre de usuario ya existe' });
     }
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   } finally {
     conexion.release();
   }
@@ -104,9 +116,15 @@ router.post('/:id/vincular-trabajador', async (req, res) => {
 
     await conexion.beginTransaction();
 
+    // Si la cuenta ya tiene nombre y apellido reales, se usan; si es una cuenta antigua
+    // que no los tiene, se usa el usuario de acceso como último recurso.
+    const nombreTrabajador = usuarioEncontrado.nombre
+      ? `${usuarioEncontrado.nombre} ${usuarioEncontrado.apellido || ''}`.trim()
+      : usuarioEncontrado.usuario;
+
     const [resultTrabajador] = await conexion.query(
       'INSERT INTO TRABAJADORES (nombre, costo_dia, estado) VALUES (?, 0, "activo")',
-      [usuarioEncontrado.usuario]
+      [nombreTrabajador]
     );
 
     await conexion.query('UPDATE USUARIOS SET id_trabajador = ? WHERE id_usuario = ?', [resultTrabajador.insertId, req.params.id]);
@@ -115,7 +133,7 @@ router.post('/:id/vincular-trabajador', async (req, res) => {
     res.json({ mensaje: 'Registro de trabajador generado correctamente' });
   } catch (error) {
     await conexion.rollback();
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   } finally {
     conexion.release();
   }
@@ -130,7 +148,7 @@ async function bloquearSiEsSuperAdmin(req, res, next) {
     }
     next();
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   }
 }
 
@@ -143,21 +161,21 @@ router.put('/:id', bloquearSiEsSuperAdmin, async (req, res) => {
     await pool.query('UPDATE USUARIOS SET rol = ? WHERE id_usuario = ?', [rol, req.params.id]);
     res.json({ mensaje: 'Usuario actualizado correctamente' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   }
 });
 
 router.put('/:id/password', bloquearSiEsSuperAdmin, async (req, res) => {
   try {
     const { contrasena } = req.body;
-    if (!contrasena || contrasena.length < 6) {
-      return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
+    if (!esContrasenaSegura(contrasena)) {
+      return res.status(400).json({ error: MENSAJE_CONTRASENA_SEGURA });
     }
     const hash = await bcrypt.hash(contrasena, 10);
     await pool.query('UPDATE USUARIOS SET contrasena = ? WHERE id_usuario = ?', [hash, req.params.id]);
     res.json({ mensaje: 'Contraseña actualizada correctamente' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   }
 });
 
@@ -187,7 +205,7 @@ router.put('/:id/desactivar', bloquearSiEsSuperAdmin, async (req, res) => {
     await pool.query('UPDATE USUARIOS SET activo = 0 WHERE id_usuario = ?', [req.params.id]);
     res.json({ mensaje: 'Usuario desactivado correctamente' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   }
 });
 
@@ -197,7 +215,7 @@ router.put('/:id/reactivar', bloquearSiEsSuperAdmin, async (req, res) => {
     await pool.query('UPDATE USUARIOS SET activo = 1 WHERE id_usuario = ?', [req.params.id]);
     res.json({ mensaje: 'Usuario reactivado correctamente' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   }
 });
 

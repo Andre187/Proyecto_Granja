@@ -3,6 +3,7 @@ const { body } = require('express-validator');
 const pool = require('../db');
 const { verificarToken, soloAdministrador } = require('../middleware/auth.middleware');
 const { validar } = require('../middleware/validacion.middleware');
+const { manejarError } = require('../utils/manejarError');
 
 const router = express.Router();
 
@@ -37,7 +38,7 @@ router.get('/trabajadores', async (req, res) => {
     `);
     res.json(rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   }
 });
 
@@ -54,7 +55,7 @@ router.put('/trabajadores/:id', reglasEditarTrabajador, validar, async (req, res
 
     res.json({ mensaje: 'Trabajador actualizado correctamente' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   }
 });
 
@@ -71,7 +72,7 @@ router.get('/pagos', async (req, res) => {
     `);
     res.json(rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   }
 });
 
@@ -100,7 +101,7 @@ router.post('/pagos', reglasPago, validar, async (req, res) => {
     );
     res.status(201).json({ mensaje: 'Pago registrado correctamente' });
   } catch (error) {
-    res.status(400).json({ error: error.sqlMessage || error.message });
+    manejarError(res, error);
   }
 });
 

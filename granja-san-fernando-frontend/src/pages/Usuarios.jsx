@@ -8,6 +8,8 @@ function Usuarios({ usuario: usuarioActivo }) {
   const [mensaje, setMensaje] = useState('');
 
   const [nuevoUsuario, setNuevoUsuario] = useState('');
+  const [nuevoNombre, setNuevoNombre] = useState('');
+  const [nuevoApellido, setNuevoApellido] = useState('');
   const [nuevaContrasena, setNuevaContrasena] = useState('');
   const [nuevoRol, setNuevoRol] = useState('operador');
 
@@ -49,10 +51,14 @@ function Usuarios({ usuario: usuarioActivo }) {
     try {
       await api.post('/usuarios', {
         usuario: nuevoUsuario,
+        nombre: nuevoNombre,
+        apellido: nuevoApellido,
         contrasena: nuevaContrasena,
         rol: nuevoRol,
       });
       setNuevoUsuario('');
+      setNuevoNombre('');
+      setNuevoApellido('');
       setNuevaContrasena('');
       setNuevoRol('operador');
       mostrarMensaje('Usuario creado correctamente');
@@ -79,8 +85,8 @@ function Usuarios({ usuario: usuarioActivo }) {
   };
 
   const handleGuardarPassword = async () => {
-    if (passwordTemporal.length < 6) {
-      setErrorPassword('La contraseña debe tener al menos 6 caracteres');
+    if (passwordTemporal.length < 8) {
+      setErrorPassword('La contraseña debe tener al menos 8 caracteres, con letras y números');
       return;
     }
     try {
@@ -127,7 +133,25 @@ function Usuarios({ usuario: usuarioActivo }) {
         </div>
         <form onSubmit={handleCrear} style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <div className="field">
-            <label>Usuario</label>
+            <label>Nombre</label>
+            <input
+              value={nuevoNombre}
+              onChange={(e) => setNuevoNombre(e.target.value)}
+              placeholder="Andrea"
+              required
+            />
+          </div>
+          <div className="field">
+            <label>Apellido</label>
+            <input
+              value={nuevoApellido}
+              onChange={(e) => setNuevoApellido(e.target.value)}
+              placeholder="Estévez"
+              required
+            />
+          </div>
+          <div className="field">
+            <label>Usuario (para iniciar sesión)</label>
             <input
               value={nuevoUsuario}
               onChange={(e) => setNuevoUsuario(e.target.value)}
@@ -141,7 +165,7 @@ function Usuarios({ usuario: usuarioActivo }) {
               type="password"
               value={nuevaContrasena}
               onChange={(e) => setNuevaContrasena(e.target.value)}
-              placeholder="mínimo 6 caracteres"
+              placeholder="mínimo 8 caracteres, letras y números"
               required
             />
           </div>
@@ -171,6 +195,7 @@ function Usuarios({ usuario: usuarioActivo }) {
             <table>
               <thead>
                 <tr>
+                  <th>Nombre</th>
                   <th>Usuario</th>
                   <th>Rol</th>
                   <th>Estado</th>
@@ -182,6 +207,7 @@ function Usuarios({ usuario: usuarioActivo }) {
               <tbody>
                 {usuarios.map((u) => (
                   <tr key={u.id_usuario} style={{ opacity: u.activo ? 1 : 0.6 }}>
+                    <td>{u.nombre ? `${u.nombre} ${u.apellido || ''}`.trim() : <span style={{ color: 'var(--ink-soft)' }}>—</span>}</td>
                     <td>{u.usuario}</td>
                     <td>
                       <span className={`tag ${u.rol === 'administrador' ? 'ok' : 'pend'}`}>{u.rol}</span>
@@ -252,7 +278,7 @@ function Usuarios({ usuario: usuarioActivo }) {
                 autoFocus
                 value={passwordTemporal}
                 onChange={(e) => setPasswordTemporal(e.target.value)}
-                placeholder="mínimo 6 caracteres"
+                placeholder="mínimo 8 caracteres, letras y números"
                 onKeyDown={(e) => e.key === 'Enter' && handleGuardarPassword()}
               />
             </div>

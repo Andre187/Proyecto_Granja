@@ -3,6 +3,7 @@ const { body } = require('express-validator');
 const pool = require('../db');
 const { verificarToken, soloAdministrador } = require('../middleware/auth.middleware');
 const { validar } = require('../middleware/validacion.middleware');
+const { manejarError } = require('../utils/manejarError');
 
 const router = express.Router();
 
@@ -58,10 +59,16 @@ const reglasMortalidad = [
 
 router.get('/galeras', async (req, res) => {
   try {
-    const [rows] = await pool.query('SELECT * FROM GALERAS ORDER BY nombre');
+    const [rows] = await pool.query(`
+      SELECT g.id_galera, g.nombre, g.ubicacion, g.capacidad, g.estado,
+             l.id_lote, l.fecha_ingreso, l.aves_recibidas, l.aves_activas
+      FROM GALERAS g
+      LEFT JOIN LOTES l ON l.id_galera = g.id_galera AND l.estado = 'activo'
+      ORDER BY g.nombre
+    `);
     res.json(rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   }
 });
 
@@ -85,6 +92,7 @@ router.post('/galeras', soloAdministrador, reglasGalera, validar, async (req, re
         [idGalera, fecha_ingreso, aves_recibidas, aves_recibidas, 'activo']
       );
       idLote = resultLote.insertId;
+      await conexion.query("UPDATE GALERAS SET estado = 'ocupada' WHERE id_galera = ?", [idGalera]);
     }
 
     await conexion.commit();
@@ -94,9 +102,25 @@ router.post('/galeras', soloAdministrador, reglasGalera, validar, async (req, re
     if (error.code === 'ER_DUP_ENTRY') {
       return res.status(409).json({ error: 'Ya existe una galera con ese nombre' });
     }
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   } finally {
     conexion.release();
+  }
+});
+
+// Reactiva una galera que estaba en desinfección, dejándola disponible para un nuevo lote.
+router.put('/galeras/:id/reactivar', soloAdministrador, async (req, res) => {
+  try {
+    const [result] = await pool.query(
+      "UPDATE GALERAS SET estado = 'disponible' WHERE id_galera = ? AND estado = 'desinfeccion'",
+      [req.params.id]
+    );
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Galera no encontrada o no estaba en desinfección' });
+    }
+    res.json({ mensaje: 'Galera reactivada, ya está disponible para un nuevo lote' });
+  } catch (error) {
+    manejarError(res, error);
   }
 });
 
@@ -113,36 +137,63 @@ router.get('/lotes', async (req, res) => {
     `);
     res.json(rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   }
 });
 
 router.post('/lotes', soloAdministrador, reglasLote, validar, async (req, res) => {
+  const conexion = await pool.getConnection();
   try {
     const { id_galera, fecha_ingreso, aves_recibidas } = req.body;
 
-    const [result] = await pool.query(
+    const [galeraRows] = await conexion.query('SELECT estado FROM GALERAS WHERE id_galera = ?', [id_galera]);
+    if (galeraRows.length === 0) {
+      return res.status(404).json({ error: 'Galera no encontrada' });
+    }
+    if (galeraRows[0].estado !== 'disponible') {
+      return res.status(400).json({ error: 'Esta galera no está disponible (ocupada o en desinfección)' });
+    }
+
+    await conexion.beginTransaction();
+    const [result] = await conexion.query(
       'INSERT INTO LOTES (id_galera, fecha_ingreso, aves_recibidas, aves_activas, estado) VALUES (?, ?, ?, ?, ?)',
       [id_galera, fecha_ingreso, aves_recibidas, aves_recibidas, 'activo']
     );
+    await conexion.query("UPDATE GALERAS SET estado = 'ocupada' WHERE id_galera = ?", [id_galera]);
+    await conexion.commit();
+
     res.status(201).json({ id_lote: result.insertId });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    await conexion.rollback();
+    manejarError(res, error);
+  } finally {
+    conexion.release();
   }
 });
 
+// Finaliza un lote y decide en qué queda la galera: lista para un lote nuevo de inmediato,
+// o en desinfección hasta que el administrador la reactive manualmente.
 router.put('/lotes/:id/finalizar', soloAdministrador, async (req, res) => {
+  const conexion = await pool.getConnection();
   try {
-    const [result] = await pool.query(
-      "UPDATE LOTES SET estado = 'finalizado' WHERE id_lote = ? AND estado = 'activo'",
-      [req.params.id]
-    );
-    if (result.affectedRows === 0) {
+    const siguienteEstado = req.body.siguiente_estado === 'disponible' ? 'disponible' : 'desinfeccion';
+
+    const [loteRows] = await conexion.query('SELECT id_galera FROM LOTES WHERE id_lote = ? AND estado = "activo"', [req.params.id]);
+    if (loteRows.length === 0) {
       return res.status(404).json({ error: 'Lote no encontrado o ya estaba finalizado' });
     }
+
+    await conexion.beginTransaction();
+    await conexion.query("UPDATE LOTES SET estado = 'finalizado' WHERE id_lote = ?", [req.params.id]);
+    await conexion.query('UPDATE GALERAS SET estado = ? WHERE id_galera = ?', [siguienteEstado, loteRows[0].id_galera]);
+    await conexion.commit();
+
     res.json({ mensaje: 'Lote finalizado correctamente' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    await conexion.rollback();
+    manejarError(res, error);
+  } finally {
+    conexion.release();
   }
 });
 
@@ -161,7 +212,7 @@ router.get('/postura', async (req, res) => {
     `);
     res.json(rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   }
 });
 
@@ -185,7 +236,7 @@ router.post('/postura', reglasPostura, validar, async (req, res) => {
     );
     res.status(201).json({ mensaje: 'Postura registrada correctamente' });
   } catch (error) {
-    res.status(400).json({ error: error.sqlMessage || error.message });
+    manejarError(res, error);
   }
 });
 
@@ -203,7 +254,7 @@ router.get('/mortalidad', async (req, res) => {
     `);
     res.json(rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   }
 });
 
@@ -217,7 +268,7 @@ router.post('/mortalidad', reglasMortalidad, validar, async (req, res) => {
     );
     res.status(201).json({ mensaje: 'Mortalidad registrada correctamente' });
   } catch (error) {
-    res.status(400).json({ error: error.sqlMessage || error.message });
+    manejarError(res, error);
   }
 });
 

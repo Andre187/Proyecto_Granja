@@ -3,6 +3,7 @@ const { body } = require('express-validator');
 const pool = require('../db');
 const { verificarToken, soloAdministrador } = require('../middleware/auth.middleware');
 const { validar } = require('../middleware/validacion.middleware');
+const { manejarError } = require('../utils/manejarError');
 
 const router = express.Router();
 
@@ -60,13 +61,13 @@ router.get('/', async (req, res) => {
     );
 
     const [totalRows] = await pool.query(
-      'SELECT COALESCE(SUM(monto),0) AS total FROM GASTOS WHERE fecha BETWEEN ? AND ?',
+      "SELECT COALESCE(SUM(monto),0) AS total FROM GASTOS WHERE fecha BETWEEN ? AND ? AND estado != 'anulado'",
       [desde, hasta]
     );
 
     const [porCategoria] = await pool.query(
       `SELECT categoria, COALESCE(SUM(monto),0) AS total, COUNT(*) AS cantidad
-       FROM GASTOS WHERE fecha BETWEEN ? AND ?
+       FROM GASTOS WHERE fecha BETWEEN ? AND ? AND estado != 'anulado'
        GROUP BY categoria ORDER BY total DESC`,
       [desde, hasta]
     );
@@ -79,7 +80,7 @@ router.get('/', async (req, res) => {
       por_categoria: porCategoria,
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   }
 });
 
@@ -92,7 +93,7 @@ router.post('/', reglasGasto, validar, async (req, res) => {
     );
     res.status(201).json({ mensaje: 'Gasto registrado correctamente' });
   } catch (error) {
-    res.status(400).json({ error: error.sqlMessage || error.message });
+    manejarError(res, error);
   }
 });
 
@@ -100,24 +101,32 @@ router.put('/:id', reglasGasto, validar, async (req, res) => {
   try {
     const { fecha, descripcion, categoria, monto } = req.body;
     const [result] = await pool.query(
-      'UPDATE GASTOS SET fecha = ?, descripcion = ?, categoria = ?, monto = ? WHERE id_gasto = ?',
+      "UPDATE GASTOS SET fecha = ?, descripcion = ?, categoria = ?, monto = ? WHERE id_gasto = ? AND estado != 'anulado'",
       [fecha, descripcion, categoria, monto, req.params.id]
     );
     if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Gasto no encontrado' });
+      return res.status(404).json({ error: 'Gasto no encontrado, o ya está anulado y no se puede editar' });
     }
     res.json({ mensaje: 'Gasto actualizado correctamente' });
   } catch (error) {
-    res.status(400).json({ error: error.sqlMessage || error.message });
+    manejarError(res, error);
   }
 });
 
-router.delete('/:id', async (req, res) => {
+// Anula un gasto en vez de borrarlo -- el registro se conserva para auditoría,
+// igual que las ventas, solo se excluye de los totales.
+router.put('/:id/anular', async (req, res) => {
   try {
-    await pool.query('DELETE FROM GASTOS WHERE id_gasto = ?', [req.params.id]);
-    res.json({ mensaje: 'Gasto eliminado correctamente' });
+    const [result] = await pool.query(
+      "UPDATE GASTOS SET estado = 'anulado' WHERE id_gasto = ? AND estado != 'anulado'",
+      [req.params.id]
+    );
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Gasto no encontrado o ya estaba anulado' });
+    }
+    res.json({ mensaje: 'Gasto anulado correctamente' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   }
 });
 

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../api/api';
+import SelectorRangoFechas from '../components/SelectorRangoFechas';
 
 const hoy = () => {
   const d = new Date();
@@ -27,7 +28,6 @@ function Gastos() {
   const [porCategoria, setPorCategoria] = useState([]);
 
   const [periodo, setPeriodo] = useState('hoy');
-  const [mostrarPersonalizado, setMostrarPersonalizado] = useState(false);
   const [fechaDesde, setFechaDesde] = useState('');
   const [fechaHasta, setFechaHasta] = useState('');
 
@@ -53,13 +53,14 @@ function Gastos() {
     }
   };
 
-  const cargarPersonalizado = async () => {
-    if (!fechaDesde || !fechaHasta) return;
+  const cargarPersonalizado = async (desde, hasta) => {
     try {
-      const respuesta = await api.get(`/gastos?desde=${fechaDesde}&hasta=${fechaHasta}`);
+      const respuesta = await api.get(`/gastos?desde=${desde}&hasta=${hasta}`);
       setGastos(respuesta.data.gastos);
       setTotal(respuesta.data.total);
       setPorCategoria(respuesta.data.por_categoria);
+      setFechaDesde(desde);
+      setFechaHasta(hasta);
       setPeriodo('personalizado');
     } catch (err) {
       console.error(err);
@@ -115,14 +116,16 @@ function Gastos() {
     }
   };
 
-  const handleEliminar = async (id) => {
-    if (!window.confirm('¿Eliminar este gasto? Esta acción no se puede deshacer.')) return;
+  const [gastoAAnular, setGastoAAnular] = useState(null);
+
+  const confirmarAnular = async () => {
     try {
-      await api.delete(`/gastos/${id}`);
-      mostrarMensaje('Gasto eliminado');
+      await api.put(`/gastos/${gastoAAnular.id_gasto}/anular`);
+      mostrarMensaje('Gasto anulado correctamente');
+      setGastoAAnular(null);
       cargar(periodo === 'personalizado' ? 'mes' : periodo);
     } catch (err) {
-      mostrarError(err.response?.data?.error || 'No se pudo eliminar el gasto');
+      mostrarError(err.response?.data?.error || 'No se pudo anular el gasto');
     }
   };
 
@@ -137,25 +140,18 @@ function Gastos() {
       {mensaje && <p style={{ color: 'var(--green)', fontSize: '13px', marginBottom: '14px' }}>{mensaje}</p>}
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '10px', marginBottom: '18px', flexWrap: 'wrap' }}>
-        {mostrarPersonalizado && (
-          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-            <input type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)}
-              style={{ fontSize: '12px', padding: '6px 8px', border: '1px solid var(--line)', borderRadius: '6px', background: '#F5F1E6', colorScheme: 'light' }} />
-            <span style={{ fontSize: '12px', color: 'var(--ink-soft)' }}>a</span>
-            <input type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)}
-              style={{ fontSize: '12px', padding: '6px 8px', border: '1px solid var(--line)', borderRadius: '6px', background: '#F5F1E6', colorScheme: 'light' }} />
-            <button className="btn" style={{ padding: '6px 14px', fontSize: '12px' }} onClick={cargarPersonalizado}>Ver</button>
-          </div>
-        )}
         <div className="period-tabs">
           {['hoy', 'semana', 'mes'].map((p) => (
-            <button key={p} className={periodo === p ? 'active' : ''} onClick={() => { setPeriodo(p); setMostrarPersonalizado(false); }}>
+            <button key={p} className={periodo === p ? 'active' : ''} onClick={() => { setPeriodo(p); setFechaDesde(''); setFechaHasta(''); }}>
               {LABELS[p]}
             </button>
           ))}
-          <button className={periodo === 'personalizado' ? 'active' : ''} onClick={() => setMostrarPersonalizado(!mostrarPersonalizado)}>
-            Personalizado
-          </button>
+          <SelectorRangoFechas
+            desde={fechaDesde}
+            hasta={fechaHasta}
+            activo={periodo === 'personalizado'}
+            onAplicar={cargarPersonalizado}
+          />
         </div>
       </div>
 
@@ -189,7 +185,7 @@ function Gastos() {
             <label>Monto (Q)</label>
             <input type="number" step="0.01" value={form.monto} onChange={(e) => setForm({ ...form, monto: e.target.value })} required style={estiloClaro} />
           </div>
-          <button type="submit" className="btn gold">Registrar gasto</button>
+          <button type="submit" className="btn">Registrar gasto</button>
         </form>
       </section>
 
@@ -239,7 +235,7 @@ function Gastos() {
           <div className="table-wrap">
             <table>
               <thead>
-                <tr><th>Fecha</th><th>Descripción</th><th>Categoría</th><th>Monto</th><th>Acciones</th></tr>
+                <tr><th>Fecha</th><th>Descripción</th><th>Categoría</th><th>Monto</th><th>Estado</th><th>Acciones</th></tr>
               </thead>
               <tbody>
                 {gastosFiltrados.map((g) => (
@@ -265,6 +261,7 @@ function Gastos() {
                         <input type="number" step="0.01" value={formEdicion.monto} onChange={(e) => setFormEdicion({ ...formEdicion, monto: e.target.value })}
                           style={{ ...estiloClaro, width: '90px', fontSize: '12px', padding: '5px 8px', border: '1px solid var(--line)', borderRadius: '6px' }} />
                       </td>
+                      <td><span className="tag ok">activo</span></td>
                       <td>
                         <div style={{ display: 'flex', gap: '8px' }}>
                           <button className="btn" style={{ padding: '5px 10px', fontSize: '11px' }} onClick={() => guardarEdicion(g.id_gasto)}>Guardar</button>
@@ -278,26 +275,31 @@ function Gastos() {
                       </td>
                     </tr>
                   ) : (
-                    <tr key={g.id_gasto}>
+                    <tr key={g.id_gasto} style={{ opacity: g.estado === 'anulado' ? 0.6 : 1 }}>
                       <td data-label="Fecha">{g.fecha?.slice(0, 10)}</td>
                       <td data-label="Descripción">{g.descripcion}</td>
                       <td data-label="Categoría"><span className="tag pend">{etiquetaCategoria(g.categoria)}</span></td>
                       <td data-label="Monto">{q(g.monto)}</td>
+                      <td data-label="Estado">
+                        <span className={`tag ${g.estado === 'anulado' ? 'low' : 'ok'}`}>{g.estado === 'anulado' ? 'anulado' : 'activo'}</span>
+                      </td>
                       <td data-label="Acciones">
-                        <div style={{ display: 'flex', gap: '10px' }}>
-                          <button
-                            style={{ background: 'transparent', border: 'none', fontSize: '12px', color: 'var(--navy)', textDecoration: 'underline', padding: 0 }}
-                            onClick={() => iniciarEdicion(g)}
-                          >
-                            Editar
-                          </button>
-                          <button
-                            style={{ background: 'transparent', border: 'none', fontSize: '12px', color: 'var(--red)', textDecoration: 'underline', padding: 0 }}
-                            onClick={() => handleEliminar(g.id_gasto)}
-                          >
-                            Eliminar
-                          </button>
-                        </div>
+                        {g.estado !== 'anulado' && (
+                          <div style={{ display: 'flex', gap: '10px' }}>
+                            <button
+                              style={{ background: 'transparent', border: 'none', fontSize: '12px', color: 'var(--navy)', textDecoration: 'underline', padding: 0 }}
+                              onClick={() => iniciarEdicion(g)}
+                            >
+                              Editar
+                            </button>
+                            <button
+                              style={{ background: 'transparent', border: 'none', fontSize: '12px', color: 'var(--red)', textDecoration: 'underline', padding: 0 }}
+                              onClick={() => setGastoAAnular(g)}
+                            >
+                              Anular
+                            </button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   )
@@ -307,6 +309,33 @@ function Gastos() {
           </div>
         )}
       </section>
+
+      {gastoAAnular && (
+        <div className="modal-overlay" onClick={() => setGastoAAnular(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 8v5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+                <path d="M12 16.5h.01" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
+                <path d="M10.3 3.9 2.6 17.3c-.6 1 .1 2.2 1.3 2.2h16.2c1.2 0 1.9-1.2 1.3-2.2L13.7 3.9c-.6-1-2-1-2.6 0Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+              </svg>
+            </div>
+            <h3 className="modal-title">Anular gasto</h3>
+            <p className="modal-text">
+              Vas a anular el gasto de <b>{q(gastoAAnular.monto)}</b> ({gastoAAnular.descripcion}). Se conserva en el
+              historial pero deja de contar en los totales. Esta acción no se puede deshacer.
+            </p>
+            <div className="modal-actions">
+              <button type="button" className="btn outline" onClick={() => setGastoAAnular(null)}>
+                Cancelar
+              </button>
+              <button type="button" className="btn danger" onClick={confirmarAnular}>
+                Anular
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

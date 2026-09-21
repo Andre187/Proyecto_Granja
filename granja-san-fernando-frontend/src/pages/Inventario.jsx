@@ -271,7 +271,7 @@ function Inventario({ usuario }) {
                       <input type="date" value={formConsumoConcentrado.fecha} onChange={(e) => setFormConsumoConcentrado({ ...formConsumoConcentrado, fecha: e.target.value })} required style={estiloClaro} />
                     </div>
                   </div>
-                  <button type="submit" className="btn" style={{ background: 'var(--green)' }}>Registrar consumo</button>
+                  <button type="submit" className="btn">Registrar consumo</button>
                 </form>
               )}
             </section>
@@ -296,7 +296,7 @@ function Inventario({ usuario }) {
                     <label>Costo por quintal (Q)</label>
                     <input type="number" step="0.01" value={formConcentrado.costo_unitario} onChange={(e) => setFormConcentrado({ ...formConcentrado, costo_unitario: e.target.value })} required style={estiloClaro} />
                   </div>
-                  <button type="submit" className="btn gold">Registrar compra</button>
+                  <button type="submit" className="btn">Registrar compra</button>
                 </form>
               </section>
             )}
@@ -443,7 +443,7 @@ function Inventario({ usuario }) {
                       <input type="date" value={formSalidaMed.fecha} onChange={(e) => setFormSalidaMed({ ...formSalidaMed, fecha: e.target.value })} required style={estiloClaro} />
                     </div>
                   </div>
-                  <button type="submit" className="btn" style={{ background: 'var(--green)' }}>Registrar salida</button>
+                  <button type="submit" className="btn">Registrar salida</button>
                 </form>
               )}
             </section>
@@ -510,7 +510,7 @@ function Inventario({ usuario }) {
                       <label>Fecha</label>
                       <input type="date" value={formMovimientoAdmin.fecha} onChange={(e) => setFormMovimientoAdmin({ ...formMovimientoAdmin, fecha: e.target.value })} required style={estiloClaro} />
                     </div>
-                    <button type="submit" className="btn" style={{ background: 'var(--navy)' }}>Registrar movimiento</button>
+                    <button type="submit" className="btn">Registrar movimiento</button>
                   </form>
                 )}
               </section>

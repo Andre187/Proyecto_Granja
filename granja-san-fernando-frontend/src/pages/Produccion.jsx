@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../api/api';
 
 const hoy = () => {
@@ -12,19 +13,12 @@ const hoy = () => {
 function Produccion({ usuario }) {
   const esAdmin = usuario.rol === 'administrador' || usuario.rol === 'superadministrador';
 
-  const [galeras, setGaleras] = useState([]);
   const [lotes, setLotes] = useState([]);
   const [postura, setPostura] = useState([]);
   const [mortalidad, setMortalidad] = useState([]);
 
   const [error, setError] = useState('');
   const [mensaje, setMensaje] = useState('');
-
-  const [mostrarNuevaGalera, setMostrarNuevaGalera] = useState(false);
-  const [nuevaGalera, setNuevaGalera] = useState({ nombre: '', ubicacion: '', capacidad: '', fecha_ingreso: hoy(), aves_recibidas: '' });
-
-  const [mostrarNuevoLote, setMostrarNuevoLote] = useState(false);
-  const [nuevoLote, setNuevoLote] = useState({ id_galera: '', fecha_ingreso: hoy(), aves_recibidas: '' });
 
   const [formPostura, setFormPostura] = useState({ id_lote: '', fecha: hoy(), cantidad_huevos: '' });
   const [formMortalidad, setFormMortalidad] = useState({ id_lote: '', fecha: hoy(), cantidad: '', causa: '' });
@@ -39,14 +33,12 @@ function Produccion({ usuario }) {
 
   const cargarTodo = async () => {
     try {
-      const [rGaleras, rLotes, rPostura, rMortalidad, rClasificaciones] = await Promise.all([
-        api.get('/produccion/galeras'),
+      const [rLotes, rPostura, rMortalidad, rClasificaciones] = await Promise.all([
         api.get('/produccion/lotes'),
         api.get('/produccion/postura'),
         api.get('/produccion/mortalidad'),
         api.get('/ventas/clasificaciones'),
       ]);
-      setGaleras(rGaleras.data);
       setLotes(rLotes.data);
       setPostura(rPostura.data);
       setMortalidad(rMortalidad.data);
@@ -77,62 +69,19 @@ function Produccion({ usuario }) {
   const lotesActivos = lotes.filter((l) => l.estado === 'activo');
 
   useEffect(() => {
-    if (lotes.length === 0) return;
-    if (!loteSeleccionado || !lotes.some((l) => l.id_lote === loteSeleccionado)) {
+    if (lotesActivos.length === 0) return;
+    if (!loteSeleccionado || !lotesActivos.some((l) => l.id_lote === loteSeleccionado)) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setLoteSeleccionado(lotes[0].id_lote);
+      setLoteSeleccionado(lotesActivos[0].id_lote);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lotes, loteSeleccionado]);
 
-  const lote = lotes.find((l) => l.id_lote === loteSeleccionado) || null;
+  const lote = lotesActivos.find((l) => l.id_lote === loteSeleccionado) || null;
   const posturaDelLote = lote ? postura.filter((p) => p.id_lote === lote.id_lote) : [];
   const mortalidadDelLote = lote ? mortalidad.filter((m) => m.id_lote === lote.id_lote) : [];
   const ultimaPostura = posturaDelLote[0] || null;
   const ultimaMortalidad = mortalidadDelLote[0] || null;
-
-  const handleCrearGalera = async (e) => {
-    e.preventDefault();
-    try {
-      await api.post('/produccion/galeras', {
-        ...nuevaGalera,
-        capacidad: parseInt(nuevaGalera.capacidad),
-        aves_recibidas: nuevaGalera.aves_recibidas ? parseInt(nuevaGalera.aves_recibidas) : null,
-      });
-      setNuevaGalera({ nombre: '', ubicacion: '', capacidad: '', fecha_ingreso: hoy(), aves_recibidas: '' });
-      setMostrarNuevaGalera(false);
-      mostrarMensaje('Galera y lote creados correctamente');
-      cargarTodo();
-    } catch (err) {
-      mostrarError(err.response?.data?.error || 'No se pudo crear la galera');
-    }
-  };
-
-  const handleCrearLote = async (e) => {
-    e.preventDefault();
-    try {
-      await api.post('/produccion/lotes', {
-        ...nuevoLote,
-        aves_recibidas: parseInt(nuevoLote.aves_recibidas),
-      });
-      setNuevoLote({ id_galera: '', fecha_ingreso: hoy(), aves_recibidas: '' });
-      setMostrarNuevoLote(false);
-      mostrarMensaje('Lote creado correctamente');
-      cargarTodo();
-    } catch (err) {
-      mostrarError(err.response?.data?.error || 'No se pudo crear el lote');
-    }
-  };
-
-  const handleFinalizarLote = async (id_lote, nombreGalera) => {
-    if (!window.confirm(`¿Finalizar el lote de ${nombreGalera}? Ya no podrás registrar postura ni mortalidad en él, pero su historial se conserva.`)) return;
-    try {
-      await api.put(`/produccion/lotes/${id_lote}/finalizar`);
-      mostrarMensaje('Lote finalizado correctamente');
-      cargarTodo();
-    } catch (err) {
-      mostrarError(err.response?.data?.error || 'No se pudo finalizar el lote');
-    }
-  };
 
   const handleRegistrarPostura = async (e) => {
     e.preventDefault();
@@ -208,93 +157,45 @@ function Produccion({ usuario }) {
       {error && <p style={{ color: 'var(--red)', fontSize: '13px', marginBottom: '14px' }}>{error}</p>}
       {mensaje && <p style={{ color: 'var(--green)', fontSize: '13px', marginBottom: '14px' }}>{mensaje}</p>}
 
-      {/* ---- Lotes activos: solo administrador ---- */}
+      {/* ---- Lotes activos: solo administrador, solo lectura/selección ---- */}
       {esAdmin && (
         <section className="card">
           <div className="head">
             <h2>Lotes activos</h2>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button className="btn" style={{ background: 'transparent', color: 'var(--navy)', border: '1px solid var(--line)' }}
-                onClick={() => setMostrarNuevaGalera(!mostrarNuevaGalera)}>
-                + Galera
-              </button>
-              <button className="btn gold" onClick={() => setMostrarNuevoLote(!mostrarNuevoLote)}>
-                + Lote
-              </button>
-            </div>
+            {esAdmin && (
+              <Link
+                to="/galeras"
+                className="btn"
+                style={{ background: 'transparent', color: 'var(--navy)', border: '1px solid var(--line)', textDecoration: 'none' }}
+              >
+                Gestionar galeras →
+              </Link>
+            )}
           </div>
 
-          {mostrarNuevaGalera && (
-            <form onSubmit={handleCrearGalera} style={{ marginBottom: '16px' }}>
-              <p style={{ fontSize: '11.5px', color: 'var(--ink-soft)', marginBottom: '10px' }}>
-                Crea la galera y, si ya te llegaron las aves, registra su primer lote en el mismo paso.
-              </p>
-              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: '10px' }}>
-                <div className="field">
-                  <label>Nombre de galera</label>
-                  <input value={nuevaGalera.nombre} onChange={(e) => setNuevaGalera({ ...nuevaGalera, nombre: e.target.value })} required />
-                </div>
-                <div className="field">
-                  <label>Ubicación</label>
-                  <input value={nuevaGalera.ubicacion} onChange={(e) => setNuevaGalera({ ...nuevaGalera, ubicacion: e.target.value })} />
-                </div>
-                <div className="field">
-                  <label>Capacidad</label>
-                  <input type="number" value={nuevaGalera.capacidad} onChange={(e) => setNuevaGalera({ ...nuevaGalera, capacidad: e.target.value })} required />
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'flex-end', background: 'var(--cream)', padding: '12px', borderRadius: '8px', border: '1px solid var(--line)' }}>
-                <div className="field">
-                  <label>Fecha de ingreso del primer lote (opcional)</label>
-                  <input type="date" value={nuevaGalera.fecha_ingreso} onChange={(e) => setNuevaGalera({ ...nuevaGalera, fecha_ingreso: e.target.value })} />
-                </div>
-                <div className="field">
-                  <label>Aves recibidas (opcional)</label>
-                  <input type="number" value={nuevaGalera.aves_recibidas} onChange={(e) => setNuevaGalera({ ...nuevaGalera, aves_recibidas: e.target.value })} placeholder="ej. 500" />
-                </div>
-                <button type="submit" className="btn">Guardar</button>
-              </div>
-            </form>
-          )}
-
-          {mostrarNuevoLote && (
-            <form onSubmit={handleCrearLote} style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-              <div className="field">
-                <label>Galera</label>
-                <select value={nuevoLote.id_galera} onChange={(e) => setNuevoLote({ ...nuevoLote, id_galera: e.target.value })} required>
-                  <option value="">Selecciona...</option>
-                  {galeras.map((g) => (
-                    <option key={g.id_galera} value={g.id_galera}>{g.nombre}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="field">
-                <label>Fecha de ingreso</label>
-                <input type="date" value={nuevoLote.fecha_ingreso} onChange={(e) => setNuevoLote({ ...nuevoLote, fecha_ingreso: e.target.value })} required />
-              </div>
-              <div className="field">
-                <label>Aves recibidas</label>
-                <input type="number" value={nuevoLote.aves_recibidas} onChange={(e) => setNuevoLote({ ...nuevoLote, aves_recibidas: e.target.value })} required />
-              </div>
-              <button type="submit" className="btn">Guardar lote</button>
-            </form>
-          )}
-
-          {lotes.length === 0 ? (
-            <p style={{ fontSize: '13px', color: 'var(--ink-soft)' }}>Aún no hay lotes registrados. Crea primero una galera y luego un lote.</p>
+          {lotesActivos.length === 0 ? (
+            <p style={{ fontSize: '13px', color: 'var(--ink-soft)' }}>
+              No hay galeras activas en este momento. Ve al módulo de <Link to="/galeras">Galeras</Link> para habilitar una.
+            </p>
           ) : (
             <>
               <div className="lote-cards">
-                {lotes.map((l) => (
+                {lotesActivos.map((l) => (
                   <button
                     key={l.id_lote}
                     className={`lote-card ${loteSeleccionado === l.id_lote ? 'selected' : ''}`}
                     onClick={() => setLoteSeleccionado(l.id_lote)}
                   >
-                    <div className="lc-icon">🐔</div>
+                    <div className="lc-icon">
+                      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <path d="M3.5 11 12 4l8.5 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                        <path d="M5.5 9.8V19a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V9.8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                        <path d="M9.5 20v-4.5a2.5 2.5 0 0 1 5 0V20" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </div>
                     <div className="lc-name">{l.galera_nombre}</div>
                     <div className="lc-meta">{l.aves_activas} / {l.aves_recibidas} aves</div>
-                    <span className={`tag lc-tag ${l.estado === 'activo' ? 'ok' : 'low'}`}>{l.estado}</span>
+                    <span className="tag lc-tag ok">activo</span>
                   </button>
                 ))}
               </div>
@@ -327,27 +228,6 @@ function Produccion({ usuario }) {
                       <div className="delta warn">{ultimaMortalidad ? ultimaMortalidad.fecha?.slice(0, 10) : 'Sin registros'}</div>
                     </div>
                   </div>
-                  {lote.estado === 'finalizado' ? (
-                    <div className="alert">
-                      <div className="a-mark">✕</div>
-                      <div>
-                        <div className="a-title">Este lote ya fue finalizado</div>
-                        <div className="a-sub">
-                          No se pueden registrar más datos de postura ni mortalidad para {lote.galera_nombre}. Su historial se conserva únicamente para consulta.
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    esAdmin && (
-                      <button
-                        className="btn"
-                        style={{ background: 'transparent', color: 'var(--red)', border: '1px solid var(--red-light)', marginTop: '4px' }}
-                        onClick={() => handleFinalizarLote(lote.id_lote, lote.galera_nombre)}
-                      >
-                        Finalizar este lote
-                      </button>
-                    )
-                  )}
                 </div>
               )}
             </>
@@ -358,7 +238,7 @@ function Produccion({ usuario }) {
       {!esAdmin && lotesActivos.length === 0 && (
         <section className="card">
           <p style={{ fontSize: '13px', color: 'var(--ink-soft)' }}>
-            Aún no hay lotes activos disponibles. Pide al administrador que registre una galera y un lote primero.
+            Aún no hay galeras activas disponibles. Pide al administrador que habilite una en el módulo de Galeras.
           </p>
         </section>
       )}
@@ -385,7 +265,7 @@ function Produccion({ usuario }) {
               <label>Cantidad de huevos</label>
               <input type="number" value={formPostura.cantidad_huevos} onChange={(e) => setFormPostura({ ...formPostura, cantidad_huevos: e.target.value })} required />
             </div>
-            <button type="submit" className="btn gold">Registrar postura</button>
+            <button type="submit" className="btn">Registrar postura</button>
           </form>
         </section>
 
@@ -413,7 +293,7 @@ function Produccion({ usuario }) {
               <label>Causa (opcional)</label>
               <input value={formMortalidad.causa} onChange={(e) => setFormMortalidad({ ...formMortalidad, causa: e.target.value })} />
             </div>
-            <button type="submit" className="btn" style={{ background: 'var(--red)' }}>Registrar mortalidad</button>
+            <button type="submit" className="btn">Registrar mortalidad</button>
           </form>
         </section>
       </div>
@@ -469,7 +349,7 @@ function Produccion({ usuario }) {
             </button>
           </div>
           <div>
-            <button type="submit" className="btn" style={{ background: 'var(--green)' }}>Registrar clasificación</button>
+            <button type="submit" className="btn">Registrar clasificación</button>
           </div>
         </form>
       </section>
@@ -536,6 +416,7 @@ function Produccion({ usuario }) {
           </section>
         </div>
       )}
+
     </>
   );
 }

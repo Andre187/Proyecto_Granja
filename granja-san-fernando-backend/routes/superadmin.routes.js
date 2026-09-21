@@ -2,6 +2,8 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const pool = require('../db');
 const { verificarToken, soloSuperAdmin } = require('../middleware/auth.middleware');
+const { manejarError } = require('../utils/manejarError');
+const { esContrasenaSegura, MENSAJE_CONTRASENA_SEGURA } = require('../utils/contrasenaSegura');
 
 const router = express.Router();
 
@@ -11,14 +13,14 @@ router.use(verificarToken, soloSuperAdmin);
 router.get('/usuarios', async (req, res) => {
   try {
     const [rows] = await pool.query(`
-      SELECT u.id_usuario, u.usuario, u.rol, u.activo, u.id_trabajador, t.nombre AS trabajador_nombre
+      SELECT u.id_usuario, u.usuario, u.nombre, u.apellido, u.rol, u.activo, u.id_trabajador, t.nombre AS trabajador_nombre
       FROM USUARIOS u
       LEFT JOIN TRABAJADORES t ON t.id_trabajador = u.id_trabajador
       ORDER BY FIELD(u.rol, 'superadministrador', 'administrador', 'operador'), u.usuario
     `);
     res.json(rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   }
 });
 
@@ -33,7 +35,7 @@ router.put('/usuarios/:id/desactivar', async (req, res) => {
     await pool.query('UPDATE USUARIOS SET activo = 0 WHERE id_usuario = ?', [req.params.id]);
     res.json({ mensaje: 'Usuario desactivado correctamente' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   }
 });
 
@@ -42,7 +44,7 @@ router.put('/usuarios/:id/reactivar', async (req, res) => {
     await pool.query('UPDATE USUARIOS SET activo = 1 WHERE id_usuario = ?', [req.params.id]);
     res.json({ mensaje: 'Usuario reactivado correctamente' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   }
 });
 
@@ -50,14 +52,14 @@ router.put('/usuarios/:id/reactivar', async (req, res) => {
 router.put('/usuarios/:id/password', async (req, res) => {
   try {
     const { contrasena } = req.body;
-    if (!contrasena || contrasena.length < 6) {
-      return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
+    if (!esContrasenaSegura(contrasena)) {
+      return res.status(400).json({ error: MENSAJE_CONTRASENA_SEGURA });
     }
     const hash = await bcrypt.hash(contrasena, 10);
     await pool.query('UPDATE USUARIOS SET contrasena = ? WHERE id_usuario = ?', [hash, req.params.id]);
     res.json({ mensaje: 'Contraseña actualizada correctamente' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   }
 });
 
@@ -74,7 +76,7 @@ router.put('/usuarios/:id/rol', async (req, res) => {
     await pool.query('UPDATE USUARIOS SET rol = ? WHERE id_usuario = ?', [rol, req.params.id]);
     res.json({ mensaje: 'Rol actualizado correctamente' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   }
 });
 
@@ -86,7 +88,7 @@ router.get('/auditoria', async (req, res) => {
     );
     res.json(rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    manejarError(res, error);
   }
 });
 

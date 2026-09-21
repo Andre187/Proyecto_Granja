@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import api from '../api/api';
+import SelectorRangoFechas from '../components/SelectorRangoFechas';
 
 const LABELS = { hoy: 'Hoy', semana: 'Últimos 7 días', mes: 'Este mes', personalizado: 'Personalizado' };
 
@@ -20,7 +21,6 @@ function Panel({ usuario }) {
   const [cargandoTareas, setCargandoTareas] = useState(true);
   const [clasificaciones, setClasificaciones] = useState([]);
   const [cargandoClasificaciones, setCargandoClasificaciones] = useState(true);
-  const [mostrarPersonalizado, setMostrarPersonalizado] = useState(false);
   const [fechaDesde, setFechaDesde] = useState('');
   const [fechaHasta, setFechaHasta] = useState('');
 
@@ -36,12 +36,13 @@ function Panel({ usuario }) {
     }
   };
 
-  const cargarPersonalizado = async () => {
-    if (!fechaDesde || !fechaHasta) return;
+  const cargarPersonalizado = async (desde, hasta) => {
     try {
       setCargando(true);
-      const respuesta = await api.get(`/reportes/resumen?desde=${fechaDesde}&hasta=${fechaHasta}`);
+      const respuesta = await api.get(`/reportes/resumen?desde=${desde}&hasta=${hasta}`);
       setDatos(respuesta.data);
+      setFechaDesde(desde);
+      setFechaHasta(hasta);
       setPeriodo('personalizado');
     } catch (err) {
       console.error(err);
@@ -100,7 +101,13 @@ function Panel({ usuario }) {
         {cargandoTareas ? (
           <p style={{ fontSize: '13px', color: 'var(--ink-soft)' }}>Cargando...</p>
         ) : misTareas.length === 0 ? (
-          <p style={{ fontSize: '13px', color: 'var(--ink-soft)' }}>¡No tienes tareas pendientes! 🎉</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--ink-soft)' }}>
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="10" cy="10" r="7.5" stroke="var(--green)" strokeWidth="1.6" />
+              <path d="m6.8 10 2.2 2.2 4.2-4.4" stroke="var(--green)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            No tienes tareas pendientes
+          </div>
         ) : (
           <div className="task-list">
             {misTareas.map((t, i) => (
@@ -114,9 +121,14 @@ function Panel({ usuario }) {
                     {t.galera_nombre && (
                       <span style={{
                         marginLeft: '8px', fontSize: '11px', fontWeight: 600, color: 'var(--navy)',
-                        background: 'var(--green-light)', padding: '2px 8px', borderRadius: '999px'
+                        background: 'var(--green-light)', padding: '2px 8px 2px 6px', borderRadius: '999px',
+                        display: 'inline-flex', alignItems: 'center', gap: '3px',
                       }}>
-                        📍 {t.galera_nombre}
+                        <svg width="10" height="10" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M10 18s6-5.7 6-10.5A6 6 0 0 0 4 7.5C4 12.3 10 18 10 18Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+                          <circle cx="10" cy="7.5" r="2" stroke="currentColor" strokeWidth="1.6" />
+                        </svg>
+                        {t.galera_nombre}
                       </span>
                     )}
                   </div>
@@ -143,13 +155,16 @@ function Panel({ usuario }) {
           <p style={{ fontSize: '13px', color: 'var(--ink-soft)' }}>No hay clasificaciones de huevo registradas.</p>
         ) : (
           <div className="egg-stock-grid">
-            {clasificaciones.map((c) => (
-              <div key={c.id_clasificacion} className={`egg-stock-item ${c.existencia_actual > 0 ? '' : 'empty'}`}>
-                <div className="es-nombre">{c.nombre}</div>
-                <div className="es-cantidad">{c.existencia_actual}</div>
-                <div className="es-label">disponibles</div>
-              </div>
-            ))}
+            {clasificaciones.map((c) => {
+              const bajoMinimo = c.nivel_minimo > 0 && c.existencia_actual <= c.nivel_minimo;
+              return (
+                <div key={c.id_clasificacion} className={`egg-stock-item ${bajoMinimo ? 'empty' : ''}`}>
+                  <div className="es-nombre">{c.nombre}</div>
+                  <div className="es-cantidad">{c.existencia_actual}</div>
+                  <div className="es-label">{bajoMinimo ? 'bajo el mínimo' : 'disponibles'}</div>
+                </div>
+              );
+            })}
           </div>
         )}
       </section>
@@ -160,25 +175,18 @@ function Panel({ usuario }) {
   return (
     <>
       <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '10px', marginBottom: '18px', flexWrap: 'wrap' }}>
-        {mostrarPersonalizado && (
-          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-            <input type="date" value={fechaDesde} onChange={(e) => setFechaDesde(e.target.value)}
-              style={{ fontSize: '12px', padding: '6px 8px', border: '1px solid var(--line)', borderRadius: '6px', background: '#F5F1E6', colorScheme: 'light' }} />
-            <span style={{ fontSize: '12px', color: 'var(--ink-soft)' }}>a</span>
-            <input type="date" value={fechaHasta} onChange={(e) => setFechaHasta(e.target.value)}
-              style={{ fontSize: '12px', padding: '6px 8px', border: '1px solid var(--line)', borderRadius: '6px', background: '#F5F1E6', colorScheme: 'light' }} />
-            <button className="btn" style={{ padding: '6px 14px', fontSize: '12px' }} onClick={cargarPersonalizado}>Ver</button>
-          </div>
-        )}
         <div className="period-tabs">
           {['hoy', 'semana', 'mes'].map((p) => (
-            <button key={p} className={periodo === p ? 'active' : ''} onClick={() => { setPeriodo(p); setMostrarPersonalizado(false); }}>
+            <button key={p} className={periodo === p ? 'active' : ''} onClick={() => { setPeriodo(p); setFechaDesde(''); setFechaHasta(''); }}>
               {LABELS[p]}
             </button>
           ))}
-          <button className={periodo === 'personalizado' ? 'active' : ''} onClick={() => setMostrarPersonalizado(!mostrarPersonalizado)}>
-            Personalizado
-          </button>
+          <SelectorRangoFechas
+            desde={fechaDesde}
+            hasta={fechaHasta}
+            activo={periodo === 'personalizado'}
+            onAplicar={cargarPersonalizado}
+          />
         </div>
       </div>
 
