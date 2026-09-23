@@ -4,6 +4,7 @@ const pool = require('../db');
 const { verificarToken, soloAdministrador } = require('../middleware/auth.middleware');
 const { validar } = require('../middleware/validacion.middleware');
 const { manejarError } = require('../utils/manejarError');
+const { esAdminOSuper } = require('../utils/roles');
 
 const reglasVenta = [
   body('fecha').isISO8601().withMessage('Fecha inválida'),
@@ -105,12 +106,16 @@ router.get('/resumen', soloAdministrador, async (req, res) => {
 
 // ---------- VENTAS ----------
 
+// El operador solo trabaja con cuentas por cobrar: las ventas pagadas o
+// anuladas (saldo 0) quedan reservadas al administrador y superadministrador.
 router.get('/ventas', async (req, res) => {
   try {
+    const filtroOperador = esAdminOSuper(req.usuario.rol) ? '' : 'WHERE v.saldo_pendiente > 0';
     const [rows] = await pool.query(`
       SELECT v.id_venta, v.fecha, c.nombre AS cliente_nombre, v.monto_total, v.saldo_pendiente, v.estado, v.motivo_anulacion
       FROM VENTAS v
       JOIN CLIENTES c ON c.id_cliente = v.id_cliente
+      ${filtroOperador}
       ORDER BY v.fecha DESC, v.id_venta DESC
     `);
     res.json(rows);
@@ -129,7 +134,8 @@ router.get('/ventas/:id', async (req, res) => {
       WHERE v.id_venta = ?
     `, [req.params.id]);
 
-    if (ventaRows.length === 0) {
+    // Para el operador, una venta sin saldo pendiente se trata como inexistente
+    if (ventaRows.length === 0 || (!esAdminOSuper(req.usuario.rol) && Number(ventaRows[0].saldo_pendiente) <= 0)) {
       return res.status(404).json({ error: 'Venta no encontrada' });
     }
 
