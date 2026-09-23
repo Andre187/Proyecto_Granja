@@ -108,7 +108,7 @@ const NAV = [
   { group: 'Administración', to: '/gastos', label: 'Gastos', icon: 'receipt', roles: ['administrador', 'superadministrador'] },
   { group: 'Administración', to: '/reportes', label: 'Reportes', icon: 'trending', roles: ['administrador', 'superadministrador'] },
   { group: 'Administración', to: '/usuarios', label: 'Usuarios', icon: 'user', roles: ['administrador', 'superadministrador'] },
-  { group: 'Emergencia', to: '/superadmin', label: 'Súper Admin', icon: 'shield', roles: ['superadministrador'] },
+  { group: 'Bitácora del Sistema', to: '/superadmin', label: 'Bitácora del Sistema', icon: 'shield', roles: ['superadministrador'] },
 ];
 
 const TITLES = {
@@ -123,7 +123,7 @@ const TITLES = {
   '/gastos': ['Gastos operativos', 'Registro de gastos varios de la granja'],
   '/reportes': ['Reportes', 'Indicadores clave de producción, ventas y costos'],
   '/usuarios': ['Usuarios', 'Administración de cuentas y permisos del sistema'],
-  '/superadmin': ['Súper Admin', 'Gestión total de cuentas y registro de cambios del sistema'],
+  '/superadmin': ['Bitácora del Sistema', 'Gestión total de cuentas y registro de cambios del sistema'],
 };
 
 function Layout({ usuario, onLogout, children }) {
