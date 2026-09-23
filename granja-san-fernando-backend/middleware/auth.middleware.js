@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const pool = require('../db');
+const { esAdminOSuper } = require('../utils/roles');
 
 // Token ausente, inválido o expirado -> siempre 401 (problema de identidad/sesión)
 //
@@ -38,7 +39,7 @@ function verificarToken(req, res, next) {
 // El superadministrador conserva todos los permisos de administrador, y más
 // (esto sí es un problema de permisos, no de sesión -> se queda en 403)
 function soloAdministrador(req, res, next) {
-  if (req.usuario.rol !== 'administrador' && req.usuario.rol !== 'superadministrador') {
+  if (!esAdminOSuper(req.usuario.rol)) {
     return res.status(403).json({ error: 'No tienes permisos para esta acción' });
   }
   next();

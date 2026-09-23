@@ -4,6 +4,7 @@ const pool = require('../db');
 const { verificarToken, soloAdministrador } = require('../middleware/auth.middleware');
 const { validar } = require('../middleware/validacion.middleware');
 const { manejarError } = require('../utils/manejarError');
+const { esAdminOSuper } = require('../utils/roles');
 
 const router = express.Router();
 
@@ -171,7 +172,7 @@ router.post('/movimientos', reglasMovimiento, validar, async (req, res) => {
   try {
     const { id_medicamento, fecha, tipo_movimiento, cantidad } = req.body;
 
-    if (req.usuario.rol !== 'administrador' && tipo_movimiento !== 'salida') {
+    if (!esAdminOSuper(req.usuario.rol) && tipo_movimiento !== 'salida') {
       return res.status(403).json({ error: 'Solo el administrador puede registrar entradas de medicamento' });
     }
 

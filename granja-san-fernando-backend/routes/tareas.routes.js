@@ -4,6 +4,7 @@ const pool = require('../db');
 const { verificarToken, soloAdministrador } = require('../middleware/auth.middleware');
 const { validar } = require('../middleware/validacion.middleware');
 const { manejarError } = require('../utils/manejarError');
+const { esAdminOSuper } = require('../utils/roles');
 
 const router = express.Router();
 
@@ -49,7 +50,7 @@ router.get('/tareas', async (req, res) => {
     `;
     const params = [];
 
-    if (req.usuario.rol !== 'administrador') {
+    if (!esAdminOSuper(req.usuario.rol)) {
       if (!req.usuario.id_trabajador) {
         return res.json([]);
       }
@@ -83,7 +84,7 @@ router.put('/tareas/:id/estado', reglasEstado, validar, async (req, res) => {
   try {
     const { estado } = req.body;
 
-    if (req.usuario.rol !== 'administrador') {
+    if (!esAdminOSuper(req.usuario.rol)) {
       const [rows] = await pool.query('SELECT id_trabajador FROM TAREAS WHERE id_tarea = ?', [req.params.id]);
       if (rows.length === 0) {
         return res.status(404).json({ error: 'Tarea no encontrada' });

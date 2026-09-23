@@ -10,7 +10,7 @@ const estiloClaro = {
 };
 
 function Ventas({ usuario }) {
-  const esAdmin = usuario.rol === 'administrador';
+  const esAdmin = usuario.rol === 'administrador' || usuario.rol === 'superadministrador';
 
   const [resumen, setResumen] = useState(null);
   const [clientes, setClientes] = useState([]);
