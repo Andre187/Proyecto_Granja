@@ -9,6 +9,13 @@ const router = express.Router();
 
 router.use(verificarToken, soloAdministrador);
 
+// Personal eventual (por día) que no necesita cuenta de usuario
+const reglasCrearTrabajador = [
+  body('nombre').trim().notEmpty().withMessage('El nombre es requerido')
+    .isLength({ min: 2, max: 100 }).withMessage('El nombre debe tener entre 2 y 100 caracteres'),
+  body('costo_dia').isFloat({ min: 0.01, max: 10000 }).withMessage('El costo por día debe ser mayor a 0'),
+];
+
 const reglasEditarTrabajador = [
   body('costo_dia').optional().isFloat({ min: 0, max: 10000 }).withMessage('El costo por día debe ser un número válido'),
   body('estado').optional().isIn(['activo', 'inactivo']).withMessage('Estado inválido'),
@@ -37,6 +44,19 @@ router.get('/trabajadores', async (req, res) => {
       ORDER BY t.estado = 'activo' DESC, t.nombre
     `);
     res.json(rows);
+  } catch (error) {
+    manejarError(res, error);
+  }
+});
+
+router.post('/trabajadores', reglasCrearTrabajador, validar, async (req, res) => {
+  try {
+    const { nombre, costo_dia } = req.body;
+    const [result] = await pool.query(
+      'INSERT INTO TRABAJADORES (nombre, costo_dia, estado) VALUES (?, ?, "activo")',
+      [nombre, costo_dia]
+    );
+    res.status(201).json({ id_trabajador: result.insertId, mensaje: 'Trabajador registrado correctamente' });
   } catch (error) {
     manejarError(res, error);
   }
