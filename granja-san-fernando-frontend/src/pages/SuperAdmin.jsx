@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import api from '../api/api';
 
+// Misma regla que utils/contrasenaSegura.js del backend
+const REGEX_CONTRASENA_SEGURA = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/;
+
 const estiloClaro = { background: '#F5F1E6', color: '#232019', colorScheme: 'light' };
 
 function SuperAdmin({ usuario: usuarioActivo }) {
@@ -69,8 +72,8 @@ function SuperAdmin({ usuario: usuarioActivo }) {
   };
 
   const handleGuardarPassword = async () => {
-    if (passwordNueva.length < 8) {
-      mostrarError('La contraseña debe tener al menos 8 caracteres, con letras y números');
+    if (!REGEX_CONTRASENA_SEGURA.test(passwordNueva)) {
+      mostrarError('La contraseña debe tener al menos 8 caracteres, incluyendo al menos una letra y un número');
       return;
     }
     try {
@@ -237,7 +240,7 @@ function SuperAdmin({ usuario: usuarioActivo }) {
                   type="password"
                   value={passwordNueva}
                   onChange={(e) => setPasswordNueva(e.target.value)}
-                  placeholder="mínimo 8 caracteres, letras y números"
+                  placeholder="mínimo 8 caracteres, al menos una letra y un número"
                   style={{ ...estiloClaro, flex: 1, padding: '8px 10px', border: '1px solid var(--line)', borderRadius: '7px', fontSize: '13px' }}
                 />
                 <button type="button" className="btn" style={{ padding: '8px 14px', fontSize: '12px' }} onClick={handleGuardarPassword}>

@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import api from '../api/api';
 
+// Misma regla que utils/contrasenaSegura.js del backend
+const REGEX_CONTRASENA_SEGURA = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/;
+
 function Usuarios({ usuario: usuarioActivo }) {
   const [usuarios, setUsuarios] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -85,8 +88,8 @@ function Usuarios({ usuario: usuarioActivo }) {
   };
 
   const handleGuardarPassword = async () => {
-    if (passwordTemporal.length < 8) {
-      setErrorPassword('La contraseña debe tener al menos 8 caracteres, con letras y números');
+    if (!REGEX_CONTRASENA_SEGURA.test(passwordTemporal)) {
+      setErrorPassword('La contraseña debe tener al menos 8 caracteres, incluyendo al menos una letra y un número');
       return;
     }
     try {
@@ -165,7 +168,7 @@ function Usuarios({ usuario: usuarioActivo }) {
               type="password"
               value={nuevaContrasena}
               onChange={(e) => setNuevaContrasena(e.target.value)}
-              placeholder="mínimo 8 caracteres, letras y números"
+              placeholder="mínimo 8 caracteres, al menos una letra y un número"
               required
             />
           </div>
@@ -278,7 +281,7 @@ function Usuarios({ usuario: usuarioActivo }) {
                 autoFocus
                 value={passwordTemporal}
                 onChange={(e) => setPasswordTemporal(e.target.value)}
-                placeholder="mínimo 8 caracteres, letras y números"
+                placeholder="mínimo 8 caracteres, al menos una letra y un número"
                 onKeyDown={(e) => e.key === 'Enter' && handleGuardarPassword()}
               />
             </div>
