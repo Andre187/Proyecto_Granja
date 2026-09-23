@@ -1,10 +1,8 @@
 import { useState } from 'react';
-import axios from 'axios';
+import api from './api/api';
 import './Login.css';
 import logo from './assets/logo.png';
 import fondoLogin from './assets/fondo_login.png';
-
-const API_URL = 'http://localhost:4000/api';
 
 function Login({ onLoginSuccess }) {
   const [usuario, setUsuario] = useState('');
@@ -18,7 +16,7 @@ function Login({ onLoginSuccess }) {
     setCargando(true);
 
     try {
-      const respuesta = await axios.post(`${API_URL}/auth/login`, {
+      const respuesta = await api.post('/auth/login', {
         usuario,
         contrasena
       });
