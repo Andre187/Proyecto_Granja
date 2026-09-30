@@ -2,7 +2,7 @@ import { useState } from 'react';
 import api from './api/api';
 import './Login.css';
 import logo from './assets/logo.png';
-import fondoLogin from './assets/fondo_login.png';
+import gallina from './assets/gallina_login.webp';
 
 function Login({ onLoginSuccess }) {
   const [usuario, setUsuario] = useState('');
@@ -21,7 +21,6 @@ function Login({ onLoginSuccess }) {
         contrasena
       });
 
-      
       sessionStorage.setItem('token', respuesta.data.token);
       sessionStorage.setItem('usuario', JSON.stringify(respuesta.data.usuario));
 
@@ -38,25 +37,21 @@ function Login({ onLoginSuccess }) {
   };
 
   return (
-    <div className="login-wrapper" style={{ backgroundImage: `url(${fondoLogin})` }}>
-      <div className="login-card" style={{ position: 'relative', zIndex: 1 }}>
+    <div className="login-wrapper">
+      <div className="login-photo" style={{ backgroundImage: `url(${gallina})` }}></div>
+      <div className="login-curve"></div>
 
-        <div className="login-visual">
-          <div className="login-visual-circle">
-            <img src={logo} alt="Granja San Fernando" className="login-logo" />
-          </div>
-          <span className="dot dot-a"></span>
-          <span className="dot dot-b"></span>
-          <span className="triangle"></span>
-        </div>
-
+      <div className="login-panel">
         <div className="login-form-side">
+          <img src={logo} alt="Granja San Fernando" className="login-logo" />
           <h1 className="login-title">Granja San Fernando</h1>
-          <p className="login-subtitle">Sistema de Gestión</p>
 
           <form onSubmit={handleSubmit} autoComplete="off">
             <div className="input-group">
-              <span className="input-icon">👤</span>
+              <svg className="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="8" r="4" />
+                <path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8" />
+              </svg>
               <input
                 type="text"
                 placeholder="Usuario"
@@ -68,7 +63,10 @@ function Login({ onLoginSuccess }) {
             </div>
 
             <div className="input-group">
-              <span className="input-icon">🔒</span>
+              <svg className="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="5" y="11" width="14" height="10" rx="2" />
+                <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+              </svg>
               <input
                 type="password"
                 placeholder="Contraseña"
@@ -79,15 +77,31 @@ function Login({ onLoginSuccess }) {
               />
             </div>
 
-            {error && <p className="login-error">{error}</p>}
-
             <button type="submit" className="login-button" disabled={cargando}>
               {cargando ? 'Ingresando...' : 'Iniciar Sesión'}
             </button>
           </form>
         </div>
-
       </div>
+
+      {error && (
+        <div className="login-modal-overlay" onClick={() => setError('')}>
+          <div
+            className="login-modal"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="login-modal-titulo"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="login-modal-icon">!</div>
+            <h2 id="login-modal-titulo">No se pudo iniciar sesión</h2>
+            <p>{error}</p>
+            <button type="button" className="login-button" autoFocus onClick={() => setError('')}>
+              Intentar de nuevo
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
