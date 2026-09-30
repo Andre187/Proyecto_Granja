@@ -101,21 +101,25 @@ function App() {
     );
   }
 
+  // El backend ya rechaza estas rutas a un operador; aquí solo se evita mostrar la pantalla vacía de errores
+  const esAdmin = usuarioActivo.rol === 'administrador' || usuarioActivo.rol === 'superadministrador';
+  const soloAdmin = (pagina) => (esAdmin ? pagina : <Navigate to="/" replace />);
+
   return (
     <BrowserRouter>
       <Layout usuario={usuarioActivo} onLogout={() => handleLogout('manual')}>
         <Routes>
           <Route path="/" element={<Panel usuario={usuarioActivo} />} />
           <Route path="/produccion" element={<Produccion usuario={usuarioActivo} />} />
-          <Route path="/galeras" element={<Galeras />} />
+          <Route path="/galeras" element={soloAdmin(<Galeras />)} />
           <Route path="/sanidad" element={<Sanidad usuario={usuarioActivo} />} />
           <Route path="/tareas" element={<Tareas usuario={usuarioActivo} />} />
           <Route path="/inventario" element={<Inventario usuario={usuarioActivo} />} />
           <Route path="/ventas" element={<Ventas usuario={usuarioActivo} />} />
-          <Route path="/personal" element={<Personal />} />
-          <Route path="/gastos" element={<Gastos />} />
-          <Route path="/reportes" element={<Reportes />} />
-          <Route path="/usuarios" element={<Usuarios usuario={usuarioActivo} />} />
+          <Route path="/personal" element={soloAdmin(<Personal />)} />
+          <Route path="/gastos" element={soloAdmin(<Gastos />)} />
+          <Route path="/reportes" element={soloAdmin(<Reportes />)} />
+          <Route path="/usuarios" element={soloAdmin(<Usuarios usuario={usuarioActivo} />)} />
           <Route
             path="/superadmin"
             element={usuarioActivo.rol === 'superadministrador' ? <SuperAdmin usuario={usuarioActivo} /> : <Navigate to="/" replace />}

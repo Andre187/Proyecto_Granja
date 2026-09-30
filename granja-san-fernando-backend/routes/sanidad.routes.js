@@ -4,28 +4,22 @@ const pool = require('../db');
 const { verificarToken } = require('../middleware/auth.middleware');
 const { validar } = require('../middleware/validacion.middleware');
 const { manejarError } = require('../utils/manejarError');
+const { fecha, texto } = require('../utils/validadores');
 
 const router = express.Router();
 
 router.use(verificarToken);
 
-const reglasFechaNoFutura = (campo) =>
-  body(campo).isISO8601().withMessage('Fecha inválida').custom((valor) => {
-    if (new Date(valor) > new Date()) throw new Error('La fecha no puede ser futura');
-    return true;
-  });
-
 const reglasVacunacion = [
   body('id_lote').isInt({ min: 1 }).withMessage('Selecciona un lote válido'),
-  reglasFechaNoFutura('fecha'),
-  body('tipo_vacuna').trim().notEmpty().withMessage('El tipo de vacuna es requerido')
-    .isLength({ max: 100 }).withMessage('El tipo de vacuna no puede superar 100 caracteres'),
+  fecha('fecha'),
+  texto('tipo_vacuna', { max: 100, nombre: 'El tipo de vacuna' }),
   body('semana_aplicacion').isInt({ min: 0, max: 200 }).withMessage('La semana de aplicación debe ser un número entero válido'),
 ];
 
 const reglasPeso = [
   body('id_lote').isInt({ min: 1 }).withMessage('Selecciona un lote válido'),
-  reglasFechaNoFutura('fecha'),
+  fecha('fecha'),
   body('semana').isInt({ min: 0, max: 200 }).withMessage('La semana debe ser un número entero válido'),
   body('peso_promedio').isFloat({ min: 0.01, max: 20 }).withMessage('El peso promedio debe ser mayor a 0'),
   body('uniformidad').isFloat({ min: 0, max: 100 }).withMessage('La uniformidad debe estar entre 0 y 100'),

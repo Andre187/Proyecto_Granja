@@ -1,7 +1,13 @@
 import { useState, useEffect } from 'react';
 import api from '../api/api';
 
-const hoy = () => new Date().toISOString().slice(0, 10);
+const hoy = () => {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dia = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dia}`;
+};
 
 const estiloClaro = {
   background: '#F5F1E6',
@@ -10,7 +16,7 @@ const estiloClaro = {
 };
 
 function Ventas({ usuario }) {
-  const esAdmin = usuario.rol === 'administrador';
+  const esAdmin = usuario.rol === 'administrador' || usuario.rol === 'superadministrador';
 
   const [resumen, setResumen] = useState(null);
   const [clientes, setClientes] = useState([]);
@@ -180,8 +186,8 @@ function Ventas({ usuario }) {
 
   const confirmarAnularVenta = async () => {
     try {
-      await api.put(`/ventas/ventas/${ventaAAnular}/anular`, { motivo: motivoAnulacion.trim() });
-      mostrarMensaje('Venta anulada correctamente');
+      const respuesta = await api.put(`/ventas/ventas/${ventaAAnular}/anular`, { motivo: motivoAnulacion.trim() });
+      mostrarMensaje(respuesta.data.abonos_a_devolver > 0 ? respuesta.data.mensaje : 'Venta anulada correctamente');
       setVentaAAnular(null);
       setMotivoAnulacion('');
       cargarTodo();

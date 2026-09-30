@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react';
 import api from '../api/api';
 
+// Misma regla que utils/contrasenaSegura.js del backend
+const REGEX_CONTRASENA_SEGURA = /^(?=.*[A-Za-z])(?=.*\d).{8,72}$/;
+
 function Usuarios({ usuario: usuarioActivo }) {
   const [usuarios, setUsuarios] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -85,8 +88,8 @@ function Usuarios({ usuario: usuarioActivo }) {
   };
 
   const handleGuardarPassword = async () => {
-    if (passwordTemporal.length < 8) {
-      setErrorPassword('La contraseña debe tener al menos 8 caracteres, con letras y números');
+    if (!REGEX_CONTRASENA_SEGURA.test(passwordTemporal)) {
+      setErrorPassword('La contraseña debe tener entre 8 y 72 caracteres, incluyendo al menos una letra y un número');
       return;
     }
     try {
@@ -165,7 +168,7 @@ function Usuarios({ usuario: usuarioActivo }) {
               type="password"
               value={nuevaContrasena}
               onChange={(e) => setNuevaContrasena(e.target.value)}
-              placeholder="mínimo 8 caracteres, letras y números"
+              placeholder="8 a 72 caracteres, al menos una letra y un número"
               required
             />
           </div>
@@ -205,7 +208,11 @@ function Usuarios({ usuario: usuarioActivo }) {
                 </tr>
               </thead>
               <tbody>
-                {usuarios.map((u) => (
+                {usuarios.map((u) => {
+                  const esUnoMismo = u.id_usuario === usuarioActivo.id_usuario;
+                  // Solo el superadministrador puede tocar a otro administrador
+                  const puedeGestionar = u.rol !== 'administrador' || esUnoMismo || usuarioActivo.rol === 'superadministrador';
+                  return (
                   <tr key={u.id_usuario} style={{ opacity: u.activo ? 1 : 0.6 }}>
                     <td>{u.nombre ? `${u.nombre} ${u.apellido || ''}`.trim() : <span style={{ color: 'var(--ink-soft)' }}>—</span>}</td>
                     <td>{u.usuario}</td>
@@ -230,14 +237,17 @@ function Usuarios({ usuario: usuarioActivo }) {
                       )}
                     </td>
                     <td>
+                      {puedeGestionar ? (
                       <button
                         style={{ background: 'transparent', border: 'none', fontSize: '12px', color: 'var(--navy)', textDecoration: 'underline', padding: 0 }}
                         onClick={() => { setUsuarioCambiandoPassword(u); setPasswordTemporal(''); setErrorPassword(''); }}
                       >
                         Cambiar contraseña
                       </button>
+                      ) : <span style={{ color: 'var(--ink-soft)' }}>—</span>}
                     </td>
                     <td>
+                      {puedeGestionar && !esUnoMismo ? (
                       <button
                         style={{ background: 'transparent', border: 'none', fontSize: '12px', color: 'var(--navy)', textDecoration: 'underline', padding: 0 }}
                         onClick={() => {
@@ -249,9 +259,11 @@ function Usuarios({ usuario: usuarioActivo }) {
                       >
                         Permisos
                       </button>
+                      ) : <span style={{ color: 'var(--ink-soft)' }}>—</span>}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -278,7 +290,7 @@ function Usuarios({ usuario: usuarioActivo }) {
                 autoFocus
                 value={passwordTemporal}
                 onChange={(e) => setPasswordTemporal(e.target.value)}
-                placeholder="mínimo 8 caracteres, letras y números"
+                placeholder="8 a 72 caracteres, al menos una letra y un número"
                 onKeyDown={(e) => e.key === 'Enter' && handleGuardarPassword()}
               />
             </div>

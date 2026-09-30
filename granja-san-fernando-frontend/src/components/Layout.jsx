@@ -98,17 +98,17 @@ const AVATAR_ICONS = {
 
 const NAV = [
   { group: null, to: '/', label: 'Panel general', icon: 'home', roles: ['administrador', 'operador', 'superadministrador'] },
-  { group: 'Operación', to: '/produccion', label: 'Producción', icon: 'egg', roles: ['administrador', 'operador'] },
-  { group: 'Operación', to: '/sanidad', label: 'Sanidad y vacunación', icon: 'shieldPlus', roles: ['administrador', 'operador'] },
-  { group: 'Operación', to: '/tareas', label: 'Tareas', icon: 'checklist', roles: ['administrador', 'operador'] },
-  { group: 'Operación', to: '/ventas', label: 'Ventas', icon: 'tag', roles: ['administrador', 'operador'] },
-  { group: 'Operación', to: '/inventario', label: 'Inventario', icon: 'box', roles: ['administrador', 'operador'] },
-  { group: 'Administración', to: '/galeras', label: 'Galeras', icon: 'barn', roles: ['administrador'] },
-  { group: 'Administración', to: '/personal', label: 'Personal', icon: 'people', roles: ['administrador'] },
-  { group: 'Administración', to: '/gastos', label: 'Gastos', icon: 'receipt', roles: ['administrador'] },
-  { group: 'Administración', to: '/reportes', label: 'Reportes', icon: 'trending', roles: ['administrador'] },
-  { group: 'Administración', to: '/usuarios', label: 'Usuarios', icon: 'user', roles: ['administrador'] },
-  { group: 'Emergencia', to: '/superadmin', label: 'Súper Admin', icon: 'shield', roles: ['superadministrador'] },
+  { group: 'Operación', to: '/produccion', label: 'Producción', icon: 'egg', roles: ['administrador', 'operador', 'superadministrador'] },
+  { group: 'Operación', to: '/sanidad', label: 'Sanidad y vacunación', icon: 'shieldPlus', roles: ['administrador', 'operador', 'superadministrador'] },
+  { group: 'Operación', to: '/tareas', label: 'Tareas', icon: 'checklist', roles: ['administrador', 'operador', 'superadministrador'] },
+  { group: 'Operación', to: '/ventas', label: 'Ventas', icon: 'tag', roles: ['administrador', 'operador', 'superadministrador'] },
+  { group: 'Operación', to: '/inventario', label: 'Inventario', icon: 'box', roles: ['administrador', 'operador', 'superadministrador'] },
+  { group: 'Administración', to: '/galeras', label: 'Galeras', icon: 'barn', roles: ['administrador', 'superadministrador'] },
+  { group: 'Administración', to: '/personal', label: 'Personal', icon: 'people', roles: ['administrador', 'superadministrador'] },
+  { group: 'Administración', to: '/gastos', label: 'Gastos', icon: 'receipt', roles: ['administrador', 'superadministrador'] },
+  { group: 'Administración', to: '/reportes', label: 'Reportes', icon: 'trending', roles: ['administrador', 'superadministrador'] },
+  { group: 'Administración', to: '/usuarios', label: 'Usuarios', icon: 'user', roles: ['administrador', 'superadministrador'] },
+  { group: 'Bitácora del Sistema', to: '/superadmin', label: 'Bitácora del Sistema', icon: 'shield', roles: ['superadministrador'] },
 ];
 
 const TITLES = {
@@ -123,7 +123,7 @@ const TITLES = {
   '/gastos': ['Gastos operativos', 'Registro de gastos varios de la granja'],
   '/reportes': ['Reportes', 'Indicadores clave de producción, ventas y costos'],
   '/usuarios': ['Usuarios', 'Administración de cuentas y permisos del sistema'],
-  '/superadmin': ['Súper Admin', 'Gestión total de cuentas y registro de cambios del sistema'],
+  '/superadmin': ['Bitácora del Sistema', 'Gestión total de cuentas y registro de cambios del sistema'],
 };
 
 function Layout({ usuario, onLogout, children }) {
@@ -146,11 +146,8 @@ function Layout({ usuario, onLogout, children }) {
   const etiquetaRol = usuario.rol === 'administrador' ? 'Administrador' : usuario.rol === 'superadministrador' ? 'Superadmin' : 'Operador';
   const claseRol = usuario.rol === 'operador' ? 'operador' : 'admin';
 
-  // El superadministrador también ve todo lo que ve un administrador normal
-  const itemsVisibles = NAV.filter((item) =>
-    item.roles.includes(usuario.rol) ||
-    (usuario.rol === 'superadministrador' && item.roles.includes('administrador'))
-  );
+  // El superadministrador figura explícitamente en los roles de cada opción de NAV
+  const itemsVisibles = NAV.filter((item) => item.roles.includes(usuario.rol));
 
   const cerrarMenu = () => setMenuAbierto(false);
 

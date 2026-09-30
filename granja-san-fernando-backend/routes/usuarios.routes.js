@@ -5,32 +5,38 @@ const pool = require('../db');
 const { verificarToken, soloAdministrador } = require('../middleware/auth.middleware');
 const { validar } = require('../middleware/validacion.middleware');
 const { manejarError } = require('../utils/manejarError');
+const { conActor } = require('../utils/actor');
+const { validarParametroId } = require('../utils/validadores');
 const { REGEX_CONTRASENA_SEGURA, MENSAJE_CONTRASENA_SEGURA, esContrasenaSegura } = require('../utils/contrasenaSegura');
 
 const router = express.Router();
 
 const reglasCrearUsuario = [
   body('usuario')
+    .isString().withMessage('El usuario es requerido').bail()
     .trim()
     .notEmpty().withMessage('El usuario es requerido')
     .isLength({ min: 3, max: 50 }).withMessage('El usuario debe tener entre 3 y 50 caracteres')
     .matches(/^[a-zA-Z0-9._-]+$/).withMessage('El usuario solo puede contener letras, números, puntos, guiones y guiones bajos'),
   body('nombre')
+    .isString().withMessage('El nombre es requerido').bail()
     .trim()
     .notEmpty().withMessage('El nombre es requerido')
     .isLength({ min: 2, max: 50 }).withMessage('El nombre debe tener entre 2 y 50 caracteres'),
   body('apellido')
+    .isString().withMessage('El apellido es requerido').bail()
     .trim()
     .notEmpty().withMessage('El apellido es requerido')
     .isLength({ min: 2, max: 50 }).withMessage('El apellido debe tener entre 2 y 50 caracteres'),
   body('contrasena')
-    .isLength({ max: 100 })
-    .matches(REGEX_CONTRASENA_SEGURA).withMessage(MENSAJE_CONTRASENA_SEGURA),
+    .isString().withMessage(MENSAJE_CONTRASENA_SEGURA).bail()
+    .custom((valor) => esContrasenaSegura(valor)).withMessage(MENSAJE_CONTRASENA_SEGURA),
   body('rol')
     .isIn(['administrador', 'operador']).withMessage('Rol inválido'),
 ];
 
 router.use(verificarToken, soloAdministrador);
+validarParametroId(router);
 
 // GET /api/usuarios — el administrador normal nunca ve al superadministrador
 router.get('/', async (req, res) => {
@@ -64,115 +70,141 @@ router.get('/trabajadores', async (req, res) => {
 });
 
 router.post('/', reglasCrearUsuario, validar, async (req, res) => {
-  const conexion = await pool.getConnection();
   try {
     const { usuario, nombre, apellido, contrasena, rol } = req.body;
     const nombreCompleto = `${nombre.trim()} ${apellido.trim()}`.trim();
-
-    await conexion.beginTransaction();
-
-    let idTrabajador = null;
-
-    if (rol === 'operador') {
-      const [resultTrabajador] = await conexion.query(
-        'INSERT INTO TRABAJADORES (nombre, costo_dia, estado) VALUES (?, 0, "activo")',
-        [nombreCompleto]
-      );
-      idTrabajador = resultTrabajador.insertId;
-    }
-
     const hash = await bcrypt.hash(contrasena, 10);
 
-    const [result] = await conexion.query(
-      'INSERT INTO USUARIOS (usuario, nombre, apellido, contrasena, rol, id_trabajador) VALUES (?, ?, ?, ?, ?, ?)',
-      [usuario, nombre.trim(), apellido.trim(), hash, rol, idTrabajador]
-    );
+    const resultado = await conActor(req, async (conexion) => {
+      try {
+        await conexion.beginTransaction();
 
-    await conexion.commit();
-    res.status(201).json({ id_usuario: result.insertId, usuario, nombre, apellido, rol, id_trabajador: idTrabajador });
+        let idTrabajador = null;
+
+        if (rol === 'operador') {
+          const [resultTrabajador] = await conexion.query(
+            'INSERT INTO TRABAJADORES (nombre, costo_dia, estado) VALUES (?, 0, "activo")',
+            [nombreCompleto]
+          );
+          idTrabajador = resultTrabajador.insertId;
+        }
+
+        const [result] = await conexion.query(
+          'INSERT INTO USUARIOS (usuario, nombre, apellido, contrasena, rol, id_trabajador) VALUES (?, ?, ?, ?, ?, ?)',
+          [usuario, nombre.trim(), apellido.trim(), hash, rol, idTrabajador]
+        );
+
+        await conexion.commit();
+        return { id_usuario: result.insertId, usuario, nombre, apellido, rol, id_trabajador: idTrabajador };
+      } catch (error) {
+        await conexion.rollback();
+        throw error;
+      }
+    });
+
+    res.status(201).json(resultado);
   } catch (error) {
-    await conexion.rollback();
     if (error.code === 'ER_DUP_ENTRY') {
       return res.status(409).json({ error: 'Ese nombre de usuario ya existe' });
     }
     manejarError(res, error);
-  } finally {
-    conexion.release();
   }
 });
 
 router.post('/:id/vincular-trabajador', async (req, res) => {
-  const conexion = await pool.getConnection();
   try {
-    const [rows] = await conexion.query('SELECT * FROM USUARIOS WHERE id_usuario = ?', [req.params.id]);
-    if (rows.length === 0) {
-      return res.status(404).json({ error: 'Usuario no encontrado' });
-    }
-    const usuarioEncontrado = rows[0];
+    const respuesta = await conActor(req, async (conexion) => {
+      const [rows] = await conexion.query('SELECT * FROM USUARIOS WHERE id_usuario = ?', [req.params.id]);
+      if (rows.length === 0) {
+        return { status: 404, cuerpo: { error: 'Usuario no encontrado' } };
+      }
+      const usuarioEncontrado = rows[0];
 
-    if (usuarioEncontrado.id_trabajador) {
-      return res.status(400).json({ error: 'Este usuario ya tiene un trabajador vinculado' });
-    }
+      if (usuarioEncontrado.id_trabajador) {
+        return { status: 400, cuerpo: { error: 'Este usuario ya tiene un trabajador vinculado' } };
+      }
 
-    await conexion.beginTransaction();
+      try {
+        await conexion.beginTransaction();
 
-    // Si la cuenta ya tiene nombre y apellido reales, se usan; si es una cuenta antigua
-    // que no los tiene, se usa el usuario de acceso como último recurso.
-    const nombreTrabajador = usuarioEncontrado.nombre
-      ? `${usuarioEncontrado.nombre} ${usuarioEncontrado.apellido || ''}`.trim()
-      : usuarioEncontrado.usuario;
+        // Si la cuenta ya tiene nombre y apellido reales, se usan; si es una cuenta antigua
+        // que no los tiene, se usa el usuario de acceso como último recurso.
+        const nombreTrabajador = usuarioEncontrado.nombre
+          ? `${usuarioEncontrado.nombre} ${usuarioEncontrado.apellido || ''}`.trim()
+          : usuarioEncontrado.usuario;
 
-    const [resultTrabajador] = await conexion.query(
-      'INSERT INTO TRABAJADORES (nombre, costo_dia, estado) VALUES (?, 0, "activo")',
-      [nombreTrabajador]
-    );
+        const [resultTrabajador] = await conexion.query(
+          'INSERT INTO TRABAJADORES (nombre, costo_dia, estado) VALUES (?, 0, "activo")',
+          [nombreTrabajador]
+        );
 
-    await conexion.query('UPDATE USUARIOS SET id_trabajador = ? WHERE id_usuario = ?', [resultTrabajador.insertId, req.params.id]);
+        await conexion.query('UPDATE USUARIOS SET id_trabajador = ? WHERE id_usuario = ?', [resultTrabajador.insertId, req.params.id]);
 
-    await conexion.commit();
-    res.json({ mensaje: 'Registro de trabajador generado correctamente' });
+        await conexion.commit();
+        return { status: 200, cuerpo: { mensaje: 'Registro de trabajador generado correctamente' } };
+      } catch (error) {
+        await conexion.rollback();
+        throw error;
+      }
+    });
+    res.status(respuesta.status).json(respuesta.cuerpo);
   } catch (error) {
-    await conexion.rollback();
     manejarError(res, error);
-  } finally {
-    conexion.release();
   }
 });
 
-// Bloquea cualquier intento de un admin normal de tocar la cuenta de superadministrador
-async function bloquearSiEsSuperAdmin(req, res, next) {
+// Carga la cuenta sobre la que se va a actuar y decide si quien pide puede tocarla:
+// - el superadministrador es intocable desde este módulo (tiene su propio módulo);
+// - un administrador solo gestiona operadores y su propia cuenta; para tocar a OTRO
+//   administrador hace falta el superadministrador.
+async function cargarObjetivo(req, res, next) {
   try {
-    const [rows] = await pool.query('SELECT rol FROM USUARIOS WHERE id_usuario = ?', [req.params.id]);
-    if (rows.length > 0 && rows[0].rol === 'superadministrador') {
+    const [rows] = await pool.query('SELECT id_usuario, rol FROM USUARIOS WHERE id_usuario = ?', [req.params.id]);
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+    const objetivo = rows[0];
+    if (objetivo.rol === 'superadministrador') {
       return res.status(403).json({ error: 'No tienes permiso para modificar esta cuenta' });
     }
+    const esUnoMismo = objetivo.id_usuario === req.usuario.id_usuario;
+    if (objetivo.rol === 'administrador' && !esUnoMismo && req.usuario.rol !== 'superadministrador') {
+      return res.status(403).json({ error: 'Solo el superadministrador puede modificar a otro administrador' });
+    }
+    req.objetivo = objetivo;
     next();
   } catch (error) {
     manejarError(res, error);
   }
 }
 
-router.put('/:id', bloquearSiEsSuperAdmin, async (req, res) => {
+// Ejecuta una sola sentencia de escritura marcando quién la hace (auditoría)
+const escribirComoActor = (req, sql, parametros) => conActor(req, (conexion) => conexion.query(sql, parametros));
+
+router.put('/:id', cargarObjetivo, async (req, res) => {
   try {
     const { rol } = req.body;
     if (!['administrador', 'operador'].includes(rol)) {
       return res.status(400).json({ error: 'Rol inválido' });
     }
-    await pool.query('UPDATE USUARIOS SET rol = ? WHERE id_usuario = ?', [rol, req.params.id]);
+    if (req.objetivo.id_usuario === req.usuario.id_usuario) {
+      return res.status(400).json({ error: 'No puedes cambiar tu propio rol' });
+    }
+    await escribirComoActor(req, 'UPDATE USUARIOS SET rol = ? WHERE id_usuario = ?', [rol, req.params.id]);
     res.json({ mensaje: 'Usuario actualizado correctamente' });
   } catch (error) {
     manejarError(res, error);
   }
 });
 
-router.put('/:id/password', bloquearSiEsSuperAdmin, async (req, res) => {
+router.put('/:id/password', cargarObjetivo, async (req, res) => {
   try {
     const { contrasena } = req.body;
     if (!esContrasenaSegura(contrasena)) {
       return res.status(400).json({ error: MENSAJE_CONTRASENA_SEGURA });
     }
     const hash = await bcrypt.hash(contrasena, 10);
-    await pool.query('UPDATE USUARIOS SET contrasena = ? WHERE id_usuario = ?', [hash, req.params.id]);
+    await escribirComoActor(req, 'UPDATE USUARIOS SET contrasena = ? WHERE id_usuario = ?', [hash, req.params.id]);
     res.json({ mensaje: 'Contraseña actualizada correctamente' });
   } catch (error) {
     manejarError(res, error);
@@ -180,18 +212,13 @@ router.put('/:id/password', bloquearSiEsSuperAdmin, async (req, res) => {
 });
 
 // Desactivar: bloquea el login sin borrar nada del historial
-router.put('/:id/desactivar', bloquearSiEsSuperAdmin, async (req, res) => {
+router.put('/:id/desactivar', cargarObjetivo, async (req, res) => {
   try {
-    if (parseInt(req.params.id) === req.usuario.id_usuario) {
+    if (req.objetivo.id_usuario === req.usuario.id_usuario) {
       return res.status(400).json({ error: 'No puedes desactivar tu propio usuario' });
     }
 
-    const [usuarioRows] = await pool.query('SELECT rol FROM USUARIOS WHERE id_usuario = ?', [req.params.id]);
-    if (usuarioRows.length === 0) {
-      return res.status(404).json({ error: 'Usuario no encontrado' });
-    }
-
-    if (usuarioRows[0].rol === 'administrador') {
+    if (req.objetivo.rol === 'administrador') {
       const [conteo] = await pool.query(
         "SELECT COUNT(*) AS total FROM USUARIOS WHERE rol = 'administrador' AND activo = 1"
       );
@@ -202,7 +229,7 @@ router.put('/:id/desactivar', bloquearSiEsSuperAdmin, async (req, res) => {
       }
     }
 
-    await pool.query('UPDATE USUARIOS SET activo = 0 WHERE id_usuario = ?', [req.params.id]);
+    await escribirComoActor(req, 'UPDATE USUARIOS SET activo = 0 WHERE id_usuario = ?', [req.params.id]);
     res.json({ mensaje: 'Usuario desactivado correctamente' });
   } catch (error) {
     manejarError(res, error);
@@ -210,9 +237,9 @@ router.put('/:id/desactivar', bloquearSiEsSuperAdmin, async (req, res) => {
 });
 
 // Reactivar: le devuelve el acceso a una cuenta desactivada
-router.put('/:id/reactivar', bloquearSiEsSuperAdmin, async (req, res) => {
+router.put('/:id/reactivar', cargarObjetivo, async (req, res) => {
   try {
-    await pool.query('UPDATE USUARIOS SET activo = 1 WHERE id_usuario = ?', [req.params.id]);
+    await escribirComoActor(req, 'UPDATE USUARIOS SET activo = 1 WHERE id_usuario = ?', [req.params.id]);
     res.json({ mensaje: 'Usuario reactivado correctamente' });
   } catch (error) {
     manejarError(res, error);

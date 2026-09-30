@@ -4,27 +4,21 @@ const pool = require('../db');
 const { verificarToken, soloAdministrador } = require('../middleware/auth.middleware');
 const { validar } = require('../middleware/validacion.middleware');
 const { manejarError } = require('../utils/manejarError');
+const { fecha, fechaOpcional, texto, validarParametroId } = require('../utils/validadores');
 
 const router = express.Router();
 
 router.use(verificarToken);
+validarParametroId(router);
 
 // ---------- Reglas de validación ----------
 
 const reglasGalera = [
-  body('nombre')
-    .trim()
-    .notEmpty().withMessage('El nombre de la galera es requerido')
-    .isLength({ min: 2, max: 100 }).withMessage('El nombre debe tener entre 2 y 100 caracteres'),
-  body('ubicacion')
-    .optional({ checkFalsy: true })
-    .trim()
-    .isLength({ max: 150 }).withMessage('La ubicación no puede superar 150 caracteres'),
+  texto('nombre', { min: 2, max: 100, nombre: 'El nombre de la galera' }),
+  texto('ubicacion', { max: 150, requerido: false, nombre: 'La ubicación' }),
   body('capacidad')
     .isInt({ min: 1, max: 100000 }).withMessage('La capacidad debe ser un número entero mayor a 0'),
-  body('fecha_ingreso')
-    .optional({ checkFalsy: true })
-    .isISO8601().withMessage('Fecha de ingreso inválida'),
+  fechaOpcional('fecha_ingreso', { mensaje: 'Fecha de ingreso inválida' }),
   body('aves_recibidas')
     .optional({ checkFalsy: true })
     .isInt({ min: 1, max: 100000 }).withMessage('Las aves recibidas deben ser un número entero mayor a 0'),
@@ -32,27 +26,21 @@ const reglasGalera = [
 
 const reglasLote = [
   body('id_galera').isInt({ min: 1 }).withMessage('Selecciona una galera válida'),
-  body('fecha_ingreso').isISO8601().withMessage('Fecha de ingreso inválida'),
+  fecha('fecha_ingreso', { mensaje: 'Fecha de ingreso inválida' }),
   body('aves_recibidas').isInt({ min: 1, max: 100000 }).withMessage('Las aves recibidas deben ser un número entero mayor a 0'),
 ];
 
 const reglasPostura = [
   body('id_lote').isInt({ min: 1 }).withMessage('Selecciona un lote válido'),
-  body('fecha').isISO8601().withMessage('Fecha inválida').custom((valor) => {
-    if (new Date(valor) > new Date()) throw new Error('La fecha no puede ser futura');
-    return true;
-  }),
+  fecha('fecha'),
   body('cantidad_huevos').isInt({ min: 0, max: 100000 }).withMessage('La cantidad de huevos debe ser un número entero válido'),
 ];
 
 const reglasMortalidad = [
   body('id_lote').isInt({ min: 1 }).withMessage('Selecciona un lote válido'),
-  body('fecha').isISO8601().withMessage('Fecha inválida').custom((valor) => {
-    if (new Date(valor) > new Date()) throw new Error('La fecha no puede ser futura');
-    return true;
-  }),
+  fecha('fecha'),
   body('cantidad').isInt({ min: 1, max: 100000 }).withMessage('La cantidad debe ser un número entero mayor a 0'),
-  body('causa').optional({ checkFalsy: true }).trim().isLength({ max: 150 }).withMessage('La causa no puede superar 150 caracteres'),
+  texto('causa', { max: 150, requerido: false, nombre: 'La causa' }),
 ];
 
 // ---------- GALERAS ----------
@@ -220,15 +208,23 @@ router.post('/postura', reglasPostura, validar, async (req, res) => {
   try {
     const { id_lote, fecha, cantidad_huevos } = req.body;
 
-    const [loteRows] = await pool.query('SELECT aves_activas FROM LOTES WHERE id_lote = ?', [id_lote]);
+    const [loteRows] = await pool.query('SELECT aves_activas, estado FROM LOTES WHERE id_lote = ?', [id_lote]);
     if (loteRows.length === 0) {
       return res.status(404).json({ error: 'Lote no encontrado' });
     }
+    if (loteRows[0].estado !== 'activo') {
+      return res.status(400).json({ error: 'Este lote ya está finalizado; no se puede registrar postura' });
+    }
     const avesActivasDia = loteRows[0].aves_activas;
 
-    if (cantidad_huevos > avesActivasDia) {
-      return res.status(400).json({ error: 'Error: la cantidad de huevos no puede superar la cantidad de aves activas del lote' });
+    const [duplicado] = await pool.query('SELECT 1 FROM POSTURA_DIARIA WHERE id_lote = ? AND fecha = ? LIMIT 1', [id_lote, fecha]);
+    if (duplicado.length > 0) {
+      return res.status(409).json({ error: 'Ya hay una postura registrada para este lote en esa fecha' });
     }
+
+    // Sin tope contra las aves activas: lo recolectado en un día puede superar a las aves
+    // registradas (recolección de días anteriores, ajustes de conteo, etc.). La tasa de
+    // postura simplemente se muestra tal cual, aunque pase del 100 %.
 
     await pool.query(
       'INSERT INTO POSTURA_DIARIA (id_lote, fecha, cantidad_huevos, aves_activas_dia) VALUES (?, ?, ?, ?)',
@@ -261,6 +257,14 @@ router.get('/mortalidad', async (req, res) => {
 router.post('/mortalidad', reglasMortalidad, validar, async (req, res) => {
   try {
     const { id_lote, fecha, cantidad, causa } = req.body;
+
+    const [loteRows] = await pool.query('SELECT estado FROM LOTES WHERE id_lote = ?', [id_lote]);
+    if (loteRows.length === 0) {
+      return res.status(404).json({ error: 'Lote no encontrado' });
+    }
+    if (loteRows[0].estado !== 'activo') {
+      return res.status(400).json({ error: 'Este lote ya está finalizado; no se puede registrar mortalidad' });
+    }
 
     await pool.query(
       'INSERT INTO MORTALIDAD (id_lote, fecha, cantidad, causa) VALUES (?, ?, ?, ?)',

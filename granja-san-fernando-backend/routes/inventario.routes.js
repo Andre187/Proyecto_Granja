@@ -4,52 +4,55 @@ const pool = require('../db');
 const { verificarToken, soloAdministrador } = require('../middleware/auth.middleware');
 const { validar } = require('../middleware/validacion.middleware');
 const { manejarError } = require('../utils/manejarError');
+const { fecha, decimal2, texto, validarParametroId } = require('../utils/validadores');
+const { esAdminOSuper } = require('../utils/roles');
 
 const router = express.Router();
 
 router.use(verificarToken);
+validarParametroId(router);
 
 const reglasConcentrado = [
-  body('fecha').isISO8601().withMessage('Fecha inválida'),
-  body('tipo_concentrado').trim().notEmpty().withMessage('El tipo de concentrado es requerido').isLength({ max: 50 }),
-  body('cantidad_qq').isFloat({ min: 0.01, max: 100000 }).withMessage('La cantidad debe ser mayor a 0'),
-  body('costo_unitario').isFloat({ min: 0.01, max: 100000 }).withMessage('El costo unitario debe ser mayor a 0'),
+  fecha('fecha'),
+  texto('tipo_concentrado', { max: 50, nombre: 'El tipo de concentrado' }),
+  decimal2(body('cantidad_qq'), { min: 0.01, max: 100000, mensaje: 'La cantidad debe ser mayor a 0' }),
+  decimal2(body('costo_unitario'), { min: 0.01, max: 100000, mensaje: 'El costo unitario debe ser mayor a 0' }),
 ];
 
 const reglasNivelMinimo = [
-  body('nivel_minimo').isFloat({ min: 0, max: 100000 }).withMessage('El nivel mínimo debe ser un número válido'),
+  decimal2(body('nivel_minimo'), { min: 0, max: 100000, mensaje: 'El nivel mínimo debe ser un número válido' }),
 ];
 
 const reglasConsumoConcentrado = [
   body('id_stock').isInt({ min: 1 }).withMessage('Selecciona un tipo de concentrado válido'),
-  body('fecha').isISO8601().withMessage('Fecha inválida'),
-  body('cantidad_qq').isFloat({ min: 0.01, max: 100000 }).withMessage('La cantidad debe ser mayor a 0'),
+  fecha('fecha'),
+  decimal2(body('cantidad_qq'), { min: 0.01, max: 100000, mensaje: 'La cantidad debe ser mayor a 0' }),
 ];
 
 const reglasMedicamento = [
-  body('nombre').trim().notEmpty().withMessage('El nombre es requerido').isLength({ max: 100 }),
-  body('existencia_actual').isFloat({ min: 0, max: 1000000 }).withMessage('La existencia debe ser un número válido'),
-  body('nivel_minimo').isFloat({ min: 0, max: 1000000 }).withMessage('El nivel mínimo debe ser un número válido'),
-  body('unidad_medida').trim().notEmpty().withMessage('La unidad de medida es requerida').isLength({ max: 20 }),
+  texto('nombre', { max: 100, nombre: 'El nombre' }),
+  decimal2(body('existencia_actual'), { min: 0, max: 1000000, mensaje: 'La existencia debe ser un número válido' }),
+  decimal2(body('nivel_minimo'), { min: 0, max: 1000000, mensaje: 'El nivel mínimo debe ser un número válido' }),
+  texto('unidad_medida', { max: 20, nombre: 'La unidad de medida' }),
 ];
 
 const reglasMovimiento = [
   body('id_medicamento').isInt({ min: 1 }).withMessage('Selecciona un medicamento válido'),
-  body('fecha').isISO8601().withMessage('Fecha inválida'),
+  fecha('fecha'),
   body('tipo_movimiento').isIn(['entrada', 'salida']).withMessage('Tipo de movimiento inválido'),
-  body('cantidad').isFloat({ min: 0.01, max: 100000 }).withMessage('La cantidad debe ser mayor a 0'),
+  decimal2(body('cantidad'), { min: 0.01, max: 100000, mensaje: 'La cantidad debe ser mayor a 0' }),
 ];
 
 const reglasClasificarHuevos = [
-  body('fecha').isISO8601().withMessage('Fecha inválida'),
-  body('items').isArray({ min: 1 }).withMessage('Agrega al menos un tamaño'),
+  fecha('fecha'),
+  body('items').isArray({ min: 1, max: 10 }).withMessage('Agrega al menos un tamaño'),
   body('items.*.id_clasificacion').isInt({ min: 1 }).withMessage('Selecciona un tamaño válido'),
   body('items.*.cantidad').isInt({ min: 1, max: 1000000 }).withMessage('La cantidad debe ser mayor a 0'),
 ];
 
-// ---------- CONCENTRADO (compras) — solo administrador ----------
+// ---------- CONCENTRADO (compras, con costos) — solo administrador ----------
 
-router.get('/concentrado', async (req, res) => {
+router.get('/concentrado', soloAdministrador, async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM CONCENTRADO ORDER BY fecha DESC, id_concentrado DESC LIMIT 30');
     res.json(rows);
@@ -85,7 +88,10 @@ router.get('/concentrado-stock', async (req, res) => {
 router.put('/concentrado-stock/:id', soloAdministrador, reglasNivelMinimo, validar, async (req, res) => {
   try {
     const { nivel_minimo } = req.body;
-    await pool.query('UPDATE CONCENTRADO_STOCK SET nivel_minimo = ? WHERE id_stock = ?', [nivel_minimo, req.params.id]);
+    const [resultado] = await pool.query('UPDATE CONCENTRADO_STOCK SET nivel_minimo = ? WHERE id_stock = ?', [nivel_minimo, req.params.id]);
+    if (resultado.affectedRows === 0) {
+      return res.status(404).json({ error: 'Registro de existencia no encontrado' });
+    }
     res.json({ mensaje: 'Nivel mínimo actualizado' });
   } catch (error) {
     manejarError(res, error);
@@ -171,7 +177,7 @@ router.post('/movimientos', reglasMovimiento, validar, async (req, res) => {
   try {
     const { id_medicamento, fecha, tipo_movimiento, cantidad } = req.body;
 
-    if (req.usuario.rol !== 'administrador' && tipo_movimiento !== 'salida') {
+    if (!esAdminOSuper(req.usuario.rol) && tipo_movimiento !== 'salida') {
       return res.status(403).json({ error: 'Solo el administrador puede registrar entradas de medicamento' });
     }
 
@@ -206,7 +212,10 @@ router.get('/huevos-stock', async (req, res) => {
 router.put('/huevos-stock/:id', soloAdministrador, reglasNivelMinimo, validar, async (req, res) => {
   try {
     const { nivel_minimo } = req.body;
-    await pool.query('UPDATE HUEVOS_STOCK SET nivel_minimo = ? WHERE id_stock = ?', [nivel_minimo, req.params.id]);
+    const [resultado] = await pool.query('UPDATE HUEVOS_STOCK SET nivel_minimo = ? WHERE id_stock = ?', [nivel_minimo, req.params.id]);
+    if (resultado.affectedRows === 0) {
+      return res.status(404).json({ error: 'Registro de existencia no encontrado' });
+    }
     res.json({ mensaje: 'Nivel mínimo actualizado' });
   } catch (error) {
     manejarError(res, error);

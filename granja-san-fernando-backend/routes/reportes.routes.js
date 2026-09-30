@@ -2,13 +2,17 @@ const express = require('express');
 const pool = require('../db');
 const { verificarToken, soloAdministrador } = require('../middleware/auth.middleware');
 const { manejarError } = require('../utils/manejarError');
+const { validar } = require('../middleware/validacion.middleware');
+const { fechaQuery } = require('../utils/validadores');
 
 const router = express.Router();
 
 // El resumen del panel es información administrativa (montos, alertas globales)
 router.use(verificarToken, soloAdministrador);
 
-  function rangoFechas(periodo) {
+const reglasRango = [fechaQuery('desde'), fechaQuery('hasta')];
+
+function rangoFechas(periodo) {
   const hoy = new Date();
   // Usamos componentes de fecha LOCAL, nunca toISOString() (que convierte a UTC
   // y puede "saltar" al día siguiente en horas de la tarde/noche en Guatemala).
@@ -32,7 +36,7 @@ router.use(verificarToken, soloAdministrador);
   return { desde: fmt(desde), hasta: fmt(hoy) };
 }
 
-router.get('/resumen', async (req, res) => {
+router.get('/resumen', reglasRango, validar, async (req, res) => {
   try {
     let periodo = ['hoy', 'semana', 'mes'].includes(req.query.periodo) ? req.query.periodo : 'hoy';
     let desde, hasta;
@@ -135,7 +139,7 @@ router.get('/resumen', async (req, res) => {
 });
 
 
-router.get('/financiero', async (req, res) => {
+router.get('/financiero', reglasRango, validar, async (req, res) => {
   try {
     let periodo = ['hoy', 'semana', 'mes'].includes(req.query.periodo) ? req.query.periodo : 'mes';
     let desde, hasta;

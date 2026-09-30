@@ -17,6 +17,8 @@ function Personal() {
 
   const [trabajadorSeleccionado, setTrabajadorSeleccionado] = useState(null);
 
+  const [formTrabajador, setFormTrabajador] = useState({ nombre: '', costo_dia: '' });
+
   const cargarTodo = async () => {
     try {
       const [rTrabajadores, rPagos] = await Promise.all([
@@ -84,6 +86,21 @@ function Personal() {
     }
   };
 
+  const handleRegistrarTrabajador = async (e) => {
+    e.preventDefault();
+    try {
+      await api.post('/personal/trabajadores', {
+        nombre: formTrabajador.nombre,
+        costo_dia: parseFloat(formTrabajador.costo_dia),
+      });
+      setFormTrabajador({ nombre: '', costo_dia: '' });
+      mostrarMensaje('Trabajador registrado correctamente');
+      cargarTodo();
+    } catch (err) {
+      mostrarError(err.response?.data?.error || 'No se pudo registrar el trabajador');
+    }
+  };
+
   const handleRegistrarPago = async (e) => {
     e.preventDefault();
     try {
@@ -117,7 +134,7 @@ function Personal() {
 
         {trabajadores.length === 0 ? (
           <p style={{ fontSize: '13px', color: 'var(--ink-soft)' }}>
-            Aún no hay trabajadores. Se crean automáticamente al dar de alta un usuario operador en el módulo de Usuarios.
+            Aún no hay trabajadores. Regístralos abajo o se crean automáticamente al dar de alta un usuario operador en el módulo de Usuarios.
           </p>
         ) : (
           <>
@@ -201,6 +218,38 @@ function Personal() {
             )}
           </>
         )}
+      </section>
+
+      <section className="card">
+        <div className="head">
+          <h2>Registrar trabajador</h2>
+          <span className="sub">Personal eventual, sin cuenta de usuario</span>
+        </div>
+        <form onSubmit={handleRegistrarTrabajador} style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <div className="field">
+            <label>Nombre</label>
+            <input
+              type="text" maxLength={100}
+              value={formTrabajador.nombre}
+              onChange={(e) => setFormTrabajador({ ...formTrabajador, nombre: e.target.value })}
+              placeholder="ej. Juan Pérez"
+              required
+              style={estiloClaro}
+            />
+          </div>
+          <div className="field">
+            <label>Costo por día (Q)</label>
+            <input
+              type="number" step="0.01" min="0.01"
+              value={formTrabajador.costo_dia}
+              onChange={(e) => setFormTrabajador({ ...formTrabajador, costo_dia: e.target.value })}
+              placeholder="ej. 75.00"
+              required
+              style={estiloClaro}
+            />
+          </div>
+          <button type="submit" className="btn">Registrar trabajador</button>
+        </form>
       </section>
 
       <section className="card">
