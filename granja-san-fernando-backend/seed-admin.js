@@ -23,7 +23,7 @@ async function crearAdmin() {
     const hash = await bcrypt.hash(contrasenaTextoPlano, 10);
 
     const [result] = await pool.query(
-      'INSERT INTO USUARIOS (usuario, contrasena, rol) VALUES (?, ?, ?)',
+      'INSERT INTO usuarios (usuario, contrasena, rol) VALUES (?, ?, ?)',
       [usuario, hash, rol]
     );
 

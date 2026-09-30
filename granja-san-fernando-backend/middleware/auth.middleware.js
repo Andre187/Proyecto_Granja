@@ -27,7 +27,7 @@ function verificarToken(req, res, next) {
     }
 
     try {
-      const [rows] = await pool.query('SELECT rol, activo, contrasena, id_trabajador FROM USUARIOS WHERE id_usuario = ?', [decoded.id_usuario]);
+      const [rows] = await pool.query('SELECT rol, activo, contrasena, id_trabajador FROM usuarios WHERE id_usuario = ?', [decoded.id_usuario]);
       if (rows.length === 0 || !rows[0].activo) {
         return res.status(401).json({ error: 'Tu cuenta ya no tiene acceso. Vuelve a iniciar sesión.' });
       }

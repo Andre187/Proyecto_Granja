@@ -28,8 +28,8 @@ router.get('/trabajadores', async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT t.id_trabajador, t.nombre
-      FROM TRABAJADORES t
-      JOIN USUARIOS u ON u.id_trabajador = t.id_trabajador
+      FROM trabajadores t
+      JOIN usuarios u ON u.id_trabajador = t.id_trabajador
       WHERE t.estado = 'activo'
       ORDER BY t.nombre
     `);
@@ -45,9 +45,9 @@ router.get('/tareas', async (req, res) => {
       SELECT t.id_tarea, t.id_trabajador, tr.nombre AS trabajador_nombre,
              t.id_galera, g.nombre AS galera_nombre,
              t.descripcion, t.fecha_asignacion, t.fecha_limite, t.estado
-      FROM TAREAS t
-      JOIN TRABAJADORES tr ON tr.id_trabajador = t.id_trabajador
-      LEFT JOIN GALERAS g ON g.id_galera = t.id_galera
+      FROM tareas t
+      JOIN trabajadores tr ON tr.id_trabajador = t.id_trabajador
+      LEFT JOIN galeras g ON g.id_galera = t.id_galera
     `;
     const params = [];
 
@@ -72,12 +72,12 @@ router.post('/tareas', soloAdministrador, reglasTarea, validar, async (req, res)
   try {
     const { id_trabajador, id_galera, descripcion, fecha_asignacion, fecha_limite } = req.body;
 
-    const [trabajadorRows] = await pool.query("SELECT 1 FROM TRABAJADORES WHERE id_trabajador = ? AND estado = 'activo'", [id_trabajador]);
+    const [trabajadorRows] = await pool.query("SELECT 1 FROM trabajadores WHERE id_trabajador = ? AND estado = 'activo'", [id_trabajador]);
     if (trabajadorRows.length === 0) {
       return res.status(400).json({ error: 'El trabajador seleccionado no existe o está inactivo' });
     }
     await pool.query(
-      'INSERT INTO TAREAS (id_trabajador, id_galera, descripcion, fecha_asignacion, fecha_limite, estado) VALUES (?, ?, ?, ?, ?, "pendiente")',
+      'INSERT INTO tareas (id_trabajador, id_galera, descripcion, fecha_asignacion, fecha_limite, estado) VALUES (?, ?, ?, ?, ?, "pendiente")',
       [id_trabajador, id_galera || null, descripcion, fecha_asignacion, fecha_limite || null]
     );
     res.status(201).json({ mensaje: 'Tarea asignada correctamente' });
@@ -91,7 +91,7 @@ router.put('/tareas/:id/estado', reglasEstado, validar, async (req, res) => {
     const { estado } = req.body;
 
     if (!esAdminOSuper(req.usuario.rol)) {
-      const [rows] = await pool.query('SELECT id_trabajador FROM TAREAS WHERE id_tarea = ?', [req.params.id]);
+      const [rows] = await pool.query('SELECT id_trabajador FROM tareas WHERE id_tarea = ?', [req.params.id]);
       if (rows.length === 0) {
         return res.status(404).json({ error: 'Tarea no encontrada' });
       }
@@ -100,7 +100,7 @@ router.put('/tareas/:id/estado', reglasEstado, validar, async (req, res) => {
       }
     }
 
-    await pool.query('UPDATE TAREAS SET estado = ? WHERE id_tarea = ?', [estado, req.params.id]);
+    await pool.query('UPDATE tareas SET estado = ? WHERE id_tarea = ?', [estado, req.params.id]);
     res.json({ mensaje: 'Estado actualizado correctamente' });
   } catch (error) {
     manejarError(res, error);

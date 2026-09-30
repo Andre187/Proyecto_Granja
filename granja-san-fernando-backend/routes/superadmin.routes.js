@@ -26,8 +26,8 @@ router.get('/usuarios', async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT u.id_usuario, u.usuario, u.nombre, u.apellido, u.rol, u.activo, u.id_trabajador, t.nombre AS trabajador_nombre
-      FROM USUARIOS u
-      LEFT JOIN TRABAJADORES t ON t.id_trabajador = u.id_trabajador
+      FROM usuarios u
+      LEFT JOIN trabajadores t ON t.id_trabajador = u.id_trabajador
       ORDER BY FIELD(u.rol, 'superadministrador', 'administrador', 'operador'), u.usuario
     `);
     res.json(rows);
@@ -44,7 +44,7 @@ router.put('/usuarios/:id/desactivar', async (req, res) => {
     if (parseInt(req.params.id) === req.usuario.id_usuario) {
       return res.status(400).json({ error: 'No puedes desactivar tu propio usuario' });
     }
-    await actualizarUsuario(req, res, 'UPDATE USUARIOS SET activo = 0 WHERE id_usuario = ?', [req.params.id], 'Usuario desactivado correctamente');
+    await actualizarUsuario(req, res, 'UPDATE usuarios SET activo = 0 WHERE id_usuario = ?', [req.params.id], 'Usuario desactivado correctamente');
   } catch (error) {
     manejarError(res, error);
   }
@@ -52,7 +52,7 @@ router.put('/usuarios/:id/desactivar', async (req, res) => {
 
 router.put('/usuarios/:id/reactivar', async (req, res) => {
   try {
-    await actualizarUsuario(req, res, 'UPDATE USUARIOS SET activo = 1 WHERE id_usuario = ?', [req.params.id], 'Usuario reactivado correctamente');
+    await actualizarUsuario(req, res, 'UPDATE usuarios SET activo = 1 WHERE id_usuario = ?', [req.params.id], 'Usuario reactivado correctamente');
   } catch (error) {
     manejarError(res, error);
   }
@@ -66,7 +66,7 @@ router.put('/usuarios/:id/password', async (req, res) => {
       return res.status(400).json({ error: MENSAJE_CONTRASENA_SEGURA });
     }
     const hash = await bcrypt.hash(contrasena, 10);
-    await actualizarUsuario(req, res, 'UPDATE USUARIOS SET contrasena = ? WHERE id_usuario = ?', [hash, req.params.id], 'Contraseña actualizada correctamente');
+    await actualizarUsuario(req, res, 'UPDATE usuarios SET contrasena = ? WHERE id_usuario = ?', [hash, req.params.id], 'Contraseña actualizada correctamente');
   } catch (error) {
     manejarError(res, error);
   }
@@ -82,7 +82,7 @@ router.put('/usuarios/:id/rol', async (req, res) => {
     if (parseInt(req.params.id) === req.usuario.id_usuario && rol !== 'superadministrador') {
       return res.status(400).json({ error: 'No puedes quitarte a ti mismo el rol de superadministrador' });
     }
-    await actualizarUsuario(req, res, 'UPDATE USUARIOS SET rol = ? WHERE id_usuario = ?', [rol, req.params.id], 'Rol actualizado correctamente');
+    await actualizarUsuario(req, res, 'UPDATE usuarios SET rol = ? WHERE id_usuario = ?', [rol, req.params.id], 'Rol actualizado correctamente');
   } catch (error) {
     manejarError(res, error);
   }
@@ -96,13 +96,13 @@ router.get('/auditoria', async (req, res) => {
       // Con la migración sql/02 la bitácora incluye quién hizo el cambio y qué cambió
       [rows] = await pool.query(`
         SELECT a.*, u.usuario AS actor
-        FROM AUDITORIA_USUARIOS a
-        LEFT JOIN USUARIOS u ON u.id_usuario = a.id_actor
+        FROM auditoria_usuarios a
+        LEFT JOIN usuarios u ON u.id_usuario = a.id_actor
         ORDER BY a.fecha_hora DESC, a.id_auditoria DESC LIMIT 100
       `);
     } catch (error) {
       if (error.code !== 'ER_BAD_FIELD_ERROR') throw error;
-      [rows] = await pool.query('SELECT * FROM AUDITORIA_USUARIOS ORDER BY fecha_hora DESC LIMIT 100');
+      [rows] = await pool.query('SELECT * FROM auditoria_usuarios ORDER BY fecha_hora DESC LIMIT 100');
     }
     res.json(rows);
   } catch (error) {

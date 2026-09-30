@@ -43,8 +43,8 @@ router.get('/', async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT u.id_usuario, u.usuario, u.nombre, u.apellido, u.rol, u.activo, u.id_trabajador, t.nombre AS trabajador_nombre
-      FROM USUARIOS u
-      LEFT JOIN TRABAJADORES t ON t.id_trabajador = u.id_trabajador
+      FROM usuarios u
+      LEFT JOIN trabajadores t ON t.id_trabajador = u.id_trabajador
       WHERE u.rol != 'superadministrador'
       ORDER BY u.id_usuario
     `);
@@ -58,8 +58,8 @@ router.get('/trabajadores', async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT t.id_trabajador, t.nombre, u.usuario AS vinculado_a
-      FROM TRABAJADORES t
-      LEFT JOIN USUARIOS u ON u.id_trabajador = t.id_trabajador
+      FROM trabajadores t
+      LEFT JOIN usuarios u ON u.id_trabajador = t.id_trabajador
       WHERE t.estado = 'activo'
       ORDER BY t.nombre
     `);
@@ -83,14 +83,14 @@ router.post('/', reglasCrearUsuario, validar, async (req, res) => {
 
         if (rol === 'operador') {
           const [resultTrabajador] = await conexion.query(
-            'INSERT INTO TRABAJADORES (nombre, costo_dia, estado) VALUES (?, 0, "activo")',
+            'INSERT INTO trabajadores (nombre, costo_dia, estado) VALUES (?, 0, "activo")',
             [nombreCompleto]
           );
           idTrabajador = resultTrabajador.insertId;
         }
 
         const [result] = await conexion.query(
-          'INSERT INTO USUARIOS (usuario, nombre, apellido, contrasena, rol, id_trabajador) VALUES (?, ?, ?, ?, ?, ?)',
+          'INSERT INTO usuarios (usuario, nombre, apellido, contrasena, rol, id_trabajador) VALUES (?, ?, ?, ?, ?, ?)',
           [usuario, nombre.trim(), apellido.trim(), hash, rol, idTrabajador]
         );
 
@@ -114,7 +114,7 @@ router.post('/', reglasCrearUsuario, validar, async (req, res) => {
 router.post('/:id/vincular-trabajador', async (req, res) => {
   try {
     const respuesta = await conActor(req, async (conexion) => {
-      const [rows] = await conexion.query('SELECT * FROM USUARIOS WHERE id_usuario = ?', [req.params.id]);
+      const [rows] = await conexion.query('SELECT * FROM usuarios WHERE id_usuario = ?', [req.params.id]);
       if (rows.length === 0) {
         return { status: 404, cuerpo: { error: 'Usuario no encontrado' } };
       }
@@ -134,11 +134,11 @@ router.post('/:id/vincular-trabajador', async (req, res) => {
           : usuarioEncontrado.usuario;
 
         const [resultTrabajador] = await conexion.query(
-          'INSERT INTO TRABAJADORES (nombre, costo_dia, estado) VALUES (?, 0, "activo")',
+          'INSERT INTO trabajadores (nombre, costo_dia, estado) VALUES (?, 0, "activo")',
           [nombreTrabajador]
         );
 
-        await conexion.query('UPDATE USUARIOS SET id_trabajador = ? WHERE id_usuario = ?', [resultTrabajador.insertId, req.params.id]);
+        await conexion.query('UPDATE usuarios SET id_trabajador = ? WHERE id_usuario = ?', [resultTrabajador.insertId, req.params.id]);
 
         await conexion.commit();
         return { status: 200, cuerpo: { mensaje: 'Registro de trabajador generado correctamente' } };
@@ -159,7 +159,7 @@ router.post('/:id/vincular-trabajador', async (req, res) => {
 //   administrador hace falta el superadministrador.
 async function cargarObjetivo(req, res, next) {
   try {
-    const [rows] = await pool.query('SELECT id_usuario, rol FROM USUARIOS WHERE id_usuario = ?', [req.params.id]);
+    const [rows] = await pool.query('SELECT id_usuario, rol FROM usuarios WHERE id_usuario = ?', [req.params.id]);
     if (rows.length === 0) {
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
@@ -190,7 +190,7 @@ router.put('/:id', cargarObjetivo, async (req, res) => {
     if (req.objetivo.id_usuario === req.usuario.id_usuario) {
       return res.status(400).json({ error: 'No puedes cambiar tu propio rol' });
     }
-    await escribirComoActor(req, 'UPDATE USUARIOS SET rol = ? WHERE id_usuario = ?', [rol, req.params.id]);
+    await escribirComoActor(req, 'UPDATE usuarios SET rol = ? WHERE id_usuario = ?', [rol, req.params.id]);
     res.json({ mensaje: 'Usuario actualizado correctamente' });
   } catch (error) {
     manejarError(res, error);
@@ -204,7 +204,7 @@ router.put('/:id/password', cargarObjetivo, async (req, res) => {
       return res.status(400).json({ error: MENSAJE_CONTRASENA_SEGURA });
     }
     const hash = await bcrypt.hash(contrasena, 10);
-    await escribirComoActor(req, 'UPDATE USUARIOS SET contrasena = ? WHERE id_usuario = ?', [hash, req.params.id]);
+    await escribirComoActor(req, 'UPDATE usuarios SET contrasena = ? WHERE id_usuario = ?', [hash, req.params.id]);
     res.json({ mensaje: 'Contraseña actualizada correctamente' });
   } catch (error) {
     manejarError(res, error);
@@ -220,7 +220,7 @@ router.put('/:id/desactivar', cargarObjetivo, async (req, res) => {
 
     if (req.objetivo.rol === 'administrador') {
       const [conteo] = await pool.query(
-        "SELECT COUNT(*) AS total FROM USUARIOS WHERE rol = 'administrador' AND activo = 1"
+        "SELECT COUNT(*) AS total FROM usuarios WHERE rol = 'administrador' AND activo = 1"
       );
       if (conteo[0].total <= 1) {
         return res.status(400).json({
@@ -229,7 +229,7 @@ router.put('/:id/desactivar', cargarObjetivo, async (req, res) => {
       }
     }
 
-    await escribirComoActor(req, 'UPDATE USUARIOS SET activo = 0 WHERE id_usuario = ?', [req.params.id]);
+    await escribirComoActor(req, 'UPDATE usuarios SET activo = 0 WHERE id_usuario = ?', [req.params.id]);
     res.json({ mensaje: 'Usuario desactivado correctamente' });
   } catch (error) {
     manejarError(res, error);
@@ -239,7 +239,7 @@ router.put('/:id/desactivar', cargarObjetivo, async (req, res) => {
 // Reactivar: le devuelve el acceso a una cuenta desactivada
 router.put('/:id/reactivar', cargarObjetivo, async (req, res) => {
   try {
-    await escribirComoActor(req, 'UPDATE USUARIOS SET activo = 1 WHERE id_usuario = ?', [req.params.id]);
+    await escribirComoActor(req, 'UPDATE usuarios SET activo = 1 WHERE id_usuario = ?', [req.params.id]);
     res.json({ mensaje: 'Usuario reactivado correctamente' });
   } catch (error) {
     manejarError(res, error);

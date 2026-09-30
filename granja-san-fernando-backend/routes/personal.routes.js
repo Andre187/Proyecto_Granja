@@ -42,8 +42,8 @@ router.get('/trabajadores', async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT t.id_trabajador, t.nombre, t.costo_dia, t.estado, u.usuario AS usuario_vinculado
-      FROM TRABAJADORES t
-      LEFT JOIN USUARIOS u ON u.id_trabajador = t.id_trabajador
+      FROM trabajadores t
+      LEFT JOIN usuarios u ON u.id_trabajador = t.id_trabajador
       ORDER BY t.estado = 'activo' DESC, t.nombre
     `);
     res.json(rows);
@@ -56,7 +56,7 @@ router.post('/trabajadores', reglasCrearTrabajador, validar, async (req, res) =>
   try {
     const { nombre, costo_dia } = req.body;
     const [result] = await pool.query(
-      'INSERT INTO TRABAJADORES (nombre, costo_dia, estado) VALUES (?, ?, "activo")',
+      'INSERT INTO trabajadores (nombre, costo_dia, estado) VALUES (?, ?, "activo")',
       [nombre, costo_dia]
     );
     res.status(201).json({ id_trabajador: result.insertId, mensaje: 'Trabajador registrado correctamente' });
@@ -70,19 +70,19 @@ router.put('/trabajadores/:id', reglasEditarTrabajador, validar, async (req, res
     const { costo_dia, estado } = req.body;
 
     const encontrado = await conActor(req, async (conexion) => {
-      const [existe] = await conexion.query('SELECT 1 FROM TRABAJADORES WHERE id_trabajador = ?', [req.params.id]);
+      const [existe] = await conexion.query('SELECT 1 FROM trabajadores WHERE id_trabajador = ?', [req.params.id]);
       if (existe.length === 0) return false;
 
       try {
         await conexion.beginTransaction();
         if (costo_dia !== undefined) {
-          await conexion.query('UPDATE TRABAJADORES SET costo_dia = ? WHERE id_trabajador = ?', [costo_dia, req.params.id]);
+          await conexion.query('UPDATE trabajadores SET costo_dia = ? WHERE id_trabajador = ?', [costo_dia, req.params.id]);
         }
         if (estado !== undefined) {
-          await conexion.query('UPDATE TRABAJADORES SET estado = ? WHERE id_trabajador = ?', [estado, req.params.id]);
+          await conexion.query('UPDATE trabajadores SET estado = ? WHERE id_trabajador = ?', [estado, req.params.id]);
           // Un trabajador inactivo no debe conservar una cuenta con acceso al sistema
           if (estado === 'inactivo') {
-            await conexion.query('UPDATE USUARIOS SET activo = 0 WHERE id_trabajador = ? AND activo = 1', [req.params.id]);
+            await conexion.query('UPDATE usuarios SET activo = 0 WHERE id_trabajador = ? AND activo = 1', [req.params.id]);
           }
         }
         await conexion.commit();
@@ -108,8 +108,8 @@ router.get('/pagos', async (req, res) => {
       SELECT p.id_pago, p.id_trabajador, t.nombre AS trabajador_nombre,
              p.semana_inicio, p.semana_fin, p.dias_laborados, p.costo_dia_registrado,
              p.horas_extra, p.costo_hora_extra, p.total_pagar
-      FROM PAGOS_SEMANALES p
-      JOIN TRABAJADORES t ON t.id_trabajador = p.id_trabajador
+      FROM pagos_semanales p
+      JOIN trabajadores t ON t.id_trabajador = p.id_trabajador
       ORDER BY p.semana_inicio DESC, p.id_pago DESC
       LIMIT 30
     `);
@@ -123,7 +123,7 @@ router.post('/pagos', reglasPago, validar, async (req, res) => {
   try {
     const { id_trabajador, semana_inicio, semana_fin, dias_laborados, costo_dia_pago, horas_extra, costo_hora_extra } = req.body;
 
-    const [trabajadorRows] = await pool.query('SELECT costo_dia FROM TRABAJADORES WHERE id_trabajador = ?', [id_trabajador]);
+    const [trabajadorRows] = await pool.query('SELECT costo_dia FROM trabajadores WHERE id_trabajador = ?', [id_trabajador]);
     if (trabajadorRows.length === 0) {
       return res.status(404).json({ error: 'Trabajador no encontrado' });
     }
@@ -139,7 +139,7 @@ router.post('/pagos', reglasPago, validar, async (req, res) => {
     }
 
     const [pagoExistente] = await pool.query(
-      'SELECT 1 FROM PAGOS_SEMANALES WHERE id_trabajador = ? AND semana_inicio = ? AND semana_fin = ? LIMIT 1',
+      'SELECT 1 FROM pagos_semanales WHERE id_trabajador = ? AND semana_inicio = ? AND semana_fin = ? LIMIT 1',
       [id_trabajador, semana_inicio, semana_fin]
     );
     if (pagoExistente.length > 0) {
@@ -147,7 +147,7 @@ router.post('/pagos', reglasPago, validar, async (req, res) => {
     }
 
     await pool.query(
-      'INSERT INTO PAGOS_SEMANALES (id_trabajador, semana_inicio, semana_fin, dias_laborados, costo_dia_registrado, horas_extra, costo_hora_extra) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO pagos_semanales (id_trabajador, semana_inicio, semana_fin, dias_laborados, costo_dia_registrado, horas_extra, costo_hora_extra) VALUES (?, ?, ?, ?, ?, ?, ?)',
       [id_trabajador, semana_inicio, semana_fin, dias_laborados, costoDiaFinal, horas_extra || 0, costo_hora_extra || 0]
     );
     res.status(201).json({ mensaje: 'Pago registrado correctamente' });

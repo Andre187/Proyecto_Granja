@@ -60,18 +60,18 @@ router.get('/', reglasListado, validar, async (req, res) => {
     }
 
     const [gastos] = await pool.query(
-      'SELECT * FROM GASTOS WHERE fecha BETWEEN ? AND ? ORDER BY fecha DESC, id_gasto DESC',
+      'SELECT * FROM gastos WHERE fecha BETWEEN ? AND ? ORDER BY fecha DESC, id_gasto DESC',
       [desde, hasta]
     );
 
     const [totalRows] = await pool.query(
-      "SELECT COALESCE(SUM(monto),0) AS total FROM GASTOS WHERE fecha BETWEEN ? AND ? AND estado != 'anulado'",
+      "SELECT COALESCE(SUM(monto),0) AS total FROM gastos WHERE fecha BETWEEN ? AND ? AND estado != 'anulado'",
       [desde, hasta]
     );
 
     const [porCategoria] = await pool.query(
       `SELECT categoria, COALESCE(SUM(monto),0) AS total, COUNT(*) AS cantidad
-       FROM GASTOS WHERE fecha BETWEEN ? AND ? AND estado != 'anulado'
+       FROM gastos WHERE fecha BETWEEN ? AND ? AND estado != 'anulado'
        GROUP BY categoria ORDER BY total DESC`,
       [desde, hasta]
     );
@@ -92,7 +92,7 @@ router.post('/', reglasGasto, validar, async (req, res) => {
   try {
     const { fecha, descripcion, categoria, monto } = req.body;
     await pool.query(
-      'INSERT INTO GASTOS (fecha, descripcion, categoria, monto) VALUES (?, ?, ?, ?)',
+      'INSERT INTO gastos (fecha, descripcion, categoria, monto) VALUES (?, ?, ?, ?)',
       [fecha, descripcion, categoria, monto]
     );
     res.status(201).json({ mensaje: 'Gasto registrado correctamente' });
@@ -105,7 +105,7 @@ router.put('/:id', reglasGasto, validar, async (req, res) => {
   try {
     const { fecha, descripcion, categoria, monto } = req.body;
     const [result] = await pool.query(
-      "UPDATE GASTOS SET fecha = ?, descripcion = ?, categoria = ?, monto = ? WHERE id_gasto = ? AND estado != 'anulado'",
+      "UPDATE gastos SET fecha = ?, descripcion = ?, categoria = ?, monto = ? WHERE id_gasto = ? AND estado != 'anulado'",
       [fecha, descripcion, categoria, monto, req.params.id]
     );
     if (result.affectedRows === 0) {
@@ -122,7 +122,7 @@ router.put('/:id', reglasGasto, validar, async (req, res) => {
 router.put('/:id/anular', async (req, res) => {
   try {
     const [result] = await conActor(req, (conexion) => conexion.query(
-      "UPDATE GASTOS SET estado = 'anulado' WHERE id_gasto = ? AND estado != 'anulado'",
+      "UPDATE gastos SET estado = 'anulado' WHERE id_gasto = ? AND estado != 'anulado'",
       [req.params.id]
     ));
     if (result.affectedRows === 0) {

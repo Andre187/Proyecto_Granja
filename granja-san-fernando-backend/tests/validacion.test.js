@@ -208,7 +208,7 @@ describe('Errores de la API', () => {
   test('un error de base de datos no filtra detalles internos', async () => {
     const r = await api.post('/ventas/ventas', tokens.op1, venta({ items: [item({ cantidad: 100000, precio_unitario: 100000 })] }));
     const texto = JSON.stringify(r.body);
-    expect(texto).not.toMatch(/SQL|INSERT|SELECT|DETALLE_VENTA|stack|sqlMessage/i);
+    expect(texto).not.toMatch(/SQL|INSERT|SELECT|detalle_venta|stack|sqlMessage/i);
   });
 
   test('las peticiones sin cuerpo no provocan errores 500', async () => {
