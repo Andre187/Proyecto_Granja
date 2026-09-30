@@ -31,7 +31,7 @@ router.post('/login', reglasLogin, validar, async (req, res) => {
     const { usuario, contrasena } = req.body;
 
     const [rows] = await pool.query(
-      'SELECT * FROM USUARIOS WHERE usuario = ?',
+      'SELECT * FROM usuarios WHERE usuario = ?',
       [usuario]
     );
 
@@ -75,7 +75,7 @@ router.post('/renovar', verificarToken, async (req, res) => {
     if (!req.usuario.inicio || ahora - req.usuario.inicio > MAX_SESION_SEGUNDOS) {
       return res.status(401).json({ error: 'Tu sesión alcanzó su duración máxima. Vuelve a iniciar sesión.' });
     }
-    const [rows] = await pool.query('SELECT contrasena FROM USUARIOS WHERE id_usuario = ?', [req.usuario.id_usuario]);
+    const [rows] = await pool.query('SELECT contrasena FROM usuarios WHERE id_usuario = ?', [req.usuario.id_usuario]);
     res.json({ token: firmarToken(req.usuario, rows[0].contrasena, req.usuario.inicio) });
   } catch (error) {
     manejarError(res, error, 'No se pudo renovar la sesión');

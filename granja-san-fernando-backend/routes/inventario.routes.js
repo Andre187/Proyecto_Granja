@@ -50,11 +50,11 @@ const reglasClasificarHuevos = [
   body('items.*.cantidad').isInt({ min: 1, max: 1000000 }).withMessage('La cantidad debe ser mayor a 0'),
 ];
 
-// ---------- CONCENTRADO (compras, con costos) — solo administrador ----------
+// ---------- concentrado (compras, con costos) — solo administrador ----------
 
 router.get('/concentrado', soloAdministrador, async (req, res) => {
   try {
-    const [rows] = await pool.query('SELECT * FROM CONCENTRADO ORDER BY fecha DESC, id_concentrado DESC LIMIT 30');
+    const [rows] = await pool.query('SELECT * FROM concentrado ORDER BY fecha DESC, id_concentrado DESC LIMIT 30');
     res.json(rows);
   } catch (error) {
     manejarError(res, error);
@@ -65,7 +65,7 @@ router.post('/concentrado', soloAdministrador, reglasConcentrado, validar, async
   try {
     const { fecha, tipo_concentrado, cantidad_qq, costo_unitario } = req.body;
     await pool.query(
-      'INSERT INTO CONCENTRADO (fecha, tipo_concentrado, cantidad_qq, costo_unitario) VALUES (?, ?, ?, ?)',
+      'INSERT INTO concentrado (fecha, tipo_concentrado, cantidad_qq, costo_unitario) VALUES (?, ?, ?, ?)',
       [fecha, tipo_concentrado, cantidad_qq, costo_unitario]
     );
     res.status(201).json({ mensaje: 'Compra de concentrado registrada correctamente' });
@@ -74,11 +74,11 @@ router.post('/concentrado', soloAdministrador, reglasConcentrado, validar, async
   }
 });
 
-// ---------- STOCK DE CONCENTRADO (existencia) ----------
+// ---------- STOCK DE concentrado (existencia) ----------
 
 router.get('/concentrado-stock', async (req, res) => {
   try {
-    const [rows] = await pool.query('SELECT * FROM CONCENTRADO_STOCK ORDER BY tipo_concentrado');
+    const [rows] = await pool.query('SELECT * FROM concentrado_stock ORDER BY tipo_concentrado');
     res.json(rows);
   } catch (error) {
     manejarError(res, error);
@@ -88,7 +88,7 @@ router.get('/concentrado-stock', async (req, res) => {
 router.put('/concentrado-stock/:id', soloAdministrador, reglasNivelMinimo, validar, async (req, res) => {
   try {
     const { nivel_minimo } = req.body;
-    const [resultado] = await pool.query('UPDATE CONCENTRADO_STOCK SET nivel_minimo = ? WHERE id_stock = ?', [nivel_minimo, req.params.id]);
+    const [resultado] = await pool.query('UPDATE concentrado_stock SET nivel_minimo = ? WHERE id_stock = ?', [nivel_minimo, req.params.id]);
     if (resultado.affectedRows === 0) {
       return res.status(404).json({ error: 'Registro de existencia no encontrado' });
     }
@@ -98,14 +98,14 @@ router.put('/concentrado-stock/:id', soloAdministrador, reglasNivelMinimo, valid
   }
 });
 
-// ---------- CONSUMO DE CONCENTRADO — cualquier usuario logueado puede registrar ----------
+// ---------- CONSUMO DE concentrado — cualquier usuario logueado puede registrar ----------
 
 router.get('/concentrado-consumo', async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT cc.id_consumo, cs.tipo_concentrado, cc.fecha, cc.cantidad_qq
-      FROM CONCENTRADO_CONSUMO cc
-      JOIN CONCENTRADO_STOCK cs ON cs.id_stock = cc.id_stock
+      FROM concentrado_consumo cc
+      JOIN concentrado_stock cs ON cs.id_stock = cc.id_stock
       ORDER BY cc.fecha DESC, cc.id_consumo DESC
       LIMIT 30
     `);
@@ -119,7 +119,7 @@ router.post('/concentrado-consumo', reglasConsumoConcentrado, validar, async (re
   try {
     const { id_stock, fecha, cantidad_qq } = req.body;
     await pool.query(
-      'INSERT INTO CONCENTRADO_CONSUMO (id_stock, fecha, cantidad_qq) VALUES (?, ?, ?)',
+      'INSERT INTO concentrado_consumo (id_stock, fecha, cantidad_qq) VALUES (?, ?, ?)',
       [id_stock, fecha, cantidad_qq]
     );
     res.status(201).json({ mensaje: 'Consumo registrado correctamente' });
@@ -128,11 +128,11 @@ router.post('/concentrado-consumo', reglasConsumoConcentrado, validar, async (re
   }
 });
 
-// ---------- MEDICAMENTOS (catálogo) — solo administrador da de alta ----------
+// ---------- medicamentos (catálogo) — solo administrador da de alta ----------
 
 router.get('/medicamentos', async (req, res) => {
   try {
-    const [rows] = await pool.query('SELECT * FROM MEDICAMENTOS ORDER BY nombre');
+    const [rows] = await pool.query('SELECT * FROM medicamentos ORDER BY nombre');
     res.json(rows);
   } catch (error) {
     manejarError(res, error);
@@ -143,7 +143,7 @@ router.post('/medicamentos', soloAdministrador, reglasMedicamento, validar, asyn
   try {
     const { nombre, existencia_actual, nivel_minimo, unidad_medida } = req.body;
     const [result] = await pool.query(
-      'INSERT INTO MEDICAMENTOS (nombre, existencia_actual, nivel_minimo, unidad_medida) VALUES (?, ?, ?, ?)',
+      'INSERT INTO medicamentos (nombre, existencia_actual, nivel_minimo, unidad_medida) VALUES (?, ?, ?, ?)',
       [nombre, existencia_actual, nivel_minimo, unidad_medida]
     );
     res.status(201).json({ id_medicamento: result.insertId, mensaje: 'Medicamento agregado correctamente' });
@@ -162,8 +162,8 @@ router.get('/movimientos', async (req, res) => {
     const [rows] = await pool.query(`
       SELECT m.id_movimiento, m.id_medicamento, med.nombre AS medicamento_nombre,
              m.fecha, m.tipo_movimiento, m.cantidad, med.unidad_medida
-      FROM MOVIMIENTOS_MEDICAMENTO m
-      JOIN MEDICAMENTOS med ON med.id_medicamento = m.id_medicamento
+      FROM movimientos_medicamento m
+      JOIN medicamentos med ON med.id_medicamento = m.id_medicamento
       ORDER BY m.fecha DESC, m.id_movimiento DESC
       LIMIT 30
     `);
@@ -182,7 +182,7 @@ router.post('/movimientos', reglasMovimiento, validar, async (req, res) => {
     }
 
     await pool.query(
-      'INSERT INTO MOVIMIENTOS_MEDICAMENTO (id_medicamento, fecha, tipo_movimiento, cantidad) VALUES (?, ?, ?, ?)',
+      'INSERT INTO movimientos_medicamento (id_medicamento, fecha, tipo_movimiento, cantidad) VALUES (?, ?, ?, ?)',
       [id_medicamento, fecha, tipo_movimiento, cantidad]
     );
     res.status(201).json({ mensaje: 'Movimiento registrado correctamente' });
@@ -198,8 +198,8 @@ router.get('/huevos-stock', async (req, res) => {
     const [rows] = await pool.query(`
       SELECT hs.id_stock, hs.id_clasificacion, ch.nombre AS clasificacion,
              hs.existencia_actual, hs.nivel_minimo
-      FROM HUEVOS_STOCK hs
-      JOIN CLASIFICACIONES_HUEVO ch ON ch.id_clasificacion = hs.id_clasificacion
+      FROM huevos_stock hs
+      JOIN clasificaciones_huevo ch ON ch.id_clasificacion = hs.id_clasificacion
       ORDER BY ch.id_clasificacion
     `);
     res.json(rows);
@@ -212,7 +212,7 @@ router.get('/huevos-stock', async (req, res) => {
 router.put('/huevos-stock/:id', soloAdministrador, reglasNivelMinimo, validar, async (req, res) => {
   try {
     const { nivel_minimo } = req.body;
-    const [resultado] = await pool.query('UPDATE HUEVOS_STOCK SET nivel_minimo = ? WHERE id_stock = ?', [nivel_minimo, req.params.id]);
+    const [resultado] = await pool.query('UPDATE huevos_stock SET nivel_minimo = ? WHERE id_stock = ?', [nivel_minimo, req.params.id]);
     if (resultado.affectedRows === 0) {
       return res.status(404).json({ error: 'Registro de existencia no encontrado' });
     }
@@ -228,8 +228,8 @@ router.get('/huevos-clasificados', async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT hc.id_registro, hc.id_clasificacion, ch.nombre AS clasificacion, hc.fecha, hc.cantidad
-      FROM HUEVOS_CLASIFICADOS hc
-      JOIN CLASIFICACIONES_HUEVO ch ON ch.id_clasificacion = hc.id_clasificacion
+      FROM huevos_clasificados hc
+      JOIN clasificaciones_huevo ch ON ch.id_clasificacion = hc.id_clasificacion
       ORDER BY hc.fecha DESC, hc.id_registro DESC
       LIMIT 30
     `);
@@ -247,7 +247,7 @@ router.post('/huevos-clasificados', reglasClasificarHuevos, validar, async (req,
     await conexion.beginTransaction();
     for (const item of items) {
       await conexion.query(
-        'INSERT INTO HUEVOS_CLASIFICADOS (id_clasificacion, fecha, cantidad) VALUES (?, ?, ?)',
+        'INSERT INTO huevos_clasificados (id_clasificacion, fecha, cantidad) VALUES (?, ?, ?)',
         [item.id_clasificacion, fecha, item.cantidad]
       );
     }

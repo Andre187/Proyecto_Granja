@@ -52,7 +52,7 @@ describe('02 - Auditoría con autor', () => {
     await fijarExistencia(10);
     const venta = (await venderHuevos(tokens.op1, { cantidad: 1 })).body.id_venta;
     await api.put(`/ventas/ventas/${venta}/anular`, tokens.admin_qa, { motivo: 'prueba de auditoría' });
-    const [[a]] = await pool.query("SELECT * FROM auditoria_general WHERE tabla = 'VENTAS' AND id_registro = ?", [venta]);
+    const [[a]] = await pool.query("SELECT * FROM auditoria_general WHERE tabla = 'ventas' AND id_registro = ?", [venta]);
     expect(a).toMatchObject({ id_actor: 1, accion: 'ANULAR', detalle: 'prueba de auditoría' });
   });
 
@@ -60,7 +60,7 @@ describe('02 - Auditoría con autor', () => {
     await api.post('/gastos', tokens.admin_qa, { fecha: hoy(), descripcion: 'Gasto a anular', categoria: 'otros', monto: 5 });
     const [[{ id_gasto }]] = await pool.query('SELECT MAX(id_gasto) AS id_gasto FROM gastos');
     await api.put(`/gastos/${id_gasto}/anular`, tokens.admin_qa);
-    const [[a]] = await pool.query("SELECT id_actor FROM auditoria_general WHERE tabla = 'GASTOS' AND id_registro = ?", [id_gasto]);
+    const [[a]] = await pool.query("SELECT id_actor FROM auditoria_general WHERE tabla = 'gastos' AND id_registro = ?", [id_gasto]);
     expect(a.id_actor).toBe(1);
   });
 
