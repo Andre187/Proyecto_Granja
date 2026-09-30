@@ -4,35 +4,38 @@ const pool = require('../db');
 const { verificarToken, soloAdministrador } = require('../middleware/auth.middleware');
 const { validar } = require('../middleware/validacion.middleware');
 const { manejarError } = require('../utils/manejarError');
+const { conActor } = require('../utils/actor');
+const { fecha, decimal2, texto, validarParametroId } = require('../utils/validadores');
 
 const router = express.Router();
 
 router.use(verificarToken, soloAdministrador);
+validarParametroId(router);
 
 // Personal eventual (por día) que no necesita cuenta de usuario
 const reglasCrearTrabajador = [
-  body('nombre').trim().notEmpty().withMessage('El nombre es requerido')
-    .isLength({ min: 2, max: 100 }).withMessage('El nombre debe tener entre 2 y 100 caracteres'),
-  body('costo_dia').isFloat({ min: 0.01, max: 10000 }).withMessage('El costo por día debe ser mayor a 0'),
+  texto('nombre', { min: 2, max: 100, nombre: 'El nombre' }),
+  decimal2(body('costo_dia'), { min: 0.01, max: 10000, mensaje: 'El costo por día debe ser mayor a 0' }),
 ];
 
 const reglasEditarTrabajador = [
-  body('costo_dia').optional().isFloat({ min: 0, max: 10000 }).withMessage('El costo por día debe ser un número válido'),
+  decimal2(body('costo_dia').optional(), { min: 0, max: 10000, mensaje: 'El costo por día debe ser un número válido' }),
   body('estado').optional().isIn(['activo', 'inactivo']).withMessage('Estado inválido'),
 ];
 
 const reglasPago = [
   body('id_trabajador').isInt({ min: 1 }).withMessage('Selecciona un trabajador válido'),
-  body('semana_inicio').isISO8601().withMessage('Fecha de inicio inválida'),
-  body('semana_fin').isISO8601().withMessage('Fecha de fin inválida').custom((valor, { req }) => {
-    if (new Date(valor) < new Date(req.body.semana_inicio)) {
+  fecha('semana_inicio', { mensaje: 'Fecha de inicio inválida' }),
+  fecha('semana_fin', { mensaje: 'Fecha de fin inválida' }).custom((valor, { req }) => {
+    if (valor < req.body.semana_inicio) {
       throw new Error('La fecha de fin no puede ser anterior a la fecha de inicio');
     }
     return true;
   }),
   body('dias_laborados').isInt({ min: 0, max: 7 }).withMessage('Los días laborados deben ser un número entre 0 y 7'),
   body('horas_extra').optional({ checkFalsy: true }).isInt({ min: 0, max: 168 }).withMessage('Las horas extra deben ser un número entero válido'),
-  body('costo_hora_extra').optional({ checkFalsy: true }).isFloat({ min: 0, max: 10000 }).withMessage('El costo por hora extra debe ser un número válido'),
+  decimal2(body('costo_hora_extra').optional({ checkFalsy: true }), { min: 0, max: 10000, mensaje: 'El costo por hora extra debe ser un número válido' }),
+  decimal2(body('costo_dia_pago').optional({ checkFalsy: true }), { min: 0.01, max: 10000, mensaje: 'El costo por día debe ser mayor a 0' }),
 ];
 
 router.get('/trabajadores', async (req, res) => {
@@ -66,13 +69,33 @@ router.put('/trabajadores/:id', reglasEditarTrabajador, validar, async (req, res
   try {
     const { costo_dia, estado } = req.body;
 
-    if (costo_dia !== undefined) {
-      await pool.query('UPDATE TRABAJADORES SET costo_dia = ? WHERE id_trabajador = ?', [costo_dia, req.params.id]);
-    }
-    if (estado !== undefined) {
-      await pool.query('UPDATE TRABAJADORES SET estado = ? WHERE id_trabajador = ?', [estado, req.params.id]);
-    }
+    const encontrado = await conActor(req, async (conexion) => {
+      const [existe] = await conexion.query('SELECT 1 FROM TRABAJADORES WHERE id_trabajador = ?', [req.params.id]);
+      if (existe.length === 0) return false;
 
+      try {
+        await conexion.beginTransaction();
+        if (costo_dia !== undefined) {
+          await conexion.query('UPDATE TRABAJADORES SET costo_dia = ? WHERE id_trabajador = ?', [costo_dia, req.params.id]);
+        }
+        if (estado !== undefined) {
+          await conexion.query('UPDATE TRABAJADORES SET estado = ? WHERE id_trabajador = ?', [estado, req.params.id]);
+          // Un trabajador inactivo no debe conservar una cuenta con acceso al sistema
+          if (estado === 'inactivo') {
+            await conexion.query('UPDATE USUARIOS SET activo = 0 WHERE id_trabajador = ? AND activo = 1', [req.params.id]);
+          }
+        }
+        await conexion.commit();
+        return true;
+      } catch (error) {
+        await conexion.rollback();
+        throw error;
+      }
+    });
+
+    if (!encontrado) {
+      return res.status(404).json({ error: 'Trabajador no encontrado' });
+    }
     res.json({ mensaje: 'Trabajador actualizado correctamente' });
   } catch (error) {
     manejarError(res, error);
@@ -113,6 +136,14 @@ router.post('/pagos', reglasPago, validar, async (req, res) => {
 
     if (!costoDiaFinal || costoDiaFinal <= 0) {
       return res.status(400).json({ error: 'El costo por día debe ser mayor a 0. Edita el costo del trabajador o especifícalo en este pago.' });
+    }
+
+    const [pagoExistente] = await pool.query(
+      'SELECT 1 FROM PAGOS_SEMANALES WHERE id_trabajador = ? AND semana_inicio = ? AND semana_fin = ? LIMIT 1',
+      [id_trabajador, semana_inicio, semana_fin]
+    );
+    if (pagoExistente.length > 0) {
+      return res.status(409).json({ error: 'Ya hay un pago registrado para ese trabajador en esa semana' });
     }
 
     await pool.query(

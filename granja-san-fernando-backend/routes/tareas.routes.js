@@ -4,19 +4,20 @@ const pool = require('../db');
 const { verificarToken, soloAdministrador } = require('../middleware/auth.middleware');
 const { validar } = require('../middleware/validacion.middleware');
 const { manejarError } = require('../utils/manejarError');
+const { fecha, fechaOpcional, texto, validarParametroId } = require('../utils/validadores');
 const { esAdminOSuper } = require('../utils/roles');
 
 const router = express.Router();
 
 router.use(verificarToken);
+validarParametroId(router);
 
 const reglasTarea = [
   body('id_trabajador').isInt({ min: 1 }).withMessage('Selecciona un trabajador válido'),
   body('id_galera').optional({ checkFalsy: true }).isInt({ min: 1 }).withMessage('Galera inválida'),
-  body('descripcion').trim().notEmpty().withMessage('La descripción es requerida')
-    .isLength({ max: 255 }).withMessage('La descripción no puede superar 255 caracteres'),
-  body('fecha_asignacion').isISO8601().withMessage('Fecha de asignación inválida'),
-  body('fecha_limite').optional({ checkFalsy: true }).isISO8601().withMessage('Fecha límite inválida'),
+  texto('descripcion', { max: 255, nombre: 'La descripción' }),
+  fecha('fecha_asignacion', { futura: true, mensaje: 'Fecha de asignación inválida' }),
+  fechaOpcional('fecha_limite', { futura: true, mensaje: 'Fecha límite inválida' }),
 ];
 
 const reglasEstado = [
@@ -70,6 +71,11 @@ router.get('/tareas', async (req, res) => {
 router.post('/tareas', soloAdministrador, reglasTarea, validar, async (req, res) => {
   try {
     const { id_trabajador, id_galera, descripcion, fecha_asignacion, fecha_limite } = req.body;
+
+    const [trabajadorRows] = await pool.query("SELECT 1 FROM TRABAJADORES WHERE id_trabajador = ? AND estado = 'activo'", [id_trabajador]);
+    if (trabajadorRows.length === 0) {
+      return res.status(400).json({ error: 'El trabajador seleccionado no existe o está inactivo' });
+    }
     await pool.query(
       'INSERT INTO TAREAS (id_trabajador, id_galera, descripcion, fecha_asignacion, fecha_limite, estado) VALUES (?, ?, ?, ?, ?, "pendiente")',
       [id_trabajador, id_galera || null, descripcion, fecha_asignacion, fecha_limite || null]

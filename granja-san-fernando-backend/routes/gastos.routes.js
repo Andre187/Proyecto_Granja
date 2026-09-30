@@ -4,20 +4,24 @@ const pool = require('../db');
 const { verificarToken, soloAdministrador } = require('../middleware/auth.middleware');
 const { validar } = require('../middleware/validacion.middleware');
 const { manejarError } = require('../utils/manejarError');
+const { conActor } = require('../utils/actor');
+const { fecha, fechaQuery, decimal2, texto, validarParametroId } = require('../utils/validadores');
 
 const router = express.Router();
 
 router.use(verificarToken, soloAdministrador);
+validarParametroId(router);
 
 const CATEGORIAS_VALIDAS = ['mantenimiento', 'transporte', 'servicios', 'insumos', 'otros'];
 
 const reglasGasto = [
-  body('fecha').isISO8601().withMessage('Fecha inválida'),
-  body('descripcion').trim().notEmpty().withMessage('La descripción es requerida')
-    .isLength({ max: 200 }).withMessage('La descripción no puede superar 200 caracteres'),
+  fecha('fecha'),
+  texto('descripcion', { max: 200, nombre: 'La descripción' }),
   body('categoria').isIn(CATEGORIAS_VALIDAS).withMessage('Categoría inválida'),
-  body('monto').isFloat({ min: 0.01, max: 1000000 }).withMessage('El monto debe ser mayor a 0'),
+  decimal2(body('monto'), { min: 0.01, max: 1000000, mensaje: 'El monto debe ser mayor a 0' }),
 ];
+
+const reglasListado = [fechaQuery('desde'), fechaQuery('hasta')];
 
 // Calcula el rango de fechas según el período pedido, igual que en Reportes
 function rangoFechas(periodo) {
@@ -42,7 +46,7 @@ function rangoFechas(periodo) {
   return { desde: fmt(desde), hasta: fmt(hoy) };
 }
 
-router.get('/', async (req, res) => {
+router.get('/', reglasListado, validar, async (req, res) => {
   try {
     let periodo = ['hoy', 'semana', 'mes'].includes(req.query.periodo) ? req.query.periodo : 'mes';
     let desde, hasta;
@@ -117,10 +121,10 @@ router.put('/:id', reglasGasto, validar, async (req, res) => {
 // igual que las ventas, solo se excluye de los totales.
 router.put('/:id/anular', async (req, res) => {
   try {
-    const [result] = await pool.query(
+    const [result] = await conActor(req, (conexion) => conexion.query(
       "UPDATE GASTOS SET estado = 'anulado' WHERE id_gasto = ? AND estado != 'anulado'",
       [req.params.id]
-    );
+    ));
     if (result.affectedRows === 0) {
       return res.status(404).json({ error: 'Gasto no encontrado o ya estaba anulado' });
     }
