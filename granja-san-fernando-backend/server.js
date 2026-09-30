@@ -1,10 +1,14 @@
+// Zona horaria de la granja. Debe fijarse antes de cualquier uso de Date: los reportes calculan
+// "hoy" con la hora del proceso, y un servidor en UTC (EC2 por defecto) cambiaría de día a las 18:00.
+process.env.TZ = process.env.TZ || 'America/Guatemala';
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 require('dotenv').config();
 const pool = require('./db');
 const { limitadorGeneral, limitadorLogin } = require('./middleware/rateLimit.middleware');
-const { manejarError } = require('./utils/manejarError');
+const { manejarError, registrarError } = require('./utils/manejarError');
 const { verificarToken, soloAdministrador } = require('./middleware/auth.middleware');
 const authRoutes = require('./routes/auth.routes');
 const usuariosRoutes = require('./routes/usuarios.routes');
@@ -36,9 +40,24 @@ const opcionesCors = {
 };
 
 const app = express();
+
+// Detrás de Nginx todas las peticiones llegan desde la IP del proxy, y el límite de intentos de login
+// (por IP) bloquearía a todos los usuarios a la vez. En producción define TRUST_PROXY=1 en el .env
+// (número de proxies delante de la app). Sin definirla no se confía en X-Forwarded-For, para que en
+// desarrollo nadie pueda falsear su IP y saltarse el límite.
+if (process.env.TRUST_PROXY) {
+  const saltos = Number(process.env.TRUST_PROXY);
+  app.set('trust proxy', Number.isInteger(saltos) ? saltos : process.env.TRUST_PROXY);
+}
 app.use(helmet());
 app.use(cors(opcionesCors));
 app.use(express.json());
+// Express 5 deja req.body sin definir cuando la petición no trae cuerpo; así los controladores
+// pueden desestructurarlo sin reventar.
+app.use((req, res, next) => {
+  if (req.body === undefined) req.body = {};
+  next();
+});
 app.use('/api', limitadorGeneral);
 
 app.get('/', (req, res) => {
@@ -69,13 +88,24 @@ app.use('/api/personal', personalRoutes);
 app.use('/api/gastos', gastosRoutes);
 app.use('/api/superadmin', superadminRoutes);
 
-// Manejador de errores al final: si CORS rechaza un origen, responde limpio en vez de
-// dejar que Express filtre un stack trace u otro detalle interno.
+// Ruta inexistente: respuesta JSON, no la página HTML por defecto de Express
+app.use((req, res) => {
+  res.status(404).json({ error: 'Ruta no encontrada' });
+});
+
+// Manejador de errores al final: CORS, JSON mal formado, cuerpos demasiado grandes y cualquier
+// otro fallo responden limpio, sin filtrar un stack trace ni detalles internos.
 app.use((err, req, res, next) => {
   if (err.message === 'Origen no permitido por CORS') {
     return res.status(403).json({ error: 'Origen no permitido' });
   }
-  console.error(err);
+  if (err.type === 'entity.parse.failed') {
+    return res.status(400).json({ error: 'El cuerpo de la petición no es un JSON válido' });
+  }
+  if (err.type === 'entity.too.large') {
+    return res.status(413).json({ error: 'La petición es demasiado grande' });
+  }
+  registrarError(err);
   res.status(500).json({ error: 'Error interno del servidor' });
 });
 
