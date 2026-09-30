@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import api from '../api/api';
 
 // Misma regla que utils/contrasenaSegura.js del backend
-const REGEX_CONTRASENA_SEGURA = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/;
+const REGEX_CONTRASENA_SEGURA = /^(?=.*[A-Za-z])(?=.*\d).{8,72}$/;
 
 const estiloClaro = { background: '#F5F1E6', color: '#232019', colorScheme: 'light' };
 
@@ -73,7 +73,7 @@ function SuperAdmin({ usuario: usuarioActivo }) {
 
   const handleGuardarPassword = async () => {
     if (!REGEX_CONTRASENA_SEGURA.test(passwordNueva)) {
-      mostrarError('La contraseña debe tener al menos 8 caracteres, incluyendo al menos una letra y un número');
+      mostrarError('La contraseña debe tener entre 8 y 72 caracteres, incluyendo al menos una letra y un número');
       return;
     }
     try {
@@ -167,7 +167,7 @@ function SuperAdmin({ usuario: usuarioActivo }) {
           <div className="table-wrap">
             <table>
               <thead>
-                <tr><th>Fecha</th><th>Acción</th><th>Usuario afectado</th><th>Rol anterior</th><th>Rol nuevo</th></tr>
+                <tr><th>Fecha</th><th>Acción</th><th>Usuario afectado</th><th>Cambio</th><th>Rol anterior</th><th>Rol nuevo</th><th>Realizado por</th></tr>
               </thead>
               <tbody>
                 {registros.map((a) => (
@@ -175,8 +175,10 @@ function SuperAdmin({ usuario: usuarioActivo }) {
                     <td>{new Date(a.fecha_hora).toLocaleString('es-GT')}</td>
                     <td><span className={`tag ${a.accion === 'DELETE' ? 'low' : a.accion === 'INSERT' ? 'ok' : 'pend'}`}>{a.accion}</span></td>
                     <td>{a.usuario_afectado}</td>
+                    <td>{a.detalle || '—'}</td>
                     <td>{a.rol_anterior || '—'}</td>
                     <td>{a.rol_nuevo || '—'}</td>
+                    <td>{a.actor || '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -240,7 +242,7 @@ function SuperAdmin({ usuario: usuarioActivo }) {
                   type="password"
                   value={passwordNueva}
                   onChange={(e) => setPasswordNueva(e.target.value)}
-                  placeholder="mínimo 8 caracteres, al menos una letra y un número"
+                  placeholder="8 a 72 caracteres, al menos una letra y un número"
                   style={{ ...estiloClaro, flex: 1, padding: '8px 10px', border: '1px solid var(--line)', borderRadius: '7px', fontSize: '13px' }}
                 />
                 <button type="button" className="btn" style={{ padding: '8px 14px', fontSize: '12px' }} onClick={handleGuardarPassword}>

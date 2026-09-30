@@ -44,7 +44,7 @@ function Inventario({ usuario }) {
   const cargarTodo = async () => {
     try {
       const [rConcentrado, rStock, rConsumo, rMedicamentos, rMovimientos, rHuevosStock, rHuevosClasificados] = await Promise.all([
-        api.get('/inventario/concentrado'),
+        esAdmin ? api.get('/inventario/concentrado') : Promise.resolve({ data: [] }),
         api.get('/inventario/concentrado-stock'),
         api.get('/inventario/concentrado-consumo'),
         api.get('/inventario/medicamentos'),
@@ -381,6 +381,7 @@ function Inventario({ usuario }) {
                 )}
               </section>
 
+              {esAdmin && (
               <section className="card">
                 <div className="head">
                   <h2>Historial de compras</h2>
@@ -408,6 +409,7 @@ function Inventario({ usuario }) {
                   </div>
                 )}
               </section>
+              )}
             </div>
           )}
         </>
