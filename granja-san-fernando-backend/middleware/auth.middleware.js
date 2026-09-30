@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const pool = require('../db');
 const { esAdminOSuper } = require('../utils/roles');
+const { huellaContrasena } = require('../utils/sesion');
 
 // Token ausente, inválido o expirado -> siempre 401 (problema de identidad/sesión)
 //
@@ -9,6 +10,9 @@ const { esAdminOSuper } = require('../utils/roles');
 // administrador desactiva a alguien o le cambia el rol, el cambio aplica de
 // inmediato en la siguiente petición de esa persona, en vez de quedar vigente
 // hasta que el token viejo expire por su cuenta.
+//
+// También compara la huella de la contraseña guardada en el token con la actual: al cambiar
+// la contraseña de una cuenta, sus tokens anteriores dejan de servir.
 function verificarToken(req, res, next) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
@@ -23,11 +27,15 @@ function verificarToken(req, res, next) {
     }
 
     try {
-      const [rows] = await pool.query('SELECT rol, activo FROM USUARIOS WHERE id_usuario = ?', [decoded.id_usuario]);
+      const [rows] = await pool.query('SELECT rol, activo, contrasena, id_trabajador FROM USUARIOS WHERE id_usuario = ?', [decoded.id_usuario]);
       if (rows.length === 0 || !rows[0].activo) {
         return res.status(401).json({ error: 'Tu cuenta ya no tiene acceso. Vuelve a iniciar sesión.' });
       }
-      req.usuario = { ...decoded, rol: rows[0].rol };
+      if (decoded.pv !== huellaContrasena(rows[0].contrasena)) {
+        return res.status(401).json({ error: 'Tu sesión ya no es válida. Vuelve a iniciar sesión.' });
+      }
+      // Rol y trabajador vinculado se toman siempre de la base de datos, no del token
+      req.usuario = { ...decoded, rol: rows[0].rol, id_trabajador: rows[0].id_trabajador };
       next();
     } catch (error) {
       console.error(error);

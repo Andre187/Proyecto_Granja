@@ -5,11 +5,19 @@
 require('dotenv').config();
 const bcrypt = require('bcryptjs');
 const pool = require('./db');
+const { esContrasenaSegura, MENSAJE_CONTRASENA_SEGURA } = require('./utils/contrasenaSegura');
 
-// -------- EDITA ESTOS DATOS ANTES DE EJECUTAR --------
-const usuario = 'superadmin';
-const contrasenaTextoPlano = 'superadmin2026'; 
-// -------------------------------------------------------
+// La contraseña NO se guarda en este archivo (ni en el historial de git): se pasa al ejecutar.
+// Uso (PowerShell):  $env:SEED_PASSWORD='TuContraseñaSegura1'; node seed-superadmin.js
+// Opcional: $env:SEED_USUARIO='otro_nombre'
+const usuario = process.env.SEED_USUARIO || 'superadmin';
+const contrasenaTextoPlano = process.env.SEED_PASSWORD;
+const rol = 'superadministrador';
+
+if (!esContrasenaSegura(contrasenaTextoPlano)) {
+  console.error('Define SEED_PASSWORD con una contraseña segura. ' + MENSAJE_CONTRASENA_SEGURA);
+  process.exit(1);
+}
 
 async function crearSuperAdmin() {
   try {
@@ -23,7 +31,6 @@ async function crearSuperAdmin() {
     console.log('Cuenta de superadministrador creada correctamente.');
     console.log('id_usuario:', result.insertId);
     console.log('usuario:', usuario);
-    console.log('Guarda esta contraseña en un lugar seguro y separado del proyecto:', contrasenaTextoPlano);
     process.exit(0);
   } catch (error) {
     console.error('Error al crear la cuenta de superadministrador:', error.message);

@@ -4,12 +4,19 @@
 require('dotenv').config();
 const bcrypt = require('bcryptjs');
 const pool = require('./db');
+const { esContrasenaSegura, MENSAJE_CONTRASENA_SEGURA } = require('./utils/contrasenaSegura');
 
-// -------- EDITA ESTOS DATOS ANTES DE EJECUTAR --------
-const usuario = 'admin';
-const contrasenaTextoPlano = 'admin123'; // cámbiala por una segura
+// La contraseña NO se guarda en este archivo (ni en el historial de git): se pasa al ejecutar.
+// Uso (PowerShell):  $env:SEED_PASSWORD='TuContraseñaSegura1'; node seed-admin.js
+// Opcional: $env:SEED_USUARIO='otro_nombre'
+const usuario = process.env.SEED_USUARIO || 'admin';
+const contrasenaTextoPlano = process.env.SEED_PASSWORD;
 const rol = 'administrador';
-// -------------------------------------------------------
+
+if (!esContrasenaSegura(contrasenaTextoPlano)) {
+  console.error('Define SEED_PASSWORD con una contraseña segura. ' + MENSAJE_CONTRASENA_SEGURA);
+  process.exit(1);
+}
 
 async function crearAdmin() {
   try {
@@ -23,7 +30,6 @@ async function crearAdmin() {
     console.log('Usuario administrador creado correctamente.');
     console.log('id_usuario:', result.insertId);
     console.log('usuario:', usuario);
-    console.log('Guarda esta contraseña en un lugar seguro:', contrasenaTextoPlano);
     process.exit(0);
   } catch (error) {
     console.error('Error al crear el usuario administrador:', error.message);
