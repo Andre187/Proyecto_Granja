@@ -137,6 +137,7 @@ function Layout({ usuario, onLogout, children }) {
   useEffect(() => {
     if (!menuPerfilAbierto) return;
     const cerrarSiFuera = (e) => {
+      if (e.target.closest && e.target.closest('.mobile-sheet')) return;
       if (perfilRef.current && !perfilRef.current.contains(e.target)) setMenuPerfilAbierto(false);
     };
     document.addEventListener('mousedown', cerrarSiFuera);
@@ -242,6 +243,19 @@ function Layout({ usuario, onLogout, children }) {
 
         {children}
       </main>
+
+      {menuPerfilAbierto && (
+        <div className="mobile-sheet-overlay" onClick={() => setMenuPerfilAbierto(false)}>
+          <div className="mobile-sheet" onClick={(e) => e.stopPropagation()}>
+            <button className="btn danger" onClick={() => { setMenuPerfilAbierto(false); setConfirmarSalir(true); }}>
+              Cerrar sesión
+            </button>
+            <button className="btn outline" onClick={() => setMenuPerfilAbierto(false)}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
 
       {confirmarSalir && (
         <div className="modal-overlay" onClick={() => setConfirmarSalir(false)}>
