@@ -120,6 +120,12 @@ function Ventas({ usuario }) {
     setItems([{ id_clasificacion: '', presentacion: 'unidad', cantidadPresentacion: '', precio_unitario: '' }]);
   };
 
+  // La venta no se generó por falta de existencia: al cerrar la alerta se descartan los datos capturados
+  const cerrarAlertaStock = () => {
+    setStockInsuficiente(null);
+    resetFormularioVenta();
+  };
+
   const handleRegistrarVenta = async (e) => {
     e.preventDefault();
 
@@ -581,7 +587,7 @@ function Ventas({ usuario }) {
       )}
 
       {stockInsuficiente && (
-        <div className="modal-overlay" onClick={() => setStockInsuficiente(null)}>
+        <div className="modal-overlay" onClick={cerrarAlertaStock}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <div className="modal-icon">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -600,9 +606,10 @@ function Ventas({ usuario }) {
               ) : (
                 'La cantidad de huevos que quieres vender no está disponible en existencia para ese tamaño.'
               )}
+              {' '}La venta no se registró y el formulario se limpiará.
             </p>
             <div className="modal-actions">
-              <button className="btn" style={{ width: '100%' }} onClick={() => setStockInsuficiente(null)}>Entendido</button>
+              <button className="btn" style={{ width: '100%' }} onClick={cerrarAlertaStock}>Entendido</button>
             </div>
           </div>
         </div>

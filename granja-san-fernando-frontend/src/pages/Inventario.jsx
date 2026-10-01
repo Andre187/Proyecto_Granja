@@ -31,6 +31,8 @@ function Inventario({ usuario }) {
 
   const [formConcentrado, setFormConcentrado] = useState({ fecha: hoy(), tipo_concentrado: '', cantidad_qq: '', costo_unitario: '' });
   const [confirmacion, setConfirmacion] = useState(null);
+  // Alerta cuando una salida supera la existencia: al cerrarla se limpia el formulario de origen
+  const [alertaExistencia, setAlertaExistencia] = useState(null);
   const [formConsumoConcentrado, setFormConsumoConcentrado] = useState({ id_stock: '', fecha: hoy(), cantidad_qq: '' });
   const [editandoMinimoId, setEditandoMinimoId] = useState(null);
   const [minimoTemporal, setMinimoTemporal] = useState('');
@@ -117,7 +119,15 @@ function Inventario({ usuario }) {
       mostrarMensaje('Consumo de concentrado registrado');
       cargarTodo();
     } catch (err) {
-      mostrarError(err.response?.data?.error || 'No se pudo registrar el consumo');
+      const msg = err.response?.data?.error || '';
+      if (msg.includes('supera la existencia')) {
+        setAlertaExistencia({
+          texto: 'El consumo que quieres registrar supera la cantidad de concentrado disponible en existencia.',
+          limpiar: () => setFormConsumoConcentrado({ id_stock: '', fecha: hoy(), cantidad_qq: '' }),
+        });
+      } else {
+        mostrarError(msg || 'No se pudo registrar el consumo');
+      }
     }
   };
 
@@ -160,7 +170,15 @@ function Inventario({ usuario }) {
       mostrarMensaje('Movimiento registrado');
       cargarTodo();
     } catch (err) {
-      mostrarError(err.response?.data?.error || 'No se pudo registrar el movimiento');
+      const msg = err.response?.data?.error || '';
+      if (msg.includes('supera la existencia')) {
+        setAlertaExistencia({
+          texto: 'La salida que quieres registrar supera la cantidad de medicamento disponible en existencia.',
+          limpiar: () => setFormMovimientoAdmin({ id_medicamento: '', fecha: hoy(), tipo_movimiento: 'entrada', cantidad: '' }),
+        });
+      } else {
+        mostrarError(msg || 'No se pudo registrar el movimiento');
+      }
     }
   };
 
@@ -176,7 +194,15 @@ function Inventario({ usuario }) {
       mostrarMensaje('Salida registrada');
       cargarTodo();
     } catch (err) {
-      mostrarError(err.response?.data?.error || 'No se pudo registrar la salida');
+      const msg = err.response?.data?.error || '';
+      if (msg.includes('supera la existencia')) {
+        setAlertaExistencia({
+          texto: 'La salida que quieres registrar supera la cantidad de medicamento disponible en existencia.',
+          limpiar: () => setFormSalidaMed({ id_medicamento: '', fecha: hoy(), cantidad: '' }),
+        });
+      } else {
+        mostrarError(msg || 'No se pudo registrar la salida');
+      }
     }
   };
 
@@ -216,6 +242,11 @@ function Inventario({ usuario }) {
       textoBoton: 'Registrar salida',
       onConfirmar: () => handleRegistrarMovimientoAdmin(),
     });
+  };
+
+  const cerrarAlertaExistencia = () => {
+    if (alertaExistencia) alertaExistencia.limpiar();
+    setAlertaExistencia(null);
   };
 
   const handleGuardarMinimoHuevo = async (id_stock) => {
@@ -715,6 +746,24 @@ function Inventario({ usuario }) {
             </section>
           )}
         </>
+      )}
+      {alertaExistencia && (
+        <div className="modal-overlay" onClick={cerrarAlertaExistencia}>
+          <div className="modal-card" role="alertdialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 8v5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+                <path d="M12 16.5h.01" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" />
+                <path d="M10.3 3.9 2.6 17.3c-.6 1 .1 2.2 1.3 2.2h16.2c1.2 0 1.9-1.2 1.3-2.2L13.7 3.9c-.6-1-2-1-2.6 0Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+              </svg>
+            </div>
+            <h3 className="modal-title">Existencia no disponible</h3>
+            <p className="modal-text">{alertaExistencia.texto} El movimiento no se registró y el formulario se limpiará.</p>
+            <div className="modal-actions">
+              <button className="btn" style={{ width: '100%' }} onClick={cerrarAlertaExistencia}>Entendido</button>
+            </div>
+          </div>
+        </div>
       )}
       <ConfirmModal confirmacion={confirmacion} onCancelar={() => setConfirmacion(null)} />
     </>
