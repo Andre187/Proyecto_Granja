@@ -368,6 +368,16 @@ function Ventas({ usuario }) {
                   <label>Dirección (opcional)</label>
                   <input value={clienteDireccion} onChange={(e) => setClienteDireccion(e.target.value)} style={estiloClaro} />
                 </div>
+                <div className="field">
+                  <label>&nbsp;</label>
+                  <button
+                    type="button"
+                    className="btn outline"
+                    onClick={() => { setClienteSeleccionado(''); setClienteNombre(''); setClienteTelefono(''); setClienteDireccion(''); }}
+                  >
+                    Cancelar nuevo cliente
+                  </button>
+                </div>
               </>
             )}
 

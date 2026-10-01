@@ -162,6 +162,7 @@ function Galeras() {
                 <input type="number" value={nuevaGalera.aves_recibidas} onChange={(e) => setNuevaGalera({ ...nuevaGalera, aves_recibidas: e.target.value })} placeholder="ej. 500" />
               </div>
               <button type="submit" className="btn">Guardar</button>
+              <button type="button" className="btn outline" onClick={() => setMostrarNuevaGalera(false)}>Cancelar</button>
             </div>
           </form>
         )}
@@ -189,6 +190,7 @@ function Galeras() {
               <input type="number" value={nuevoLote.aves_recibidas} onChange={(e) => setNuevoLote({ ...nuevoLote, aves_recibidas: e.target.value })} required />
             </div>
             <button type="submit" className="btn">Guardar lote</button>
+            <button type="button" className="btn outline" onClick={() => setMostrarNuevoLote(false)}>Cancelar</button>
           </form>
         )}
 

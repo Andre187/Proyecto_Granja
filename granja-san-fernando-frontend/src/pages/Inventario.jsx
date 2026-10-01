@@ -333,6 +333,7 @@ function Inventario({ usuario }) {
                                 <input type="number" step="0.01" value={minimoTemporal} onChange={(e) => setMinimoTemporal(e.target.value)}
                                   style={{ ...estiloClaro, width: '70px', fontSize: '12px', padding: '5px 8px', border: '1px solid var(--line)', borderRadius: '6px' }} />
                                 <button className="btn" style={{ padding: '5px 10px', fontSize: '11px' }} onClick={() => handleGuardarMinimo(c.id_stock)}>Guardar</button>
+                                <button className="btn outline" style={{ padding: '5px 10px', fontSize: '11px' }} onClick={() => setEditandoMinimoId(null)}>Cancelar</button>
                               </div>
                             ) : (
                               <button
@@ -479,6 +480,7 @@ function Inventario({ usuario }) {
                       <input value={nuevoMed.unidad_medida} onChange={(e) => setNuevoMed({ ...nuevoMed, unidad_medida: e.target.value })} placeholder="ej. frascos" required style={estiloClaro} />
                     </div>
                     <button type="submit" className="btn">Guardar</button>
+                    <button type="button" className="btn outline" onClick={() => setMostrarNuevoMed(false)}>Cancelar</button>
                   </form>
                 )}
 
@@ -623,6 +625,7 @@ function Inventario({ usuario }) {
                                 <input type="number" value={minimoHuevoTemporal} onChange={(e) => setMinimoHuevoTemporal(e.target.value)}
                                   style={{ ...estiloClaro, width: '70px', fontSize: '12px', padding: '5px 8px', border: '1px solid var(--line)', borderRadius: '6px' }} />
                                 <button className="btn" style={{ padding: '5px 10px', fontSize: '11px' }} onClick={() => handleGuardarMinimoHuevo(h.id_stock)}>Guardar</button>
+                                <button className="btn outline" style={{ padding: '5px 10px', fontSize: '11px' }} onClick={() => setEditandoMinimoHuevoId(null)}>Cancelar</button>
                               </div>
                             ) : (
                               <button
