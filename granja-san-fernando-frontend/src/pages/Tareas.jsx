@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../api/api';
+import { exportarTareasWord } from '../utils/exportarTareasWord';
 
 const hoy = () => {
   const d = new Date();
@@ -23,12 +24,49 @@ function Tareas({ usuario }) {
     id_trabajador: '', id_galera: '', descripcion: '', fecha_asignacion: hoy(), fecha_limite: '',
   });
 
-  const [pestanaEstado, setPestanaEstado] = useState('pendiente');
+  // La pestaña elegida se conserva al cambiar de módulo y volver
+  const [pestanaEstado, setPestanaEstadoInterno] = useState(() => sessionStorage.getItem('tareas_pestana') || 'pendiente');
+  const setPestanaEstado = (valor) => {
+    sessionStorage.setItem('tareas_pestana', valor);
+    setPestanaEstadoInterno(valor);
+  };
 
   const tareasVisibles = esAdmin ? tareas : tareas.filter((t) => t.estado !== 'finalizado');
 
   const ETIQUETAS_ESTADO = { pendiente: 'Pendientes', 'en proceso': 'En proceso', finalizado: 'Finalizadas', todas: 'Todas' };
-  const tareasFiltradasPorEstado = pestanaEstado === 'todas' ? tareas : tareas.filter((t) => t.estado === pestanaEstado);
+  // El historial se reinicia cada día: las finalizadas de días anteriores salen de la lista
+  // (siguen guardadas y se pueden descargar en Word con el rango de fechas)
+  const dia = (valor) => String(valor || '').slice(0, 10);
+  const tareasDelDia = tareas.filter((t) => t.estado !== 'finalizado' || dia(t.fecha_asignacion) >= hoy());
+  const tareasFiltradasPorEstado = pestanaEstado === 'todas' ? tareasDelDia : tareasDelDia.filter((t) => t.estado === pestanaEstado);
+
+  const [exportDesde, setExportDesde] = useState(hoy());
+  const [exportHasta, setExportHasta] = useState(hoy());
+  const [exportEstado, setExportEstado] = useState('finalizado');
+  const [exportando, setExportando] = useState(false);
+
+  const handleExportar = async () => {
+    const lista = tareas.filter((t) => {
+      const f = dia(t.fecha_asignacion);
+      return f >= exportDesde && f <= exportHasta && (exportEstado === 'todas' || t.estado === exportEstado);
+    });
+    if (lista.length === 0) {
+      mostrarError('No hay tareas en ese rango de fechas para exportar');
+      return;
+    }
+    setExportando(true);
+    try {
+      await exportarTareasWord({
+        tareas: lista, desde: exportDesde, hasta: exportHasta,
+        etiquetaEstado: exportEstado === 'todas' ? 'Todas' : exportEstado === 'finalizado' ? 'Finalizadas' : exportEstado,
+      });
+    } catch (err) {
+      console.error(err);
+      mostrarError('No se pudo generar el documento de Word');
+    } finally {
+      setExportando(false);
+    }
+  };
 
   const cargarTodo = async () => {
     try {
@@ -221,6 +259,35 @@ function Tareas({ usuario }) {
               <button type="submit" className="btn">Asignar tarea</button>
             </form>
           )}
+        </section>
+      )}
+
+      {esAdmin && trabajadores.length > 0 && (
+        <section className="card">
+          <div className="head">
+            <h2>Descargar tareas en Word</h2>
+            <span className="sub">Agrupadas por trabajador</span>
+          </div>
+          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <div className="field">
+              <label>Desde</label>
+              <input type="date" value={exportDesde} max={exportHasta} onChange={(e) => setExportDesde(e.target.value)} />
+            </div>
+            <div className="field">
+              <label>Hasta</label>
+              <input type="date" value={exportHasta} min={exportDesde} onChange={(e) => setExportHasta(e.target.value)} />
+            </div>
+            <div className="field">
+              <label>Estado</label>
+              <select value={exportEstado} onChange={(e) => setExportEstado(e.target.value)}>
+                <option value="finalizado">Finalizadas</option>
+                <option value="todas">Todas</option>
+              </select>
+            </div>
+            <button type="button" className="btn" disabled={exportando || !exportDesde || !exportHasta} onClick={handleExportar}>
+              {exportando ? 'Generando...' : 'Descargar Word'}
+            </button>
+          </div>
         </section>
       )}
 
