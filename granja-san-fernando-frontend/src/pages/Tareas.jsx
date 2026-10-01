@@ -56,6 +56,27 @@ function Tareas({ usuario }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Actualiza la lista en segundo plano para ver los cambios hechos desde otros dispositivos
+  useEffect(() => {
+    const refrescarTareas = async () => {
+      if (document.hidden) return;
+      try {
+        const r = await api.get('/tareas/tareas');
+        setTareas(r.data);
+      } catch {
+        // si falla, se conserva la lista actual y se reintenta en el siguiente ciclo
+      }
+    };
+    const intervalo = setInterval(refrescarTareas, 10000);
+    document.addEventListener('visibilitychange', refrescarTareas);
+    window.addEventListener('focus', refrescarTareas);
+    return () => {
+      clearInterval(intervalo);
+      document.removeEventListener('visibilitychange', refrescarTareas);
+      window.removeEventListener('focus', refrescarTareas);
+    };
+  }, []);
+
   const mostrarMensaje = (texto) => {
     setMensaje(texto);
     setError('');
