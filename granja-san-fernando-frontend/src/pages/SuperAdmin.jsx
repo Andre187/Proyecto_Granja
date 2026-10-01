@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../api/api';
+import { mostrarAviso } from '../utils/aviso';
 import ConfirmModal from '../components/ConfirmModal';
 
 // Misma regla que utils/contrasenaSegura.js del backend
@@ -12,7 +13,6 @@ function SuperAdmin({ usuario: usuarioActivo }) {
   const [usuarios, setUsuarios] = useState([]);
   const [registros, setRegistros] = useState([]);
   const [error, setError] = useState('');
-  const [mensaje, setMensaje] = useState('');
 
   const [gestionando, setGestionando] = useState(null);
   const [rolSeleccionado, setRolSeleccionado] = useState('');
@@ -39,9 +39,8 @@ function SuperAdmin({ usuario: usuarioActivo }) {
   }, []);
 
   const mostrarMensaje = (texto) => {
-    setMensaje(texto);
+    mostrarAviso(texto);
     setError('');
-    setTimeout(() => setMensaje(''), 3000);
   };
 
   const mostrarError = (texto) => {
@@ -132,7 +131,6 @@ function SuperAdmin({ usuario: usuarioActivo }) {
       </section>
 
       {error && <p style={{ color: 'var(--red)', fontSize: '13px', marginBottom: '14px' }}>{error}</p>}
-      {mensaje && <p style={{ color: 'var(--green)', fontSize: '13px', marginBottom: '14px' }}>{mensaje}</p>}
 
       <section className="card">
         <div className="head">

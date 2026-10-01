@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../api/api';
+import { mostrarAviso } from '../utils/aviso';
 import ConfirmModal from '../components/ConfirmModal';
 
 const estiloClaro = { background: '#F5F1E6', color: '#232019', colorScheme: 'light' };
@@ -10,7 +11,6 @@ function Personal() {
   const [pagos, setPagos] = useState([]);
 
   const [error, setError] = useState('');
-  const [mensaje, setMensaje] = useState('');
 
   const [editandoCostoId, setEditandoCostoId] = useState(null);
   const [costoTemporal, setCostoTemporal] = useState('');
@@ -42,9 +42,8 @@ function Personal() {
   }, []);
 
   const mostrarMensaje = (texto) => {
-    setMensaje(texto);
+    mostrarAviso(texto);
     setError('');
-    setTimeout(() => setMensaje(''), 3000);
   };
 
   const mostrarError = (texto) => {
@@ -126,7 +125,6 @@ function Personal() {
   return (
     <>
       {error && <p style={{ color: 'var(--red)', fontSize: '13px', marginBottom: '14px' }}>{error}</p>}
-      {mensaje && <p style={{ color: 'var(--green)', fontSize: '13px', marginBottom: '14px' }}>{mensaje}</p>}
 
       <section className="card">
         <div className="head">

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import api from '../api/api';
+import useActualizacionAutomatica from '../hooks/useActualizacionAutomatica';
 import SelectorRangoFechas from '../components/SelectorRangoFechas';
 
 const LABELS = { hoy: 'Hoy', semana: 'Últimos 7 días', mes: 'Este mes', personalizado: 'Personalizado' };
@@ -51,6 +52,22 @@ function Panel({ usuario }) {
     }
   };
 
+  // Actualización en segundo plano de los indicadores y de las tareas del operador
+  useActualizacionAutomatica(async () => {
+    try {
+      if (esAdmin) {
+        const url = periodo === 'personalizado' ? `/reportes/resumen?desde=${fechaDesde}&hasta=${fechaHasta}` : `/reportes/resumen?periodo=${periodo}`;
+        const respuesta = await api.get(url);
+        setDatos(respuesta.data);
+      } else {
+        const respuesta = await api.get('/tareas/tareas');
+        setMisTareas(respuesta.data.filter((t) => t.estado !== 'finalizado'));
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  });
+
   useEffect(() => {
     if (esAdmin && periodo !== 'personalizado') {
       // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -89,6 +106,11 @@ function Panel({ usuario }) {
 
   const q = (n) => `Q ${Number(n || 0).toLocaleString('es-GT', { minimumFractionDigits: 2 })}`;
   const fechaCorta = (f) => f?.slice(5, 10).split('-').reverse().join('/');
+
+  const sinAlertas = datos
+    ? datos.alertas.medicamentos.length === 0 && datos.alertas.concentrado.length === 0 &&
+      !datos.alertas.huevos?.length && !datos.alertas.cuentas_atrasadas?.length
+    : true;
 
   if (!esAdmin) {
     return (
@@ -307,11 +329,20 @@ function Panel({ usuario }) {
             </section>
 
             <section className="card">
-              <div className="head"><h2>Alertas de inventario</h2></div>
-              {datos.alertas.medicamentos.length === 0 && datos.alertas.concentrado.length === 0 ? (
+              <div className="head"><h2>Alertas</h2></div>
+              {sinAlertas ? (
                 <p style={{ fontSize: '13px', color: 'var(--ink-soft)' }}>Sin alertas por el momento.</p>
               ) : (
                 <div className="alert-list">
+                  {datos.alertas.cuentas_atrasadas?.map((c) => (
+                    <div className="alert" key={`v${c.id_venta}`}>
+                      <span className="a-mark">!</span>
+                      <div>
+                        <div className="a-title">Cuenta atrasada: {c.cliente_nombre}</div>
+                        <div className="a-sub">Saldo {q(c.saldo_pendiente)} · {c.dias} días desde la venta ({c.fecha?.slice(0, 10)})</div>
+                      </div>
+                    </div>
+                  ))}
                   {datos.alertas.medicamentos.map((m, i) => (
                     <div className="alert" key={`m${i}`}>
                       <span className="a-mark">!</span>
@@ -327,6 +358,15 @@ function Panel({ usuario }) {
                       <div>
                         <div className="a-title">Concentrado {c.tipo_concentrado} bajo mínimo</div>
                         <div className="a-sub">Existencia: {c.existencia_actual} qq · Mínimo: {c.nivel_minimo} qq</div>
+                      </div>
+                    </div>
+                  ))}
+                  {datos.alertas.huevos?.map((h, i) => (
+                    <div className="alert" key={`h${i}`}>
+                      <span className="a-mark">!</span>
+                      <div>
+                        <div className="a-title">Huevos {h.clasificacion} bajo mínimo</div>
+                        <div className="a-sub">Existencia: {h.existencia_actual} · Mínimo: {h.nivel_minimo}</div>
                       </div>
                     </div>
                   ))}

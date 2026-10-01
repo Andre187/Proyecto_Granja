@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
 import api from '../api/api';
+import { mostrarAviso } from '../utils/aviso';
+import ConfirmModal from '../components/ConfirmModal';
+import useActualizacionAutomatica from '../hooks/useActualizacionAutomatica';
 
 const hoy = () => {
   const d = new Date();
@@ -25,9 +28,9 @@ function Inventario({ usuario }) {
   const [huevosClasificados, setHuevosClasificados] = useState([]);
 
   const [error, setError] = useState('');
-  const [mensaje, setMensaje] = useState('');
 
   const [formConcentrado, setFormConcentrado] = useState({ fecha: hoy(), tipo_concentrado: '', cantidad_qq: '', costo_unitario: '' });
+  const [confirmacion, setConfirmacion] = useState(null);
   const [formConsumoConcentrado, setFormConsumoConcentrado] = useState({ id_stock: '', fecha: hoy(), cantidad_qq: '' });
   const [editandoMinimoId, setEditandoMinimoId] = useState(null);
   const [minimoTemporal, setMinimoTemporal] = useState('');
@@ -41,7 +44,7 @@ function Inventario({ usuario }) {
   const [editandoMinimoHuevoId, setEditandoMinimoHuevoId] = useState(null);
   const [minimoHuevoTemporal, setMinimoHuevoTemporal] = useState('');
 
-  const cargarTodo = async () => {
+  const cargarTodo = async (silencioso = false) => {
     try {
       const [rConcentrado, rStock, rConsumo, rMedicamentos, rMovimientos, rHuevosStock, rHuevosClasificados] = await Promise.all([
         esAdmin ? api.get('/inventario/concentrado') : Promise.resolve({ data: [] }),
@@ -61,9 +64,11 @@ function Inventario({ usuario }) {
       setHuevosClasificados(rHuevosClasificados.data);
     } catch (err) {
       console.error(err);
-      setError('No se pudo cargar la información de inventario');
+      if (!silencioso) setError('No se pudo cargar la información de inventario');
     }
   };
+
+  useActualizacionAutomatica(() => cargarTodo(true));
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -72,9 +77,8 @@ function Inventario({ usuario }) {
   }, []);
 
   const mostrarMensaje = (texto) => {
-    setMensaje(texto);
+    mostrarAviso(texto);
     setError('');
-    setTimeout(() => setMensaje(''), 3000);
   };
 
   const mostrarError = (texto) => {
@@ -103,7 +107,7 @@ function Inventario({ usuario }) {
   };
 
   const handleRegistrarConsumoConcentrado = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     try {
       await api.post('/inventario/concentrado-consumo', {
         ...formConsumoConcentrado,
@@ -146,7 +150,7 @@ function Inventario({ usuario }) {
   };
 
   const handleRegistrarMovimientoAdmin = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     try {
       await api.post('/inventario/movimientos', {
         ...formMovimientoAdmin,
@@ -161,7 +165,7 @@ function Inventario({ usuario }) {
   };
 
   const handleRegistrarSalidaMed = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     try {
       await api.post('/inventario/movimientos', {
         ...formSalidaMed,
@@ -174,6 +178,44 @@ function Inventario({ usuario }) {
     } catch (err) {
       mostrarError(err.response?.data?.error || 'No se pudo registrar la salida');
     }
+  };
+
+  // Las salidas descuentan existencia y no se pueden deshacer: se confirman antes de guardar
+  const pedirConfirmacionConsumo = (e) => {
+    e.preventDefault();
+    const tipo = concentradoStock.find((c) => String(c.id_stock) === String(formConsumoConcentrado.id_stock));
+    setConfirmacion({
+      titulo: '¿Registrar consumo de concentrado?',
+      texto: `Se descontarán ${formConsumoConcentrado.cantidad_qq} qq${tipo ? ` de ${tipo.tipo_concentrado}` : ''} del inventario. No se puede deshacer.`,
+      textoBoton: 'Registrar consumo',
+      onConfirmar: () => handleRegistrarConsumoConcentrado(),
+    });
+  };
+
+  const pedirConfirmacionSalidaMed = (e) => {
+    e.preventDefault();
+    const med = medicamentos.find((m) => String(m.id_medicamento) === String(formSalidaMed.id_medicamento));
+    setConfirmacion({
+      titulo: '¿Registrar salida de medicamento?',
+      texto: `Se descontarán ${formSalidaMed.cantidad}${med ? ` ${med.unidad_medida} de ${med.nombre}` : ''} del inventario. No se puede deshacer.`,
+      textoBoton: 'Registrar salida',
+      onConfirmar: () => handleRegistrarSalidaMed(),
+    });
+  };
+
+  const pedirConfirmacionMovimientoAdmin = (e) => {
+    e.preventDefault();
+    if (formMovimientoAdmin.tipo_movimiento !== 'salida') {
+      handleRegistrarMovimientoAdmin();
+      return;
+    }
+    const med = medicamentos.find((m) => String(m.id_medicamento) === String(formMovimientoAdmin.id_medicamento));
+    setConfirmacion({
+      titulo: '¿Registrar salida de medicamento?',
+      texto: `Se descontarán ${formMovimientoAdmin.cantidad}${med ? ` ${med.unidad_medida} de ${med.nombre}` : ''} del inventario. No se puede deshacer.`,
+      textoBoton: 'Registrar salida',
+      onConfirmar: () => handleRegistrarMovimientoAdmin(),
+    });
   };
 
   const handleGuardarMinimoHuevo = async (id_stock) => {
@@ -190,7 +232,6 @@ function Inventario({ usuario }) {
   return (
     <>
       {error && <p style={{ color: 'var(--red)', fontSize: '13px', marginBottom: '14px' }}>{error}</p>}
-      {mensaje && <p style={{ color: 'var(--green)', fontSize: '13px', marginBottom: '14px' }}>{mensaje}</p>}
 
       {(medicamentosBajoMinimo.length > 0 || concentradoBajoMinimo.length > 0 || huevosBajoMinimo.length > 0) && (
         <section className="card">
@@ -251,7 +292,7 @@ function Inventario({ usuario }) {
                   Aún no hay concentrado en existencia. {esAdmin ? 'Registra una compra primero.' : 'Pide al administrador que registre una compra primero.'}
                 </p>
               ) : (
-                <form onSubmit={handleRegistrarConsumoConcentrado} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <form onSubmit={pedirConfirmacionConsumo} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <div className="field">
                     <label>Tipo de concentrado</label>
                     <select value={formConsumoConcentrado.id_stock} onChange={(e) => setFormConsumoConcentrado({ ...formConsumoConcentrado, id_stock: e.target.value })} required style={estiloClaro}>
@@ -426,7 +467,7 @@ function Inventario({ usuario }) {
                   Aún no hay medicamentos en el catálogo. {esAdmin ? 'Agrega uno primero.' : 'Pide al administrador que agregue uno primero.'}
                 </p>
               ) : (
-                <form onSubmit={handleRegistrarSalidaMed} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <form onSubmit={pedirConfirmacionSalidaMed} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <div className="field">
                     <label>Medicamento</label>
                     <select value={formSalidaMed.id_medicamento} onChange={(e) => setFormSalidaMed({ ...formSalidaMed, id_medicamento: e.target.value })} required style={estiloClaro}>
@@ -487,7 +528,7 @@ function Inventario({ usuario }) {
                 {medicamentos.length === 0 ? (
                   <p style={{ fontSize: '13px', color: 'var(--ink-soft)' }}>Agrega primero un medicamento con "+ Medicamento".</p>
                 ) : (
-                  <form onSubmit={handleRegistrarMovimientoAdmin} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <form onSubmit={pedirConfirmacionMovimientoAdmin} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     <div className="field">
                       <label>Medicamento</label>
                       <select value={formMovimientoAdmin.id_medicamento} onChange={(e) => setFormMovimientoAdmin({ ...formMovimientoAdmin, id_medicamento: e.target.value })} required style={estiloClaro}>
@@ -675,6 +716,7 @@ function Inventario({ usuario }) {
           )}
         </>
       )}
+      <ConfirmModal confirmacion={confirmacion} onCancelar={() => setConfirmacion(null)} />
     </>
   );
 }

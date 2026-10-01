@@ -36,6 +36,9 @@ function rangoFechas(periodo) {
   return { desde: fmt(desde), hasta: fmt(hoy) };
 }
 
+// Días tras los cuales una venta con saldo se considera atrasada en el Panel
+const DIAS_CUENTA_ATRASADA = 15;
+
 router.get('/resumen', reglasRango, validar, async (req, res) => {
   try {
     let periodo = ['hoy', 'semana', 'mes'].includes(req.query.periodo) ? req.query.periodo : 'hoy';
@@ -112,6 +115,25 @@ router.get('/resumen', reglasRango, validar, async (req, res) => {
       'SELECT tipo_concentrado, existencia_actual, nivel_minimo FROM concentrado_stock WHERE existencia_actual < nivel_minimo AND nivel_minimo > 0'
     );
 
+    const [huevosAlerta] = await pool.query(
+      `SELECT ch.nombre AS clasificacion, hs.existencia_actual, hs.nivel_minimo
+       FROM huevos_stock hs
+       JOIN clasificaciones_huevo ch ON ch.id_clasificacion = hs.id_clasificacion
+       WHERE hs.nivel_minimo > 0 AND hs.existencia_actual < hs.nivel_minimo
+       ORDER BY ch.id_clasificacion`
+    );
+
+    // Cuentas por cobrar con más de DIAS_CUENTA_ATRASADA días desde la venta y saldo sin cubrir
+    const [cuentasAtrasadas] = await pool.query(
+      `SELECT v.id_venta, c.nombre AS cliente_nombre, v.fecha, v.saldo_pendiente,
+              DATEDIFF(CURDATE(), v.fecha) AS dias
+       FROM ventas v JOIN clientes c ON c.id_cliente = v.id_cliente
+       WHERE v.saldo_pendiente > 0 AND v.estado != 'anulado'
+         AND v.fecha <= DATE_SUB(CURDATE(), INTERVAL ? DAY)
+       ORDER BY v.fecha ASC LIMIT 10`,
+      [DIAS_CUENTA_ATRASADA]
+    );
+
     res.json({
       periodo,
       rango: { desde, hasta },
@@ -131,6 +153,9 @@ router.get('/resumen', reglasRango, validar, async (req, res) => {
       alertas: {
         medicamentos: medicamentosAlerta,
         concentrado: concentradoAlerta,
+        huevos: huevosAlerta,
+        cuentas_atrasadas: cuentasAtrasadas,
+        dias_cuenta_atrasada: DIAS_CUENTA_ATRASADA,
       },
     });
   } catch (error) {

@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../api/api';
+import { mostrarAviso } from '../utils/aviso';
+import useActualizacionAutomatica from '../hooks/useActualizacionAutomatica';
 
 const hoy = () => {
   const d = new Date();
@@ -26,7 +28,6 @@ function Ventas({ usuario }) {
   const [pestanaHistorial, setPestanaHistorial] = useState('pendientes');
 
   const [error, setError] = useState('');
-  const [mensaje, setMensaje] = useState('');
 
   const [clienteSeleccionado, setClienteSeleccionado] = useState('');
   const [clienteNombre, setClienteNombre] = useState('');
@@ -48,7 +49,7 @@ function Ventas({ usuario }) {
 
   const [stockInsuficiente, setStockInsuficiente] = useState(null);
 
-  const cargarTodo = async () => {
+  const cargarTodo = async (silencioso = false) => {
     try {
       const peticiones = [
         api.get('/ventas/clientes'),
@@ -72,9 +73,11 @@ function Ventas({ usuario }) {
       }
     } catch (err) {
       console.error(err);
-      setError('No se pudo cargar la información de ventas');
+      if (!silencioso) setError('No se pudo cargar la información de ventas');
     }
   };
+
+  useActualizacionAutomatica(() => cargarTodo(true));
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -83,9 +86,8 @@ function Ventas({ usuario }) {
   }, []);
 
   const mostrarMensaje = (texto) => {
-    setMensaje(texto);
+    mostrarAviso(texto);
     setError('');
-    setTimeout(() => setMensaje(''), 3000);
   };
 
   const mostrarError = (texto) => {
@@ -289,7 +291,6 @@ function Ventas({ usuario }) {
   return (
     <>
       {error && <p style={{ color: 'var(--red)', fontSize: '13px', marginBottom: '14px' }}>{error}</p>}
-      {mensaje && <p style={{ color: 'var(--green)', fontSize: '13px', marginBottom: '14px' }}>{mensaje}</p>}
 
       {esAdmin && resumen && (
         <div className="kpi-row">

@@ -1,19 +1,19 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './Login';
 import Layout from './components/Layout';
-import Panel from './pages/Panel';
-import Usuarios from './pages/Usuarios';
-import Produccion from './pages/Produccion';
-import Galeras from './pages/Galeras';
-import Sanidad from './pages/Sanidad';
-import Tareas from './pages/Tareas';
-import Ventas from './pages/Ventas';
-import Inventario from './pages/Inventario';
-import Personal from './pages/Personal';
-import Gastos from './pages/Gastos';
-import Reportes from './pages/Reportes';
-import SuperAdmin from './pages/SuperAdmin';
+const Panel = lazy(() => import('./pages/Panel'));
+const Usuarios = lazy(() => import('./pages/Usuarios'));
+const Produccion = lazy(() => import('./pages/Produccion'));
+const Galeras = lazy(() => import('./pages/Galeras'));
+const Sanidad = lazy(() => import('./pages/Sanidad'));
+const Tareas = lazy(() => import('./pages/Tareas'));
+const Ventas = lazy(() => import('./pages/Ventas'));
+const Inventario = lazy(() => import('./pages/Inventario'));
+const Personal = lazy(() => import('./pages/Personal'));
+const Gastos = lazy(() => import('./pages/Gastos'));
+const Reportes = lazy(() => import('./pages/Reportes'));
+const SuperAdmin = lazy(() => import('./pages/SuperAdmin'));
 import api from './api/api';
 
 const MINUTOS_INACTIVIDAD = 30;
@@ -108,6 +108,7 @@ function App() {
   return (
     <BrowserRouter>
       <Layout usuario={usuarioActivo} onLogout={() => handleLogout('manual')}>
+        <Suspense fallback={<p style={{ padding: '24px', color: 'var(--ink-soft)', fontSize: '13px' }}>Cargando...</p>}>
         <Routes>
           <Route path="/" element={<Panel usuario={usuarioActivo} />} />
           <Route path="/produccion" element={<Produccion usuario={usuarioActivo} />} />
@@ -125,6 +126,7 @@ function App() {
             element={usuarioActivo.rol === 'superadministrador' ? <SuperAdmin usuario={usuarioActivo} /> : <Navigate to="/" replace />}
           />
         </Routes>
+        </Suspense>
       </Layout>
     </BrowserRouter>
   );

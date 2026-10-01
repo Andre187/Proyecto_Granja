@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../api/api';
+import { mostrarAviso } from '../utils/aviso';
 
 const hoy = () => {
   const d = new Date();
@@ -17,7 +18,6 @@ function Sanidad({ usuario }) {
   const [pesos, setPesos] = useState([]);
 
   const [error, setError] = useState('');
-  const [mensaje, setMensaje] = useState('');
 
   const [formVacuna, setFormVacuna] = useState({ id_lote: '', fecha: hoy(), tipo_vacuna: '', semana_aplicacion: '' });
   const [formPeso, setFormPeso] = useState({ id_lote: '', fecha: hoy(), semana: '', peso_promedio: '', uniformidad: '' });
@@ -44,9 +44,8 @@ function Sanidad({ usuario }) {
   }, []);
 
   const mostrarMensaje = (texto) => {
-    setMensaje(texto);
+    mostrarAviso(texto);
     setError('');
-    setTimeout(() => setMensaje(''), 3000);
   };
 
   const mostrarError = (texto) => {
@@ -98,7 +97,6 @@ function Sanidad({ usuario }) {
   return (
     <>
       {error && <p style={{ color: 'var(--red)', fontSize: '13px', marginBottom: '14px' }}>{error}</p>}
-      {mensaje && <p style={{ color: 'var(--green)', fontSize: '13px', marginBottom: '14px' }}>{mensaje}</p>}
 
       {lotes.length === 0 && (
         <section className="card">

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import logo from '../assets/logo_mini.png';
+import AvisoGlobal from './AvisoGlobal';
 
 const svgProps = { viewBox: '0 0 20 20', fill: 'none', xmlns: 'http://www.w3.org/2000/svg', 'aria-hidden': true };
 const strokeProps = { stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round', strokeLinejoin: 'round' };
@@ -191,6 +192,7 @@ function Layout({ usuario, onLogout, children }) {
 
   return (
     <div className="app-shell">
+      <AvisoGlobal />
       <div className="mobile-topbar">
         <button className="menu-toggle" onClick={() => setMenuAbierto(true)} aria-label="Abrir menú">
           ☰

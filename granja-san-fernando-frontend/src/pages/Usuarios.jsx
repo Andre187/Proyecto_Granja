@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../api/api';
+import { mostrarAviso } from '../utils/aviso';
 import ConfirmModal from '../components/ConfirmModal';
 
 // Misma regla que utils/contrasenaSegura.js del backend
@@ -10,7 +11,6 @@ function Usuarios({ usuario: usuarioActivo }) {
   const [usuarios, setUsuarios] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
-  const [mensaje, setMensaje] = useState('');
 
   const [nuevoUsuario, setNuevoUsuario] = useState('');
   const [nuevoNombre, setNuevoNombre] = useState('');
@@ -46,8 +46,7 @@ function Usuarios({ usuario: usuarioActivo }) {
   }, []);
 
   const mostrarMensaje = (texto) => {
-    setMensaje(texto);
-    setTimeout(() => setMensaje(''), 3000);
+    mostrarAviso(texto);
   };
 
   const handleCrear = async (e) => {
@@ -204,7 +203,6 @@ function Usuarios({ usuario: usuarioActivo }) {
           <button type="submit" className="btn">Crear usuario</button>
         </form>
         {error && <p style={{ color: 'var(--red)', fontSize: '13px', marginTop: '12px' }}>{error}</p>}
-        {mensaje && <p style={{ color: 'var(--green)', fontSize: '13px', marginTop: '12px' }}>{mensaje}</p>}
       </section>
 
       <section className="card">
@@ -236,7 +234,7 @@ function Usuarios({ usuario: usuarioActivo }) {
                   const puedeGestionar = u.rol !== 'administrador' || esUnoMismo || usuarioActivo.rol === 'superadministrador';
                   return (
                   <tr key={u.id_usuario} style={{ opacity: u.activo ? 1 : 0.6 }}>
-                    <td>{u.nombre ? `${u.nombre} ${u.apellido || ''}`.trim() : <span style={{ color: 'var(--ink-soft)' }}>—</span>}</td>
+                    <td>{u.nombre ? `${u.nombre} ${u.apellido || ''}`.trim() : <span className="dato-vacio" style={{ color: 'var(--ink-soft)' }}>—</span>}</td>
                     <td>{u.usuario}</td>
                     <td>
                       <span className={`tag ${u.rol === 'administrador' ? 'ok' : 'pend'}`}>{u.rol}</span>
@@ -246,13 +244,18 @@ function Usuarios({ usuario: usuarioActivo }) {
                     </td>
                     <td>
                       {u.rol !== 'operador' ? (
-                        <span style={{ color: 'var(--ink-soft)' }}>—</span>
+                        <span className="dato-vacio" style={{ color: 'var(--ink-soft)' }}>—</span>
                       ) : u.trabajador_nombre ? (
                         u.trabajador_nombre
                       ) : (
                         <button
                           style={{ background: 'transparent', border: 'none', fontSize: '12px', color: 'var(--navy)', textDecoration: 'underline', padding: 0 }}
-                          onClick={() => handleVincularTrabajador(u.id_usuario)}
+                          onClick={() => setConfirmacion({
+                            titulo: '¿Generar registro de trabajador?',
+                            texto: `Se creará el registro de trabajador de "${u.usuario}" para poder asignarle tareas y pagos. No se puede deshacer.`,
+                            textoBoton: 'Generar registro',
+                            onConfirmar: () => handleVincularTrabajador(u.id_usuario),
+                          })}
                         >
                           Generar registro
                         </button>
@@ -266,7 +269,7 @@ function Usuarios({ usuario: usuarioActivo }) {
                       >
                         Cambiar contraseña
                       </button>
-                      ) : <span style={{ color: 'var(--ink-soft)' }}>—</span>}
+                      ) : <span className="dato-vacio" style={{ color: 'var(--ink-soft)' }}>—</span>}
                     </td>
                     <td>
                       {puedeGestionar && !esUnoMismo ? (
@@ -281,7 +284,7 @@ function Usuarios({ usuario: usuarioActivo }) {
                       >
                         Permisos
                       </button>
-                      ) : <span style={{ color: 'var(--ink-soft)' }}>—</span>}
+                      ) : <span className="dato-vacio" style={{ color: 'var(--ink-soft)' }}>—</span>}
                     </td>
                   </tr>
                   );

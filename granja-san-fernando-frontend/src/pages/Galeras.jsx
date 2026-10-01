@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../api/api';
+import { mostrarAviso } from '../utils/aviso';
 import ConfirmModal from '../components/ConfirmModal';
 
 const hoy = () => {
@@ -19,7 +20,6 @@ const ESTADO_INFO = {
 function Galeras() {
   const [galeras, setGaleras] = useState([]);
   const [error, setError] = useState('');
-  const [mensaje, setMensaje] = useState('');
 
   const [mostrarNuevaGalera, setMostrarNuevaGalera] = useState(false);
   const [nuevaGalera, setNuevaGalera] = useState({ nombre: '', ubicacion: '', capacidad: '', fecha_ingreso: hoy(), aves_recibidas: '' });
@@ -46,9 +46,8 @@ function Galeras() {
   }, []);
 
   const mostrarMensaje = (texto) => {
-    setMensaje(texto);
+    mostrarAviso(texto);
     setError('');
-    setTimeout(() => setMensaje(''), 3000);
   };
 
   const mostrarError = (texto) => {
@@ -119,7 +118,6 @@ function Galeras() {
   return (
     <>
       {error && <p style={{ color: 'var(--red)', fontSize: '13px', marginBottom: '14px' }}>{error}</p>}
-      {mensaje && <p style={{ color: 'var(--green)', fontSize: '13px', marginBottom: '14px' }}>{mensaje}</p>}
 
       <section className="card">
         <div className="head">

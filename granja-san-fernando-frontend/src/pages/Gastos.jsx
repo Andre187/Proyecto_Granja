@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../api/api';
+import { mostrarAviso } from '../utils/aviso';
+import useActualizacionAutomatica from '../hooks/useActualizacionAutomatica';
 import SelectorRangoFechas from '../components/SelectorRangoFechas';
 
 const hoy = () => {
@@ -32,7 +34,6 @@ function Gastos() {
   const [fechaHasta, setFechaHasta] = useState('');
 
   const [error, setError] = useState('');
-  const [mensaje, setMensaje] = useState('');
 
   const [form, setForm] = useState({ fecha: hoy(), descripcion: '', categoria: 'otros', monto: '' });
 
@@ -52,6 +53,19 @@ function Gastos() {
       setError('No se pudo cargar la información de gastos');
     }
   };
+
+  // Actualización en segundo plano: respeta el período elegido y no muestra errores
+  useActualizacionAutomatica(async () => {
+    try {
+      const url = periodo === 'personalizado' ? `/gastos?desde=${fechaDesde}&hasta=${fechaHasta}` : `/gastos?periodo=${periodo}`;
+      const respuesta = await api.get(url);
+      setGastos(respuesta.data.gastos);
+      setTotal(respuesta.data.total);
+      setPorCategoria(respuesta.data.por_categoria);
+    } catch (err) {
+      console.error(err);
+    }
+  });
 
   const cargarPersonalizado = async (desde, hasta) => {
     try {
@@ -77,9 +91,8 @@ function Gastos() {
   }, [periodo]);
 
   const mostrarMensaje = (texto) => {
-    setMensaje(texto);
+    mostrarAviso(texto);
     setError('');
-    setTimeout(() => setMensaje(''), 3000);
   };
 
   const mostrarError = (texto) => {
@@ -137,7 +150,6 @@ function Gastos() {
   return (
     <>
       {error && <p style={{ color: 'var(--red)', fontSize: '13px', marginBottom: '14px' }}>{error}</p>}
-      {mensaje && <p style={{ color: 'var(--green)', fontSize: '13px', marginBottom: '14px' }}>{mensaje}</p>}
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '10px', marginBottom: '18px', flexWrap: 'wrap' }}>
         <div className="period-tabs">

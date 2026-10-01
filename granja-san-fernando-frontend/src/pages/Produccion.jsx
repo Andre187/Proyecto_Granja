@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api/api';
+import { mostrarAviso } from '../utils/aviso';
 
 const hoy = () => {
   const d = new Date();
@@ -18,7 +19,6 @@ function Produccion({ usuario }) {
   const [mortalidad, setMortalidad] = useState([]);
 
   const [error, setError] = useState('');
-  const [mensaje, setMensaje] = useState('');
 
   const [formPostura, setFormPostura] = useState({ id_lote: '', fecha: hoy(), cantidad_huevos: '' });
   const [formMortalidad, setFormMortalidad] = useState({ id_lote: '', fecha: hoy(), cantidad: '', causa: '' });
@@ -56,9 +56,8 @@ function Produccion({ usuario }) {
   }, []);
 
   const mostrarMensaje = (texto) => {
-    setMensaje(texto);
+    mostrarAviso(texto);
     setError('');
-    setTimeout(() => setMensaje(''), 3000);
   };
 
   const mostrarError = (texto) => {
@@ -155,7 +154,6 @@ function Produccion({ usuario }) {
   return (
     <>
       {error && <p style={{ color: 'var(--red)', fontSize: '13px', marginBottom: '14px' }}>{error}</p>}
-      {mensaje && <p style={{ color: 'var(--green)', fontSize: '13px', marginBottom: '14px' }}>{mensaje}</p>}
 
       {/* ---- Lotes activos: solo administrador, solo lectura/selección ---- */}
       {esAdmin && (

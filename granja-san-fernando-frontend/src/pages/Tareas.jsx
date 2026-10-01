@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../api/api';
+import { mostrarAviso } from '../utils/aviso';
 import { exportarTareasWord } from '../utils/exportarTareasWord';
 
 const hoy = () => {
@@ -18,7 +19,6 @@ function Tareas({ usuario }) {
   const [galeras, setGaleras] = useState([]);
 
   const [error, setError] = useState('');
-  const [mensaje, setMensaje] = useState('');
 
   const [formTarea, setFormTarea] = useState({
     id_trabajador: '', id_galera: '', descripcion: '', fecha_asignacion: hoy(), fecha_limite: '',
@@ -116,9 +116,8 @@ function Tareas({ usuario }) {
   }, []);
 
   const mostrarMensaje = (texto) => {
-    setMensaje(texto);
+    mostrarAviso(texto);
     setError('');
-    setTimeout(() => setMensaje(''), 3000);
   };
 
   const mostrarError = (texto) => {
@@ -198,7 +197,6 @@ function Tareas({ usuario }) {
   return (
     <>
       {error && <p style={{ color: 'var(--red)', fontSize: '13px', marginBottom: '14px' }}>{error}</p>}
-      {mensaje && <p style={{ color: 'var(--green)', fontSize: '13px', marginBottom: '14px' }}>{mensaje}</p>}
 
       {!esAdmin && !usuario.id_trabajador && (
         <section className="card">
