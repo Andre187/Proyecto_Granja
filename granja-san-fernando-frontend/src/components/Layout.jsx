@@ -154,7 +154,24 @@ function Layout({ usuario, onLogout, children }) {
     style.top = `-${scrollY}px`;
     style.left = '0';
     style.right = '0';
+
+    // Solo la lista de módulos puede desplazarse; cualquier otro arrastre se bloquea
+    let inicioY = 0;
+    const alTocar = (e) => { inicioY = e.touches[0].clientY; };
+    const alMover = (e) => {
+      const lista = e.target.closest && e.target.closest('.nav-scroll');
+      if (!lista) { e.preventDefault(); return; }
+      const bajando = e.touches[0].clientY > inicioY;
+      const enTope = lista.scrollTop <= 0 && bajando;
+      const enFondo = lista.scrollTop + lista.clientHeight >= lista.scrollHeight - 1 && !bajando;
+      if (enTope || enFondo || lista.scrollHeight <= lista.clientHeight) e.preventDefault();
+    };
+    document.addEventListener('touchstart', alTocar, { passive: true });
+    document.addEventListener('touchmove', alMover, { passive: false });
+
     return () => {
+      document.removeEventListener('touchstart', alTocar);
+      document.removeEventListener('touchmove', alMover);
       document.body.classList.remove('no-scroll');
       style.position = '';
       style.top = '';
