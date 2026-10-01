@@ -313,7 +313,7 @@ function Produccion({ usuario }) {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {formClasificarHuevos.items.map((item, i) => (
-              <div key={i} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <div key={i} className="fila-form" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <select
                   value={item.id_clasificacion}
                   onChange={(e) => actualizarItemHuevo(i, 'id_clasificacion', e.target.value)}

@@ -21,6 +21,9 @@
   padding: 0;
 }
 
+html { -webkit-text-size-adjust: 100%; }
+body.no-scroll { overflow: hidden; }
+
 body {
   font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
   background: var(--cream);
@@ -143,7 +146,7 @@ nav.side-nav { display: flex; flex-direction: column; gap: 3px; }
 .profile-trigger[aria-expanded="true"] .profile-chevron { transform: rotate(0deg); }
 
 .profile-popover {
-  position: absolute; left: 0; right: 0; top: calc(100% + 8px);
+  position: absolute; left: 0; right: 0; bottom: calc(100% + 8px);
   z-index: 60; animation: modal-pop 0.16s ease;
 }
 .role-card .logout-btn svg { opacity: 0.75; transition: opacity 0.15s ease; }
@@ -501,7 +504,9 @@ tr:last-child td { border-bottom: none; }
   .app-shell { flex-direction: column; }
 
   .sidebar {
-    position: fixed; top: 0; left: 0; height: 100vh; width: 260px;
+    position: fixed; top: 0; left: 0; height: 100vh; height: 100dvh; width: min(280px, 85vw);
+    padding-bottom: max(18px, env(safe-area-inset-bottom));
+    overscroll-behavior: contain;
     transform: translateX(-100%);
     transition: transform 0.22s ease;
     z-index: 50;
@@ -513,7 +518,7 @@ tr:last-child td { border-bottom: none; }
     display: block; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 40;
   }
 
-  .nav-scroll { overflow-y: auto; overflow-x: hidden; }
+  .nav-scroll { overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
   .role-card { display: block; }
 
   main.content { padding: 16px; }
@@ -521,10 +526,28 @@ tr:last-child td { border-bottom: none; }
   .kpi-row { grid-template-columns: repeat(2, 1fr); gap: 10px; }
   .kpi { padding: 12px 14px; }
   .kpi .value { font-size: 22px; }
+  .kpi-row, .lote-detail .kpi-row { grid-template-columns: repeat(2, 1fr) !important; }
+  .kpi { min-width: 0; overflow-wrap: anywhere; }
+
+  section.card { padding: 16px; }
+  .lote-detail { padding: 14px; }
+
+  /* Formularios y filtros: nada se sale de la pantalla */
+  main.content form { min-width: 0; }
+  main.content .field { flex: 1 1 100% !important; min-width: 0 !important; max-width: 100% !important; }
+  main.content .field input, main.content .field select { width: 100%; min-width: 0; }
+  main.content input, main.content select, main.content textarea { max-width: 100%; font-size: 16px; }
+  main.content form > .btn, main.content form > button { width: 100%; }
+  .fila-form { flex-wrap: wrap !important; }
+  .fila-form > * { flex: 1 1 100% !important; min-width: 0 !important; width: 100%; }
+  .period-tabs { flex-wrap: wrap; max-width: 100%; }
+  .lote-cards { flex-wrap: wrap; overflow-x: visible; }
+  .lote-card { flex: 1 1 140px; }
 }
 
 @media (max-width: 480px) {
-  .kpi-row { grid-template-columns: 1fr; }
+  .kpi-row { grid-template-columns: 1fr !important; }
+  .lote-detail .kpi-row { grid-template-columns: repeat(2, 1fr) !important; }
   main.content { padding: 12px; }
   header.top h1 { font-size: 19px; }
 }

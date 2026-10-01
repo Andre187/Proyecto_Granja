@@ -143,6 +143,12 @@ function Layout({ usuario, onLogout, children }) {
     return () => document.removeEventListener('mousedown', cerrarSiFuera);
   }, [menuPerfilAbierto]);
 
+  // Con el menú lateral abierto (móvil) se bloquea el scroll de la página de fondo
+  useEffect(() => {
+    document.body.classList.toggle('no-scroll', menuAbierto || confirmarSalir);
+    return () => document.body.classList.remove('no-scroll');
+  }, [menuAbierto, confirmarSalir]);
+
   const etiquetaRol = usuario.rol === 'administrador' ? 'Administrador' : usuario.rol === 'superadministrador' ? 'Superadmin' : 'Operador';
   const claseRol = usuario.rol === 'operador' ? 'operador' : 'admin';
 

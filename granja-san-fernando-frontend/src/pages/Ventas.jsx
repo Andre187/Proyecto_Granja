@@ -421,7 +421,7 @@ function Ventas({ usuario }) {
             </label>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '8px' }}>
               {items.map((item, i) => (
-                <div key={i} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <div key={i} className="fila-form" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                   <select
                     value={item.id_clasificacion}
                     onChange={(e) => actualizarItem(i, 'id_clasificacion', e.target.value)}
