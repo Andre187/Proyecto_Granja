@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../api/api';
+import ConfirmModal from '../components/ConfirmModal';
 
 // Misma regla que utils/contrasenaSegura.js del backend
 const REGEX_CONTRASENA_SEGURA = /^(?=.*[A-Za-z])(?=.*\d).{8,72}$/;
@@ -7,6 +8,7 @@ const REGEX_CONTRASENA_SEGURA = /^(?=.*[A-Za-z])(?=.*\d).{8,72}$/;
 const estiloClaro = { background: '#F5F1E6', color: '#232019', colorScheme: 'light' };
 
 function SuperAdmin({ usuario: usuarioActivo }) {
+  const [confirmacion, setConfirmacion] = useState(null);
   const [usuarios, setUsuarios] = useState([]);
   const [registros, setRegistros] = useState([]);
   const [error, setError] = useState('');
@@ -59,8 +61,17 @@ function SuperAdmin({ usuario: usuarioActivo }) {
     setPasswordNueva('');
   };
 
-  const handleGuardarRol = async () => {
+  const handleGuardarRol = () => {
     if (rolSeleccionado === gestionando.rol) return;
+    setConfirmacion({
+      titulo: '¿Cambiar el rol?',
+      texto: `"${gestionando.usuario}" pasará de ${gestionando.rol} a ${rolSeleccionado} y sus permisos cambiarán de inmediato.`,
+      textoBoton: 'Cambiar rol',
+      onConfirmar: ejecutarGuardarRol,
+    });
+  };
+
+  const ejecutarGuardarRol = async () => {
     try {
       await api.put(`/superadmin/usuarios/${gestionando.id_usuario}/rol`, { rol: rolSeleccionado });
       mostrarMensaje('Rol actualizado');
@@ -85,9 +96,22 @@ function SuperAdmin({ usuario: usuarioActivo }) {
     }
   };
 
-  const handleToggleActivo = async () => {
+  const handleToggleActivo = () => {
+    if (gestionando.activo) {
+      setConfirmacion({
+        titulo: '¿Desactivar usuario?',
+        texto: `"${gestionando.usuario}" no podrá iniciar sesión hasta que lo reactives.`,
+        textoBoton: 'Desactivar',
+        peligro: true,
+        onConfirmar: ejecutarToggleActivo,
+      });
+    } else {
+      ejecutarToggleActivo();
+    }
+  };
+
+  const ejecutarToggleActivo = async () => {
     const accion = gestionando.activo ? 'desactivar' : 'reactivar';
-    if (accion === 'desactivar' && !window.confirm(`¿Desactivar al usuario "${gestionando.usuario}"? No podrá iniciar sesión hasta que lo reactives.`)) return;
     try {
       await api.put(`/superadmin/usuarios/${gestionando.id_usuario}/${accion}`);
       mostrarMensaje(accion === 'desactivar' ? 'Usuario desactivado' : 'Usuario reactivado');
@@ -266,6 +290,7 @@ function SuperAdmin({ usuario: usuarioActivo }) {
           </div>
         </div>
       )}
+      <ConfirmModal confirmacion={confirmacion} onCancelar={() => setConfirmacion(null)} />
     </>
   );
 }

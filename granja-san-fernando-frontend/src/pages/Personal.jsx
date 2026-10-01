@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import api from '../api/api';
+import ConfirmModal from '../components/ConfirmModal';
 
 const estiloClaro = { background: '#F5F1E6', color: '#232019', colorScheme: 'light' };
 
 function Personal() {
+  const [confirmacion, setConfirmacion] = useState(null);
   const [trabajadores, setTrabajadores] = useState([]);
   const [pagos, setPagos] = useState([]);
 
@@ -210,7 +212,18 @@ function Personal() {
                     border: `1px solid ${trabajador.estado === 'activo' ? 'var(--red-light)' : 'var(--green-light)'}`,
                     marginTop: '4px',
                   }}
-                  onClick={() => handleCambiarEstado(trabajador.id_trabajador, trabajador.estado)}
+                  onClick={() => {
+                    const desactivar = trabajador.estado === 'activo';
+                    setConfirmacion({
+                      titulo: desactivar ? '¿Desactivar trabajador?' : '¿Reactivar trabajador?',
+                      texto: desactivar
+                        ? `${trabajador.nombre} dejará de aparecer como trabajador activo y no se le podrán asignar tareas.`
+                        : `${trabajador.nombre} volverá a figurar como trabajador activo.`,
+                      textoBoton: desactivar ? 'Desactivar' : 'Reactivar',
+                      peligro: desactivar,
+                      onConfirmar: () => handleCambiarEstado(trabajador.id_trabajador, trabajador.estado),
+                    });
+                  }}
                 >
                   {trabajador.estado === 'activo' ? 'Desactivar trabajador' : 'Reactivar trabajador'}
                 </button>
@@ -355,6 +368,7 @@ function Personal() {
           </table>
         )}
       </section>
+      <ConfirmModal confirmacion={confirmacion} onCancelar={() => setConfirmacion(null)} />
     </>
   );
 }

@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import api from '../api/api';
+import ConfirmModal from '../components/ConfirmModal';
 
 // Misma regla que utils/contrasenaSegura.js del backend
 const REGEX_CONTRASENA_SEGURA = /^(?=.*[A-Za-z])(?=.*\d).{8,72}$/;
 
 function Usuarios({ usuario: usuarioActivo }) {
+  const [confirmacion, setConfirmacion] = useState(null);
   const [usuarios, setUsuarios] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
@@ -106,7 +108,27 @@ function Usuarios({ usuario: usuarioActivo }) {
     setErrorPermisos('');
   };
 
-  const handleGuardarPermisos = async () => {
+  const handleGuardarPermisos = () => {
+    const cambiaRol = rolPermisoTemp !== usuarioGestionando.rol;
+    const esUnoMismo = usuarioGestionando.id_usuario === usuarioActivo.id_usuario;
+    const cambiaEstado = !esUnoMismo && activoPermisoTemp !== !!usuarioGestionando.activo;
+    if (!cambiaRol && !cambiaEstado) {
+      ejecutarGuardarPermisos();
+      return;
+    }
+    const cambios = [];
+    if (cambiaRol) cambios.push(`su rol pasará de ${usuarioGestionando.rol} a ${rolPermisoTemp}`);
+    if (cambiaEstado) cambios.push(activoPermisoTemp ? 'la cuenta se reactivará' : 'la cuenta se desactivará y no podrá iniciar sesión');
+    setConfirmacion({
+      titulo: '¿Guardar cambios de permisos?',
+      texto: `Para "${usuarioGestionando.usuario}": ${cambios.join(' y ')}.`,
+      textoBoton: 'Guardar cambios',
+      peligro: cambiaEstado && !activoPermisoTemp,
+      onConfirmar: ejecutarGuardarPermisos,
+    });
+  };
+
+  const ejecutarGuardarPermisos = async () => {
     setErrorPermisos('');
     try {
       if (rolPermisoTemp !== usuarioGestionando.rol) {
@@ -343,6 +365,7 @@ function Usuarios({ usuario: usuarioActivo }) {
           </div>
         </div>
       )}
+      <ConfirmModal confirmacion={confirmacion} onCancelar={() => setConfirmacion(null)} />
     </>
   );
 }

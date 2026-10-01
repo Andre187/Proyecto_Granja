@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../api/api';
+import ConfirmModal from '../components/ConfirmModal';
 
 const hoy = () => {
   const d = new Date();
@@ -27,6 +28,7 @@ function Galeras() {
   const [nuevoLote, setNuevoLote] = useState({ id_galera: '', fecha_ingreso: hoy(), aves_recibidas: '' });
 
   const [galeraAFinalizar, setGaleraAFinalizar] = useState(null);
+  const [confirmacion, setConfirmacion] = useState(null);
 
   const cargarTodo = async () => {
     try {
@@ -231,7 +233,12 @@ function Galeras() {
                       <button
                         className="btn"
                         style={{ width: '100%', fontSize: '12px', padding: '7px 10px' }}
-                        onClick={() => handleReactivar(g.id_galera)}
+                        onClick={() => setConfirmacion({
+                          titulo: '¿Marcar como disponible?',
+                          texto: `${g.nombre} quedará lista para recibir un nuevo lote. Confirma que ya terminó la desinfección.`,
+                          textoBoton: 'Marcar disponible',
+                          onConfirmar: () => handleReactivar(g.id_galera),
+                        })}
                       >
                         ✓ Marcar disponible
                       </button>
@@ -282,6 +289,7 @@ function Galeras() {
           </div>
         </div>
       )}
+      <ConfirmModal confirmacion={confirmacion} onCancelar={() => setConfirmacion(null)} />
     </>
   );
 }
