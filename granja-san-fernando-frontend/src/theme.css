@@ -147,7 +147,7 @@ nav.side-nav { display: flex; flex-direction: column; gap: 3px; }
 .profile-trigger[aria-expanded="true"] .profile-chevron { transform: rotate(0deg); }
 
 .profile-popover {
-  position: absolute; left: 0; right: 0; bottom: calc(100% + 8px);
+  position: absolute; left: 0; right: 0; top: calc(100% + 8px);
   z-index: 60; animation: modal-pop 0.16s ease;
   background: var(--navy-deep); padding: 6px;
   border: 1px solid rgba(255,255,255,0.18); border-radius: 12px;
@@ -527,7 +527,7 @@ tr:last-child td { border-bottom: none; }
     touch-action: none; overscroll-behavior: none;
   }
 
-  .profile-popover { display: none; }
+  .role-card.profile-popover { display: none; }
   .mobile-sheet-overlay {
     display: flex; align-items: flex-end; justify-content: center;
     position: fixed; inset: 0; z-index: 90;
