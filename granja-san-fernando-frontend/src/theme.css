@@ -22,7 +22,8 @@
 }
 
 html { -webkit-text-size-adjust: 100%; }
-body.no-scroll { overflow: hidden; }
+body.no-scroll { overflow: hidden; overscroll-behavior: none; }
+html:has(body.no-scroll) { overflow: hidden; overscroll-behavior: none; }
 
 body {
   font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -519,6 +520,7 @@ tr:last-child td { border-bottom: none; }
 
   .sidebar-overlay.open {
     display: block; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 40;
+    touch-action: none; overscroll-behavior: none;
   }
 
   .profile-popover { display: none; }

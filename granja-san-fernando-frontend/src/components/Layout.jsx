@@ -144,10 +144,24 @@ function Layout({ usuario, onLogout, children }) {
     return () => document.removeEventListener('mousedown', cerrarSiFuera);
   }, [menuPerfilAbierto]);
 
-  // Con el menú lateral abierto (móvil) se bloquea el scroll de la página de fondo
+  // Con el menú lateral abierto (móvil) la página de fondo queda fija: solo se desplaza el menú
   useEffect(() => {
-    document.body.classList.toggle('no-scroll', menuAbierto || confirmarSalir);
-    return () => document.body.classList.remove('no-scroll');
+    if (!(menuAbierto || confirmarSalir)) return;
+    const scrollY = window.scrollY;
+    const { style } = document.body;
+    document.body.classList.add('no-scroll');
+    style.position = 'fixed';
+    style.top = `-${scrollY}px`;
+    style.left = '0';
+    style.right = '0';
+    return () => {
+      document.body.classList.remove('no-scroll');
+      style.position = '';
+      style.top = '';
+      style.left = '';
+      style.right = '';
+      window.scrollTo(0, scrollY);
+    };
   }, [menuAbierto, confirmarSalir]);
 
   const etiquetaRol = usuario.rol === 'administrador' ? 'Administrador' : usuario.rol === 'superadministrador' ? 'Superadmin' : 'Operador';
