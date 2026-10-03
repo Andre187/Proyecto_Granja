@@ -38,7 +38,15 @@ function Ventas({ usuario }) {
   const [items, setItems] = useState([{ id_clasificacion: '', presentacion: 'unidad', cantidadPresentacion: '', precio_unitario: '' }]);
 
   const CARTONES_POR_PRESENTACION = { caja: 12, media: 6, unidad: 1 };
-  const cartonesDeItem = (item) => (parseInt(item.cantidadPresentacion) || 0) * CARTONES_POR_PRESENTACION[item.presentacion];
+  const ETIQUETA_PRECIO = { caja: 'Precio por caja (Q)', media: 'Precio por media caja (Q)', unidad: 'Precio unitario (Q)' };
+  // El precio que se escribe es el de la presentación elegida; el servidor guarda el precio por cartón
+  const precioPorCarton = (item) => Math.round((parseFloat(item.precio_unitario) / CARTONES_POR_PRESENTACION[item.presentacion]) * 100) / 100;
+  // Caja y media caja siempre son una sola presentación (12 y 6 cartones); la cantidad solo se escribe con Unidad
+  const cartonesDeItem = (item) => (
+    item.presentacion === 'unidad'
+      ? (parseInt(item.cantidadPresentacion) || 0)
+      : CARTONES_POR_PRESENTACION[item.presentacion]
+  );
 
   const [abonandoId, setAbonandoId] = useState(null);
   const [montoAbono, setMontoAbono] = useState('');
@@ -110,6 +118,13 @@ function Ventas({ usuario }) {
     setItems(copia);
   };
 
+  // Caja y media caja son cantidades fijas (12 y 6 cartones): no se pide cantidad, solo con Unidad
+  const cambiarPresentacion = (index, presentacion) => {
+    const copia = [...items];
+    copia[index] = { ...copia[index], presentacion, cantidadPresentacion: presentacion === 'unidad' ? '' : '1' };
+    setItems(copia);
+  };
+
   const resetFormularioVenta = () => {
     setClienteSeleccionado('');
     setClienteNombre('');
@@ -150,7 +165,7 @@ function Ventas({ usuario }) {
         items: items.map((it) => ({
           id_clasificacion: it.id_clasificacion,
           cantidad: cartonesDeItem(it),
-          precio_unitario: parseFloat(it.precio_unitario),
+          precio_unitario: precioPorCarton(it),
         })),
       };
       if (clienteSeleccionado === 'nuevo') {
@@ -454,31 +469,30 @@ function Ventas({ usuario }) {
                   </select>
                   <select
                     value={item.presentacion}
-                    onChange={(e) => actualizarItem(i, 'presentacion', e.target.value)}
+                    onChange={(e) => cambiarPresentacion(i, e.target.value)}
                     style={{ ...estiloClaro, flex: 1, minWidth: '110px', padding: '8px 10px', border: '1px solid var(--line)', borderRadius: '7px', fontSize: '13px' }}
                   >
                     <option value="caja">Caja</option>
                     <option value="media">Media caja</option>
                     <option value="unidad">Unidad</option>
                   </select>
-                  <div style={{ flex: 1, minWidth: '110px' }}>
-                    <input
-                      type="number"
-                      min="1"
-                      placeholder={`Cantidad de ${item.presentacion === 'caja' ? 'cajas' : item.presentacion === 'media' ? 'medias cajas' : 'unidades'}`}
-                      value={item.cantidadPresentacion}
-                      onChange={(e) => actualizarItem(i, 'cantidadPresentacion', e.target.value)}
-                      required
-                      style={{ ...estiloClaro, width: '100%', padding: '8px 10px', border: '1px solid var(--line)', borderRadius: '7px', fontSize: '13px' }}
-                    />
-                    {item.presentacion !== 'unidad' && item.cantidadPresentacion > 0 && (
-                      <span style={{ fontSize: '10.5px', color: 'var(--ink-soft)' }}>= {cartonesDeItem(item)} cartones</span>
-                    )}
-                  </div>
+                  {item.presentacion === 'unidad' ? (
+                    <div style={{ flex: 1, minWidth: '110px' }}>
+                      <input
+                        type="number"
+                        min="1"
+                        placeholder="Cantidad de unidades"
+                        value={item.cantidadPresentacion}
+                        onChange={(e) => actualizarItem(i, 'cantidadPresentacion', e.target.value)}
+                        required
+                        style={{ ...estiloClaro, width: '100%', padding: '8px 10px', border: '1px solid var(--line)', borderRadius: '7px', fontSize: '13px' }}
+                      />
+                    </div>
+                  ) : null}
                   <input
                     type="number"
                     step="0.01"
-                    placeholder="Precio unitario (Q)"
+                    placeholder={ETIQUETA_PRECIO[item.presentacion]}
                     value={item.precio_unitario}
                     onChange={(e) => actualizarItem(i, 'precio_unitario', e.target.value)}
                     required
