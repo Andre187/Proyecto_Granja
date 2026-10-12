@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../api/api';
+import CampoFecha from '../components/CampoFecha';
 import { mostrarAviso } from '../utils/aviso';
 
 const hoy = () => {
@@ -121,7 +122,7 @@ function Sanidad({ usuario }) {
             </div>
             <div className="field">
               <label>Fecha</label>
-              <input type="date" value={formVacuna.fecha} onChange={(e) => setFormVacuna({ ...formVacuna, fecha: e.target.value })} required />
+              <CampoFecha value={formVacuna.fecha} onChange={(e) => setFormVacuna({ ...formVacuna, fecha: e.target.value })} required />
             </div>
             <div className="field">
               <label>Tipo de vacuna</label>
@@ -149,7 +150,7 @@ function Sanidad({ usuario }) {
             </div>
             <div className="field">
               <label>Fecha</label>
-              <input type="date" value={formPeso.fecha} onChange={(e) => setFormPeso({ ...formPeso, fecha: e.target.value })} required />
+              <CampoFecha value={formPeso.fecha} onChange={(e) => setFormPeso({ ...formPeso, fecha: e.target.value })} required />
             </div>
             <div className="field">
               <label>Semana</label>

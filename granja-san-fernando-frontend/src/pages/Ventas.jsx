@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../api/api';
+import CampoFecha from '../components/CampoFecha';
 import { mostrarAviso } from '../utils/aviso';
 import useActualizacionAutomatica from '../hooks/useActualizacionAutomatica';
 
@@ -272,8 +273,7 @@ function Ventas({ usuario }) {
                   value={montoAbono} onChange={(e) => setMontoAbono(e.target.value)}
                   style={{ ...estiloClaro, width: '90px', fontSize: '12px', padding: '5px 8px', border: '1px solid var(--line)', borderRadius: '6px' }}
                 />
-                <input
-                  type="date"
+                <CampoFecha
                   value={fechaAbono} onChange={(e) => setFechaAbono(e.target.value)}
                   style={{ ...estiloClaro, fontSize: '12px', padding: '5px 8px', border: '1px solid var(--line)', borderRadius: '6px' }}
                 />
@@ -405,7 +405,7 @@ function Ventas({ usuario }) {
 
             <div className="field">
               <label>Fecha</label>
-              <input type="date" value={fechaVenta} onChange={(e) => setFechaVenta(e.target.value)} required style={estiloClaro} />
+              <CampoFecha value={fechaVenta} onChange={(e) => setFechaVenta(e.target.value)} required style={estiloClaro} />
             </div>
 
             <div className="field">

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../api/api';
+import CampoFecha from '../components/CampoFecha';
 import { mostrarAviso } from '../utils/aviso';
 import ConfirmModal from '../components/ConfirmModal';
 
@@ -292,11 +293,11 @@ function Personal() {
             </div>
             <div className="field">
               <label>Semana inicio</label>
-              <input type="date" value={formPago.semana_inicio} onChange={(e) => setFormPago({ ...formPago, semana_inicio: e.target.value })} required style={estiloClaro} />
+              <CampoFecha value={formPago.semana_inicio} onChange={(e) => setFormPago({ ...formPago, semana_inicio: e.target.value })} required style={estiloClaro} />
             </div>
             <div className="field">
               <label>Semana fin</label>
-              <input type="date" value={formPago.semana_fin} onChange={(e) => setFormPago({ ...formPago, semana_fin: e.target.value })} required style={estiloClaro} />
+              <CampoFecha value={formPago.semana_fin} onChange={(e) => setFormPago({ ...formPago, semana_fin: e.target.value })} required style={estiloClaro} />
             </div>
             <div className="field">
               <label>Días laborados</label>

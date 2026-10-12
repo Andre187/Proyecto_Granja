@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../api/api';
+import CampoFecha from '../components/CampoFecha';
 import { mostrarAviso } from '../utils/aviso';
 import ConfirmModal from '../components/ConfirmModal';
 
@@ -155,7 +156,7 @@ function Galeras() {
             <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'flex-end', background: 'var(--cream)', padding: '12px', borderRadius: '8px', border: '1px solid var(--line)' }}>
               <div className="field">
                 <label>Fecha de ingreso del primer lote (opcional)</label>
-                <input type="date" value={nuevaGalera.fecha_ingreso} onChange={(e) => setNuevaGalera({ ...nuevaGalera, fecha_ingreso: e.target.value })} />
+                <CampoFecha value={nuevaGalera.fecha_ingreso} onChange={(e) => setNuevaGalera({ ...nuevaGalera, fecha_ingreso: e.target.value })} />
               </div>
               <div className="field">
                 <label>Aves recibidas (opcional)</label>
@@ -183,7 +184,7 @@ function Galeras() {
             </div>
             <div className="field">
               <label>Fecha de ingreso</label>
-              <input type="date" value={nuevoLote.fecha_ingreso} onChange={(e) => setNuevoLote({ ...nuevoLote, fecha_ingreso: e.target.value })} required />
+              <CampoFecha value={nuevoLote.fecha_ingreso} onChange={(e) => setNuevoLote({ ...nuevoLote, fecha_ingreso: e.target.value })} required />
             </div>
             <div className="field">
               <label>Aves recibidas</label>

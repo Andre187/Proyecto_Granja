@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../api/api';
+import CampoFecha from '../components/CampoFecha';
 import { mostrarAviso } from '../utils/aviso';
 import { exportarTareasWord } from '../utils/exportarTareasWord';
 
@@ -247,11 +248,11 @@ function Tareas({ usuario }) {
               <div style={{ display: 'flex', gap: '12px' }}>
                 <div className="field" style={{ flex: 1 }}>
                   <label>Fecha de asignación</label>
-                  <input type="date" value={formTarea.fecha_asignacion} onChange={(e) => setFormTarea({ ...formTarea, fecha_asignacion: e.target.value })} required />
+                  <CampoFecha value={formTarea.fecha_asignacion} onChange={(e) => setFormTarea({ ...formTarea, fecha_asignacion: e.target.value })} required />
                 </div>
                 <div className="field" style={{ flex: 1 }}>
                   <label>Fecha límite (opcional)</label>
-                  <input type="date" value={formTarea.fecha_limite} onChange={(e) => setFormTarea({ ...formTarea, fecha_limite: e.target.value })} />
+                  <CampoFecha value={formTarea.fecha_limite} onChange={(e) => setFormTarea({ ...formTarea, fecha_limite: e.target.value })} />
                 </div>
               </div>
               <button type="submit" className="btn">Asignar tarea</button>
@@ -269,11 +270,11 @@ function Tareas({ usuario }) {
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <div className="field">
               <label>Desde</label>
-              <input type="date" value={exportDesde} max={exportHasta} onChange={(e) => setExportDesde(e.target.value)} />
+              <CampoFecha value={exportDesde} max={exportHasta} onChange={(e) => setExportDesde(e.target.value)} />
             </div>
             <div className="field">
               <label>Hasta</label>
-              <input type="date" value={exportHasta} min={exportDesde} onChange={(e) => setExportHasta(e.target.value)} />
+              <CampoFecha value={exportHasta} min={exportDesde} onChange={(e) => setExportHasta(e.target.value)} />
             </div>
             <div className="field">
               <label>Estado</label>

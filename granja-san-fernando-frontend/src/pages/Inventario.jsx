@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../api/api';
+import CampoFecha from '../components/CampoFecha';
 import { mostrarAviso } from '../utils/aviso';
 import ConfirmModal from '../components/ConfirmModal';
 import useActualizacionAutomatica from '../hooks/useActualizacionAutomatica';
@@ -340,7 +341,7 @@ function Inventario({ usuario }) {
                     </div>
                     <div className="field" style={{ flex: 1 }}>
                       <label>Fecha</label>
-                      <input type="date" value={formConsumoConcentrado.fecha} onChange={(e) => setFormConsumoConcentrado({ ...formConsumoConcentrado, fecha: e.target.value })} required style={estiloClaro} />
+                      <CampoFecha value={formConsumoConcentrado.fecha} onChange={(e) => setFormConsumoConcentrado({ ...formConsumoConcentrado, fecha: e.target.value })} required style={estiloClaro} />
                     </div>
                   </div>
                   <button type="submit" className="btn">Registrar consumo</button>
@@ -358,7 +359,7 @@ function Inventario({ usuario }) {
                   </div>
                   <div className="field">
                     <label>Fecha</label>
-                    <input type="date" value={formConcentrado.fecha} onChange={(e) => setFormConcentrado({ ...formConcentrado, fecha: e.target.value })} required style={estiloClaro} />
+                    <CampoFecha value={formConcentrado.fecha} onChange={(e) => setFormConcentrado({ ...formConcentrado, fecha: e.target.value })} required style={estiloClaro} />
                   </div>
                   <div className="field">
                     <label>Cantidad (quintales)</label>
@@ -515,7 +516,7 @@ function Inventario({ usuario }) {
                     </div>
                     <div className="field" style={{ flex: 1 }}>
                       <label>Fecha</label>
-                      <input type="date" value={formSalidaMed.fecha} onChange={(e) => setFormSalidaMed({ ...formSalidaMed, fecha: e.target.value })} required style={estiloClaro} />
+                      <CampoFecha value={formSalidaMed.fecha} onChange={(e) => setFormSalidaMed({ ...formSalidaMed, fecha: e.target.value })} required style={estiloClaro} />
                     </div>
                   </div>
                   <button type="submit" className="btn">Registrar salida</button>
@@ -584,7 +585,7 @@ function Inventario({ usuario }) {
                     </div>
                     <div className="field">
                       <label>Fecha</label>
-                      <input type="date" value={formMovimientoAdmin.fecha} onChange={(e) => setFormMovimientoAdmin({ ...formMovimientoAdmin, fecha: e.target.value })} required style={estiloClaro} />
+                      <CampoFecha value={formMovimientoAdmin.fecha} onChange={(e) => setFormMovimientoAdmin({ ...formMovimientoAdmin, fecha: e.target.value })} required style={estiloClaro} />
                     </div>
                     <button type="submit" className="btn">Registrar movimiento</button>
                   </form>

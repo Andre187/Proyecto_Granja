@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api/api';
+import CampoFecha from '../components/CampoFecha';
 import { mostrarAviso } from '../utils/aviso';
 
 const hoy = () => {
@@ -266,7 +267,7 @@ function Produccion({ usuario }) {
             </p>
             <div className="field">
               <label>Fecha</label>
-              <input type="date" value={formPostura.fecha} onChange={(e) => setFormPostura({ ...formPostura, fecha: e.target.value })} required />
+              <CampoFecha value={formPostura.fecha} onChange={(e) => setFormPostura({ ...formPostura, fecha: e.target.value })} required />
             </div>
             <div className="field">
               <label>Cartones</label>
@@ -293,7 +294,7 @@ function Produccion({ usuario }) {
             </p>
             <div className="field">
               <label>Fecha</label>
-              <input type="date" value={formMortalidad.fecha} onChange={(e) => setFormMortalidad({ ...formMortalidad, fecha: e.target.value })} required />
+              <CampoFecha value={formMortalidad.fecha} onChange={(e) => setFormMortalidad({ ...formMortalidad, fecha: e.target.value })} required />
             </div>
             <div className="field">
               <label>Cantidad</label>
@@ -314,8 +315,7 @@ function Produccion({ usuario }) {
         <form onSubmit={handleRegistrarClasificacionHuevos} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div className="field" style={{ maxWidth: '220px' }}>
             <label>Fecha</label>
-            <input
-              type="date"
+            <CampoFecha
               value={formClasificarHuevos.fecha}
               onChange={(e) => setFormClasificarHuevos({ ...formClasificarHuevos, fecha: e.target.value })}
               required

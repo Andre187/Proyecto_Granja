@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../api/api';
+import CampoFecha from '../components/CampoFecha';
 import { mostrarAviso } from '../utils/aviso';
 import useActualizacionAutomatica from '../hooks/useActualizacionAutomatica';
 import SelectorRangoFechas from '../components/SelectorRangoFechas';
@@ -179,7 +180,7 @@ function Gastos() {
         <form onSubmit={handleRegistrar} style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <div className="field">
             <label>Fecha</label>
-            <input type="date" value={form.fecha} onChange={(e) => setForm({ ...form, fecha: e.target.value })} required style={estiloClaro} />
+            <CampoFecha value={form.fecha} onChange={(e) => setForm({ ...form, fecha: e.target.value })} required style={estiloClaro} />
           </div>
           <div className="field" style={{ flex: 1, minWidth: '200px' }}>
             <label>Descripción</label>
@@ -254,7 +255,7 @@ function Gastos() {
                   editandoId === g.id_gasto ? (
                     <tr key={g.id_gasto}>
                       <td>
-                        <input type="date" value={formEdicion.fecha} onChange={(e) => setFormEdicion({ ...formEdicion, fecha: e.target.value })}
+                        <CampoFecha value={formEdicion.fecha} onChange={(e) => setFormEdicion({ ...formEdicion, fecha: e.target.value })}
                           style={{ ...estiloClaro, fontSize: '12px', padding: '5px 8px', border: '1px solid var(--line)', borderRadius: '6px' }} />
                       </td>
                       <td>
