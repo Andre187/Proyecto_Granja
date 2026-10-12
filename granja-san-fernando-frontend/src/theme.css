@@ -463,11 +463,13 @@ tr:last-child td { border-bottom: none; }
 }
 .btn.outline:hover { filter: none; background: var(--line); box-shadow: none; }
 
+/* Mismo formato y color que el resto de botones (azul marino), también en las confirmaciones.
+   La clase se conserva para marcar acciones delicadas sin cambiar el diseño del botón. */
 .btn.danger {
-  background: linear-gradient(180deg, #c24940 0%, var(--red) 100%);
-  box-shadow: 0 2px 6px rgba(139, 51, 31, 0.35), inset 0 1px 0 rgba(255,255,255,0.15);
+  background: linear-gradient(180deg, var(--navy) 0%, var(--navy-deep) 100%);
+  box-shadow: 0 2px 6px rgba(18, 41, 79, 0.35), inset 0 1px 0 rgba(255,255,255,0.08);
 }
-.btn.danger:hover { filter: brightness(1.08); box-shadow: 0 4px 10px rgba(139, 51, 31, 0.4); }
+.btn.danger:hover { filter: brightness(1.08); box-shadow: 0 4px 10px rgba(18, 41, 79, 0.4); }
 
 /* ---------- Historiales de sanidad agrupados por galpón ---------- */
 .sanidad-grupo { padding-bottom: 16px; margin-bottom: 16px; border-bottom: 1px dashed var(--line); }
@@ -706,3 +708,15 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
 }
 .lote-card.galera-card .lc-icon { margin-left: auto; margin-right: auto; }
 .lote-card.galera-card > div:last-child { width: 100%; text-align: center; }
+
+/* Fecha que ocupa todo el ancho de su columna, con el contenido centrado */
+.campo-fecha.campo-fecha-bloque, .field .campo-fecha.campo-fecha-bloque { display: block; width: 100%; align-self: stretch; }
+.campo-fecha-bloque .campo-fecha-btn { width: 100%; justify-content: center; }
+.campo-fecha-bloque .campo-fecha-popover { left: 50%; transform: translateX(-50%); }
+
+/* Botón de envío centrado, sin ocupar todo el ancho del formulario */
+form .btn.boton-centrado { align-self: center; min-width: 260px; margin-top: 4px; }
+@media (max-width: 900px) {
+  .campo-fecha-bloque .campo-fecha-popover { transform: translate(-50%, -50%); }
+  form .btn.boton-centrado { align-self: stretch; min-width: 0; }
+}
