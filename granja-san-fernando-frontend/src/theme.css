@@ -730,3 +730,11 @@ form .btn.boton-centrado { align-self: center; min-width: 260px; margin-top: 4px
   .field .campo-fecha-popover, .campo-fecha-bloque .campo-fecha-popover { transform: translate(-50%, -50%); }
   form .btn.boton-centrado { align-self: stretch; min-width: 0; }
 }
+
+/* ---------- Bordes negros en todos los campos ---------- */
+main.content input:not([type="checkbox"]):not([type="radio"]):not(.campo-fecha-requerido),
+main.content select,
+main.content textarea,
+.campo-fecha-btn {
+  border: 1.5px solid #232019 !important;
+}
