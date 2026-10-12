@@ -6,6 +6,7 @@ const { verificarToken, soloAdministrador } = require('../middleware/auth.middle
 const { validar } = require('../middleware/validacion.middleware');
 const { manejarError } = require('../utils/manejarError');
 const { conActor } = require('../utils/actor');
+const { cambiarEstadoCuenta } = require('../utils/estadoCuenta');
 const { validarParametroId } = require('../utils/validadores');
 const { REGEX_CONTRASENA_SEGURA, MENSAJE_CONTRASENA_SEGURA, esContrasenaSegura } = require('../utils/contrasenaSegura');
 
@@ -229,7 +230,7 @@ router.put('/:id/desactivar', cargarObjetivo, async (req, res) => {
       }
     }
 
-    await escribirComoActor(req, 'UPDATE usuarios SET activo = 0 WHERE id_usuario = ?', [req.params.id]);
+    await cambiarEstadoCuenta(req, req.params.id, false);
     res.json({ mensaje: 'Usuario desactivado correctamente' });
   } catch (error) {
     manejarError(res, error);
@@ -239,7 +240,7 @@ router.put('/:id/desactivar', cargarObjetivo, async (req, res) => {
 // Reactivar: le devuelve el acceso a una cuenta desactivada
 router.put('/:id/reactivar', cargarObjetivo, async (req, res) => {
   try {
-    await escribirComoActor(req, 'UPDATE usuarios SET activo = 1 WHERE id_usuario = ?', [req.params.id]);
+    await cambiarEstadoCuenta(req, req.params.id, true);
     res.json({ mensaje: 'Usuario reactivado correctamente' });
   } catch (error) {
     manejarError(res, error);

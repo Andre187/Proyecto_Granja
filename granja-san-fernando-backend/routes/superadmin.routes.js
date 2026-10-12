@@ -4,6 +4,7 @@ const pool = require('../db');
 const { verificarToken, soloSuperAdmin } = require('../middleware/auth.middleware');
 const { manejarError } = require('../utils/manejarError');
 const { conActor } = require('../utils/actor');
+const { cambiarEstadoCuenta } = require('../utils/estadoCuenta');
 const { validarParametroId } = require('../utils/validadores');
 const { esContrasenaSegura, MENSAJE_CONTRASENA_SEGURA } = require('../utils/contrasenaSegura');
 
@@ -44,7 +45,9 @@ router.put('/usuarios/:id/desactivar', async (req, res) => {
     if (parseInt(req.params.id) === req.usuario.id_usuario) {
       return res.status(400).json({ error: 'No puedes desactivar tu propio usuario' });
     }
-    await actualizarUsuario(req, res, 'UPDATE usuarios SET activo = 0 WHERE id_usuario = ?', [req.params.id], 'Usuario desactivado correctamente');
+    const filas = await cambiarEstadoCuenta(req, req.params.id, false);
+    if (filas === 0) return res.status(404).json({ error: 'Usuario no encontrado' });
+    res.json({ mensaje: 'Usuario desactivado correctamente' });
   } catch (error) {
     manejarError(res, error);
   }
@@ -52,7 +55,9 @@ router.put('/usuarios/:id/desactivar', async (req, res) => {
 
 router.put('/usuarios/:id/reactivar', async (req, res) => {
   try {
-    await actualizarUsuario(req, res, 'UPDATE usuarios SET activo = 1 WHERE id_usuario = ?', [req.params.id], 'Usuario reactivado correctamente');
+    const filas = await cambiarEstadoCuenta(req, req.params.id, true);
+    if (filas === 0) return res.status(404).json({ error: 'Usuario no encontrado' });
+    res.json({ mensaje: 'Usuario reactivado correctamente' });
   } catch (error) {
     manejarError(res, error);
   }
