@@ -20,7 +20,7 @@ function Produccion({ usuario }) {
 
   const [error, setError] = useState('');
 
-  const [formPostura, setFormPostura] = useState({ id_lote: '', fecha: hoy(), cantidad_huevos: '' });
+  const [formPostura, setFormPostura] = useState({ id_lote: '', fecha: hoy(), cartones: '', sueltos: '' });
   const [formMortalidad, setFormMortalidad] = useState({ id_lote: '', fecha: hoy(), cantidad: '', causa: '' });
 
   const [loteSeleccionado, setLoteSeleccionado] = useState(null);
@@ -82,14 +82,26 @@ function Produccion({ usuario }) {
   const ultimaPostura = posturaDelLote[0] || null;
   const ultimaMortalidad = mortalidadDelLote[0] || null;
 
+  const HUEVOS_POR_CARTON = 30;
+  const huevosDePostura = (f) => (parseInt(f.cartones) || 0) * HUEVOS_POR_CARTON + (parseInt(f.sueltos) || 0);
+  // Ej. 2550 -> "2,550 huevos (85 cartones)"; 2562 -> "2,562 huevos (85 cartones y 12 huevos)"
+  const textoHuevos = (h) => {
+    const n = Number(h) || 0;
+    const cartones = Math.floor(n / HUEVOS_POR_CARTON);
+    const sueltos = n % HUEVOS_POR_CARTON;
+    return `${n.toLocaleString('es-GT')} huevos (${cartones} cartones${sueltos ? ` y ${sueltos} huevos` : ''})`;
+  };
+
   const handleRegistrarPostura = async (e) => {
     e.preventDefault();
     try {
+      // Se captura en cartones (+ huevos sueltos); el sistema guarda el total en huevos
       await api.post('/produccion/postura', {
-        ...formPostura,
-        cantidad_huevos: parseInt(formPostura.cantidad_huevos),
+        id_lote: formPostura.id_lote,
+        fecha: formPostura.fecha,
+        cantidad_huevos: huevosDePostura(formPostura),
       });
-      setFormPostura({ id_lote: '', fecha: hoy(), cantidad_huevos: '' });
+      setFormPostura({ id_lote: '', fecha: hoy(), cartones: '', sueltos: '' });
       mostrarMensaje('Postura registrada correctamente');
       cargarTodo();
     } catch (err) {
@@ -212,8 +224,8 @@ function Produccion({ usuario }) {
                     </div>
                     <div className="kpi">
                       <div className="label">Última postura</div>
-                      <div className="value">{ultimaPostura ? ultimaPostura.cantidad_huevos : '—'}</div>
-                      <div className="delta">{ultimaPostura ? ultimaPostura.fecha?.slice(0, 10) : 'Sin registros'}</div>
+                      <div className="value">{ultimaPostura ? `${Math.floor(Number(ultimaPostura.cantidad_huevos) / HUEVOS_POR_CARTON)} cartones` : '—'}</div>
+                      <div className="delta">{ultimaPostura ? `${Number(ultimaPostura.cantidad_huevos).toLocaleString('es-GT')} huevos · ${ultimaPostura.fecha?.slice(0, 10)}` : 'Sin registros'}</div>
                     </div>
                     <div className="kpi">
                       <div className="label">Tasa de postura</div>
@@ -260,8 +272,17 @@ function Produccion({ usuario }) {
               <input type="date" value={formPostura.fecha} onChange={(e) => setFormPostura({ ...formPostura, fecha: e.target.value })} required />
             </div>
             <div className="field">
-              <label>Cantidad de huevos</label>
-              <input type="number" value={formPostura.cantidad_huevos} onChange={(e) => setFormPostura({ ...formPostura, cantidad_huevos: e.target.value })} required />
+              <label>Cartones (30 huevos c/u)</label>
+              <input type="number" min="0" step="1" value={formPostura.cartones} onChange={(e) => setFormPostura({ ...formPostura, cartones: e.target.value })} required />
+            </div>
+            <div className="field">
+              <label>Huevos sueltos (opcional)</label>
+              <input type="number" min="0" max="29" step="1" value={formPostura.sueltos} onChange={(e) => setFormPostura({ ...formPostura, sueltos: e.target.value })} />
+              {huevosDePostura(formPostura) > 0 && (
+                <span style={{ fontSize: '11px', color: 'var(--ink-soft)' }}>
+                  Total: {huevosDePostura(formPostura).toLocaleString('es-GT')} huevos
+                </span>
+              )}
             </div>
             <button type="submit" className="btn">Registrar postura</button>
           </form>
@@ -368,13 +389,13 @@ function Produccion({ usuario }) {
               <div className="table-wrap">
               <table>
                 <thead>
-                  <tr><th>Fecha</th><th>Huevos</th><th>Tasa</th></tr>
+                  <tr><th>Fecha</th><th>Producción</th><th>Tasa</th></tr>
                 </thead>
                 <tbody>
                   {posturaDelLote.map((p) => (
                     <tr key={p.id_postura}>
                       <td data-label="Fecha">{p.fecha?.slice(0, 10)}</td>
-                      <td data-label="Huevos">{p.cantidad_huevos}</td>
+                      <td data-label="Producción">{textoHuevos(p.cantidad_huevos)}</td>
                       <td data-label="Tasa">{p.tasa_postura}%</td>
                     </tr>
                   ))}
