@@ -51,11 +51,11 @@ function CampoFecha({ value, onChange, required, min, max, style }) {
   return (
     <div className="campo-fecha" ref={ref}>
       <button type="button" className="campo-fecha-btn" onClick={abrir} style={style} aria-haspopup="dialog" aria-expanded={abierto}>
-        <span className={value ? '' : 'vacio'}>{value ? mostrar(value) : 'dd/mm/aaaa'}</span>
         <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
           <rect x="3" y="4.5" width="14" height="12" rx="2" stroke="currentColor" strokeWidth="1.6" />
           <path d="M3 8h14M6.5 3v3M13.5 3v3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
         </svg>
+        <span className={value ? '' : 'vacio'}>{value ? mostrar(value) : 'dd/mm/aaaa'}</span>
       </button>
 
       {/* Permite que el formulario avise "completa este campo" si es obligatorio y está vacío */}

@@ -669,11 +669,12 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 input[type="date"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
 
 /* ---------- Campo de fecha propio (CampoFecha) ---------- */
-.campo-fecha { position: relative; min-width: 130px; }
-.field .campo-fecha { width: 100%; }
+.campo-fecha { position: relative; display: inline-block; width: fit-content; max-width: 100%; }
+.field .campo-fecha { align-self: flex-start; }
 .campo-fecha-btn {
-  width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  font-family: inherit; font-size: 13px; text-align: left;
+  display: inline-flex; align-items: center; justify-content: flex-start; gap: 8px;
+  min-width: 150px; width: auto; max-width: 100%;
+  font-family: inherit; font-size: 13px; font-weight: 500; text-align: left; white-space: nowrap;
   padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px;
   background: var(--cream); color: var(--ink);
 }
@@ -684,8 +685,8 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
   position: absolute; left: 0; bottom: 0; width: 100%; height: 1px;
   opacity: 0; pointer-events: none; border: 0; padding: 0;
 }
-/* Se alinea al borde derecho del botón, justo debajo del ícono */
-.campo-fecha-popover { right: 0; left: auto; top: calc(100% + 6px); width: 264px; z-index: 70; }
+/* Se abre justo debajo del botón, alineado a su borde izquierdo */
+.campo-fecha-popover { left: 0; right: auto; top: calc(100% + 6px); width: 264px; z-index: 70; }
 .date-range-popover .drp-day.hoy:not(.edge) { box-shadow: inset 0 0 0 1px var(--gold); }
 .date-range-popover .drp-day:disabled { opacity: 0.3; cursor: not-allowed; }
 @media (max-width: 900px) {
@@ -697,3 +698,11 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
     box-shadow: 0 0 0 100vmax rgba(18, 41, 79, 0.45), 0 10px 30px rgba(18, 41, 79, 0.3);
   }
 }
+
+/* ---------- Tarjetas de galeras: contenido centrado ---------- */
+.lote-card.galera-card {
+  text-align: center;
+  display: flex; flex-direction: column; align-items: center;
+}
+.lote-card.galera-card .lc-icon { margin-left: auto; margin-right: auto; }
+.lote-card.galera-card > div:last-child { width: 100%; text-align: center; }

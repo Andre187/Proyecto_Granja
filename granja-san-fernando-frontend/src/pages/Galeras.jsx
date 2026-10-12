@@ -202,7 +202,7 @@ function Galeras() {
             {galeras.map((g) => {
               const info = ESTADO_INFO[g.estado] || ESTADO_INFO.disponible;
               return (
-                <div key={g.id_galera} className="lote-card" style={{ cursor: 'default' }}>
+                <div key={g.id_galera} className="lote-card galera-card" style={{ cursor: 'default' }}>
                   <div className="lc-icon">
                     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                       <path d="M3.5 11 12 4l8.5 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
