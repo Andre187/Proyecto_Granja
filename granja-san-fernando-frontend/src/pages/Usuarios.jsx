@@ -177,7 +177,7 @@ function Usuarios({ usuario: usuarioActivo }) {
             />
           </div>
           <div className="field">
-            <label>Usuario (para iniciar sesión)</label>
+            <label>Usuario</label>
             <input
               value={nuevoUsuario}
               onChange={(e) => setNuevoUsuario(e.target.value)}
@@ -193,13 +193,16 @@ function Usuarios({ usuario: usuarioActivo }) {
               required
             />
           </div>
-          <div className="field">
-            <label>Rol</label>
-            <select value={nuevoRol} onChange={(e) => setNuevoRol(e.target.value)}>
-              <option value="operador">Operador</option>
-              {esPropietario && <option value="administrador">Administrador</option>}
-            </select>
-          </div>
+          {/* El administrador solo crea operadores: el selector de rol es solo del propietario */}
+          {esPropietario && (
+            <div className="field">
+              <label>Rol</label>
+              <select value={nuevoRol} onChange={(e) => setNuevoRol(e.target.value)}>
+                <option value="operador">Operador</option>
+                <option value="administrador">Administrador</option>
+              </select>
+            </div>
+          )}
           <button type="submit" className="btn">Crear usuario</button>
         </form>
         {error && <p style={{ color: 'var(--red)', fontSize: '13px', marginTop: '12px' }}>{error}</p>}
