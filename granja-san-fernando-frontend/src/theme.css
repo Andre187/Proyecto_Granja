@@ -332,12 +332,13 @@ tr:last-child td { border-bottom: none; }
 .btn.gold:hover { filter: brightness(1.06); box-shadow: 0 4px 10px rgba(138, 95, 23, 0.4); }
 
 /* Campos con la etiqueta integrada al borde (estilo "outlined"); colores originales del sistema */
-.field { position: relative; display: flex; flex-direction: column; gap: 4px; }
+.field { position: relative; display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
 .field > label {
   position: absolute; top: -8px; left: 10px; z-index: 2;
   max-width: calc(100% - 20px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  padding: 0 6px; background: var(--cream-card);
-  font-size: 12px; line-height: 1.2; letter-spacing: 0;
+  padding: 0 6px; font-size: 12px; line-height: 14px; height: 14px;
+  /* mitad superior del color de la tarjeta, mitad inferior del color del campo: sin "parche" blanco */
+  background: linear-gradient(to bottom, var(--cream-card) 0, var(--cream-card) 8px, var(--cream) 8px, var(--cream) 100%); letter-spacing: 0;
   color: var(--ink-soft); text-transform: none; pointer-events: none;
 }
 .field input, .field select {
