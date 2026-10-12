@@ -25,6 +25,7 @@ const reglasNivelMinimo = [
 
 const reglasConsumoConcentrado = [
   body('id_stock').isInt({ min: 1 }).withMessage('Selecciona un tipo de concentrado válido'),
+  body('id_lote').optional({ checkFalsy: true }).isInt({ min: 1 }).withMessage('Selecciona un galpón válido'),
   fecha('fecha'),
   decimal2(body('cantidad_qq'), { min: 0.01, max: 100000, mensaje: 'La cantidad debe ser mayor a 0' }),
 ];
@@ -103,9 +104,11 @@ router.put('/concentrado-stock/:id', soloAdministrador, reglasNivelMinimo, valid
 router.get('/concentrado-consumo', async (req, res) => {
   try {
     const [rows] = await pool.query(`
-      SELECT cc.id_consumo, cs.tipo_concentrado, cc.fecha, cc.cantidad_qq
+      SELECT cc.id_consumo, cs.tipo_concentrado, cc.fecha, cc.cantidad_qq, g.nombre AS galera_nombre
       FROM concentrado_consumo cc
       JOIN concentrado_stock cs ON cs.id_stock = cc.id_stock
+      LEFT JOIN lotes l ON l.id_lote = cc.id_lote
+      LEFT JOIN galeras g ON g.id_galera = l.id_galera
       ORDER BY cc.fecha DESC, cc.id_consumo DESC
       LIMIT 30
     `);
@@ -117,10 +120,16 @@ router.get('/concentrado-consumo', async (req, res) => {
 
 router.post('/concentrado-consumo', reglasConsumoConcentrado, validar, async (req, res) => {
   try {
-    const { id_stock, fecha, cantidad_qq } = req.body;
+    const { id_stock, id_lote, fecha, cantidad_qq } = req.body;
+    if (id_lote) {
+      const [lote] = await pool.query("SELECT 1 FROM lotes WHERE id_lote = ? AND estado = 'activo'", [id_lote]);
+      if (lote.length === 0) {
+        return res.status(400).json({ error: 'El galpón seleccionado no tiene un lote activo' });
+      }
+    }
     await pool.query(
-      'INSERT INTO concentrado_consumo (id_stock, fecha, cantidad_qq) VALUES (?, ?, ?)',
-      [id_stock, fecha, cantidad_qq]
+      'INSERT INTO concentrado_consumo (id_stock, id_lote, fecha, cantidad_qq) VALUES (?, ?, ?, ?)',
+      [id_stock, id_lote || null, fecha, cantidad_qq]
     );
     res.status(201).json({ mensaje: 'Consumo registrado correctamente' });
   } catch (error) {

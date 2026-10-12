@@ -24,6 +24,7 @@ function Inventario({ usuario }) {
   const [concentrado, setConcentrado] = useState([]);
   const [concentradoStock, setConcentradoStock] = useState([]);
   const [concentradoConsumo, setConcentradoConsumo] = useState([]);
+  const [lotesActivos, setLotesActivos] = useState([]);
   const [medicamentos, setMedicamentos] = useState([]);
   const [movimientos, setMovimientos] = useState([]);
   const [huevosStock, setHuevosStock] = useState([]);
@@ -35,7 +36,7 @@ function Inventario({ usuario }) {
   const [confirmacion, setConfirmacion] = useState(null);
   // Alerta cuando una salida supera la existencia: al cerrarla se limpia el formulario de origen
   const [alertaExistencia, setAlertaExistencia] = useState(null);
-  const [formConsumoConcentrado, setFormConsumoConcentrado] = useState({ id_stock: '', fecha: hoy(), cantidad_qq: '' });
+  const [formConsumoConcentrado, setFormConsumoConcentrado] = useState({ id_stock: '', id_lote: '', fecha: hoy(), cantidad_qq: '' });
   const [editandoMinimoId, setEditandoMinimoId] = useState(null);
   const [minimoTemporal, setMinimoTemporal] = useState('');
 
@@ -50,7 +51,7 @@ function Inventario({ usuario }) {
 
   const cargarTodo = async (silencioso = false) => {
     try {
-      const [rConcentrado, rStock, rConsumo, rMedicamentos, rMovimientos, rHuevosStock, rHuevosClasificados] = await Promise.all([
+      const [rConcentrado, rStock, rConsumo, rMedicamentos, rMovimientos, rHuevosStock, rHuevosClasificados, rLotes] = await Promise.all([
         esAdmin ? api.get('/inventario/concentrado') : Promise.resolve({ data: [] }),
         api.get('/inventario/concentrado-stock'),
         api.get('/inventario/concentrado-consumo'),
@@ -58,7 +59,9 @@ function Inventario({ usuario }) {
         api.get('/inventario/movimientos'),
         api.get('/inventario/huevos-stock'),
         api.get('/inventario/huevos-clasificados'),
+        api.get('/produccion/lotes'),
       ]);
+      setLotesActivos(rLotes.data.filter((l) => l.estado === 'activo'));
       setConcentrado(rConcentrado.data);
       setConcentradoStock(rStock.data);
       setConcentradoConsumo(rConsumo.data);
@@ -115,9 +118,10 @@ function Inventario({ usuario }) {
     try {
       await api.post('/inventario/concentrado-consumo', {
         ...formConsumoConcentrado,
+        id_lote: formConsumoConcentrado.id_lote ? parseInt(formConsumoConcentrado.id_lote) : null,
         cantidad_qq: parseFloat(formConsumoConcentrado.cantidad_qq),
       });
-      setFormConsumoConcentrado({ id_stock: '', fecha: hoy(), cantidad_qq: '' });
+      setFormConsumoConcentrado({ id_stock: '', id_lote: '', fecha: hoy(), cantidad_qq: '' });
       mostrarMensaje('Consumo de concentrado registrado');
       cargarTodo();
     } catch (err) {
@@ -125,7 +129,7 @@ function Inventario({ usuario }) {
       if (msg.includes('supera la existencia')) {
         setAlertaExistencia({
           texto: 'El consumo que quieres registrar supera la cantidad de concentrado disponible en existencia.',
-          limpiar: () => setFormConsumoConcentrado({ id_stock: '', fecha: hoy(), cantidad_qq: '' }),
+          limpiar: () => setFormConsumoConcentrado({ id_stock: '', id_lote: '', fecha: hoy(), cantidad_qq: '' }),
         });
       } else {
         mostrarError(msg || 'No se pudo registrar el consumo');
@@ -212,9 +216,10 @@ function Inventario({ usuario }) {
   const pedirConfirmacionConsumo = (e) => {
     e.preventDefault();
     const tipo = concentradoStock.find((c) => String(c.id_stock) === String(formConsumoConcentrado.id_stock));
+    const galpon = lotesActivos.find((l) => String(l.id_lote) === String(formConsumoConcentrado.id_lote));
     setConfirmacion({
       titulo: '¿Registrar consumo de concentrado?',
-      texto: `Se descontarán ${formConsumoConcentrado.cantidad_qq} qq${tipo ? ` de ${tipo.tipo_concentrado}` : ''} del inventario. No se puede deshacer.`,
+      texto: `Se descontarán ${formConsumoConcentrado.cantidad_qq} qq${tipo ? ` de ${tipo.tipo_concentrado}` : ''}${galpon ? ` para ${galpon.galera_nombre}` : ''} del inventario. No se puede deshacer.`,
       textoBoton: 'Registrar consumo',
       onConfirmar: () => handleRegistrarConsumoConcentrado(),
     });
@@ -331,7 +336,21 @@ function Inventario({ usuario }) {
                     <select value={formConsumoConcentrado.id_stock} onChange={(e) => setFormConsumoConcentrado({ ...formConsumoConcentrado, id_stock: e.target.value })} required style={estiloClaro}>
                       <option value="">Selecciona...</option>
                       {concentradoStock.map((c) => (
-                        <option key={c.id_stock} value={c.id_stock}>{c.tipo_concentrado} ({c.existencia_actual} qq disponibles)</option>
+                        <option key={c.id_stock} value={c.id_stock}>{c.tipo_concentrado}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="field">
+                    <label>Galpón</label>
+                    <select
+                      value={formConsumoConcentrado.id_lote}
+                      onChange={(e) => setFormConsumoConcentrado({ ...formConsumoConcentrado, id_lote: e.target.value })}
+                      required={lotesActivos.length > 0}
+                      style={estiloClaro}
+                    >
+                      <option value="">Selecciona...</option>
+                      {lotesActivos.map((l) => (
+                        <option key={l.id_lote} value={l.id_lote}>{l.galera_nombre}</option>
                       ))}
                     </select>
                   </div>
@@ -440,13 +459,14 @@ function Inventario({ usuario }) {
                   <div className="table-wrap">
                     <table>
                       <thead>
-                        <tr><th>Fecha</th><th>Tipo</th><th>Cant. (qq)</th></tr>
+                        <tr><th>Fecha</th><th>Tipo</th><th>Galpón</th><th>Cant. (qq)</th></tr>
                       </thead>
                       <tbody>
                         {concentradoConsumo.map((c) => (
                           <tr key={c.id_consumo}>
                             <td data-label="Fecha">{formatoFecha(c.fecha)}</td>
                             <td data-label="Tipo">{c.tipo_concentrado}</td>
+                            <td data-label="Galpón">{c.galera_nombre || '—'}</td>
                             <td data-label="Cant. (qq)">{c.cantidad_qq}</td>
                           </tr>
                         ))}
