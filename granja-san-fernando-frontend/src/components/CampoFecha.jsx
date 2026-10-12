@@ -13,22 +13,42 @@ const mostrar = (iso) => (iso ? iso.slice(0, 10).split('-').reverse().join('/') 
 function CampoFecha({ value, onChange, required, min, max, style, bloque = false }) {
   const [abierto, setAbierto] = useState(false);
   const [mesVisible, setMesVisible] = useState(() => (value ? new Date(`${value.slice(0, 10)}T00:00:00`) : new Date()));
+  const [pos, setPos] = useState(null);
   const ref = useRef(null);
+  const botonRef = useRef(null);
 
   useEffect(() => {
     if (!abierto) return;
     const cerrarSiFuera = (e) => { if (ref.current && !ref.current.contains(e.target)) setAbierto(false); };
     const cerrarConEscape = (e) => { if (e.key === 'Escape') setAbierto(false); };
+    const cerrar = () => setAbierto(false);
     document.addEventListener('mousedown', cerrarSiFuera);
     document.addEventListener('keydown', cerrarConEscape);
+    window.addEventListener('scroll', cerrar, true);
+    window.addEventListener('resize', cerrar);
     return () => {
       document.removeEventListener('mousedown', cerrarSiFuera);
       document.removeEventListener('keydown', cerrarConEscape);
+      window.removeEventListener('scroll', cerrar, true);
+      window.removeEventListener('resize', cerrar);
     };
   }, [abierto]);
 
   const abrir = () => {
     setMesVisible(value ? new Date(`${value.slice(0, 10)}T00:00:00`) : new Date());
+    // En pantallas grandes el calendario va "fijo" junto al botón, para que no lo recorte
+    // una tabla con desplazamiento ni la tarjeta que lo contiene. En celular se centra por CSS.
+    if (window.innerWidth > 900 && botonRef.current) {
+      const r = botonRef.current.getBoundingClientRect();
+      const ancho = 264;
+      const alto = 330;
+      const left = Math.min(Math.max(8, r.left), window.innerWidth - ancho - 8);
+      const abajo = r.bottom + 6;
+      const top = abajo + alto > window.innerHeight && r.top - 6 - alto > 0 ? r.top - 6 - alto : abajo;
+      setPos({ position: 'fixed', top, left, right: 'auto', transform: 'none' });
+    } else {
+      setPos(null);
+    }
     setAbierto((v) => !v);
   };
 
@@ -50,7 +70,7 @@ function CampoFecha({ value, onChange, required, min, max, style, bloque = false
 
   return (
     <div className={`campo-fecha ${bloque ? 'campo-fecha-bloque' : ''}`} ref={ref}>
-      <button type="button" className="campo-fecha-btn" onClick={abrir} style={style} aria-haspopup="dialog" aria-expanded={abierto}>
+      <button type="button" ref={botonRef} className="campo-fecha-btn" onClick={abrir} style={style} aria-haspopup="dialog" aria-expanded={abierto}>
         <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
           <rect x="3" y="4.5" width="14" height="12" rx="2" stroke="currentColor" strokeWidth="1.6" />
           <path d="M3 8h14M6.5 3v3M13.5 3v3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
@@ -64,7 +84,7 @@ function CampoFecha({ value, onChange, required, min, max, style, bloque = false
       )}
 
       {abierto && (
-        <div className="date-range-popover campo-fecha-popover" role="dialog">
+        <div className="date-range-popover campo-fecha-popover" role="dialog" style={pos || undefined}>
           <div className="drp-header">
             <button type="button" onClick={() => setMesVisible(new Date(year, month - 1, 1))} aria-label="Mes anterior">‹</button>
             <span>{MESES[month]} {year}</span>
