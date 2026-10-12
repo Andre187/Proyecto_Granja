@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../api/api';
+import { formatoFecha } from '../utils/fecha';
 import CampoFecha from '../components/CampoFecha';
 import { mostrarAviso } from '../utils/aviso';
 
@@ -177,7 +178,7 @@ function Personal() {
                   <div className="kpi">
                     <div className="label">Último pago</div>
                     <div className="value">{ultimoPago ? q(ultimoPago.total_pagar) : '—'}</div>
-                    <div className="delta">{ultimoPago ? `semana ${ultimoPago.semana_fin?.slice(0, 10)}` : 'Sin pagos registrados'}</div>
+                    <div className="delta">{ultimoPago ? `semana ${formatoFecha(ultimoPago.semana_fin)}` : 'Sin pagos registrados'}</div>
                   </div>
                   <div className="kpi">
                     <div className="label">Días pagados (último)</div>
@@ -320,7 +321,7 @@ function Personal() {
               {pagos.map((p) => (
                 <tr key={p.id_pago}>
                   <td>{p.trabajador_nombre}</td>
-                  <td>{p.semana_inicio?.slice(0, 10)} — {p.semana_fin?.slice(0, 10)}</td>
+                  <td>{formatoFecha(p.semana_inicio)} — {formatoFecha(p.semana_fin)}</td>
                   <td>{p.dias_laborados}</td>
                   <td>{q(p.costo_dia_registrado)}</td>
                   <td>{p.horas_extra > 0 ? `${p.horas_extra} h × ${q(p.costo_hora_extra)}` : '—'}</td>

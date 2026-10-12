@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import api from '../api/api';
+import { formatoFecha } from '../utils/fecha';
+import { tasaVisible } from '../utils/porcentaje';
 import SelectorRangoFechas from '../components/SelectorRangoFechas';
 
 const LABELS = { hoy: 'Hoy', semana: 'Últimos 7 días', mes: 'Este mes', personalizado: 'Personalizado' };
@@ -99,7 +101,7 @@ function Reportes() {
             <div className="kpi">
               <div className="label">Huevos producidos</div>
               <div className="value">{datos.produccion.huevos.toLocaleString()}</div>
-              <div className="delta up">{datos.produccion.tasa_prom}% tasa promedio</div>
+              <div className="delta up">{tasaVisible(datos.produccion.tasa_prom)}% tasa promedio</div>
             </div>
           </div>
 
@@ -167,7 +169,7 @@ function Reportes() {
                               <span key={i} className={`egg ${eggClass(l.tasa, i)}`}></span>
                             ))}
                           </div>
-                          <span className="rate">{l.tasa}% · {l.huevos} huevos</span>
+                          <span className="rate">{tasaVisible(l.tasa)}% · {l.huevos} huevos</span>
                         </div>
                       ))}
                     </div>
@@ -195,7 +197,7 @@ function Reportes() {
                     <tbody>
                       {datos.detalle.ventas.map((v) => (
                         <tr key={v.id_venta}>
-                          <td>{v.fecha?.slice(0, 10)}</td>
+                          <td>{formatoFecha(v.fecha)}</td>
                           <td>{v.cliente_nombre}</td>
                           <td>{q(v.monto_total)}</td>
                           <td><span className={`tag ${v.estado === 'cancelado' ? 'ok' : 'pend'}`}>{v.estado}</span></td>
@@ -223,7 +225,7 @@ function Reportes() {
                     <tbody>
                       {datos.detalle.gastos.map((g) => (
                         <tr key={g.id_gasto}>
-                          <td>{g.fecha?.slice(0, 10)}</td>
+                          <td>{formatoFecha(g.fecha)}</td>
                           <td>{g.descripcion}</td>
                           <td>{q(g.monto)}</td>
                         </tr>
@@ -250,7 +252,7 @@ function Reportes() {
                     <tbody>
                       {datos.detalle.concentrado.map((c) => (
                         <tr key={c.id_concentrado}>
-                          <td>{c.fecha?.slice(0, 10)}</td>
+                          <td>{formatoFecha(c.fecha)}</td>
                           <td>{c.tipo_concentrado}</td>
                           <td>{c.cantidad_qq}</td>
                           <td>{q(c.costo_unitario)}</td>
@@ -279,7 +281,7 @@ function Reportes() {
                     <tbody>
                       {datos.detalle.medicamentos.map((m) => (
                         <tr key={m.id_movimiento}>
-                          <td>{m.fecha?.slice(0, 10)}</td>
+                          <td>{formatoFecha(m.fecha)}</td>
                           <td>{m.medicamento_nombre}</td>
                           <td><span className={`tag ${m.tipo_movimiento === 'entrada' ? 'ok' : 'pend'}`}>{m.tipo_movimiento}</span></td>
                           <td>{m.cantidad} {m.unidad_medida}</td>
@@ -308,7 +310,7 @@ function Reportes() {
                       {datos.detalle.personal.map((p) => (
                         <tr key={p.id_pago}>
                           <td>{p.trabajador_nombre}</td>
-                          <td>{p.semana_inicio?.slice(0, 10)} — {p.semana_fin?.slice(0, 10)}</td>
+                          <td>{formatoFecha(p.semana_inicio)} — {formatoFecha(p.semana_fin)}</td>
                           <td>{p.dias_laborados}</td>
                           <td>{q(p.costo_dia_registrado)}</td>
                           <td>{q(p.total_pagar)}</td>

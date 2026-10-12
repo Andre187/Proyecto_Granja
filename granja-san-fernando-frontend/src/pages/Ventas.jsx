@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../api/api';
+import { formatoFecha } from '../utils/fecha';
 import CampoFecha from '../components/CampoFecha';
 import { mostrarAviso } from '../utils/aviso';
 import useActualizacionAutomatica from '../hooks/useActualizacionAutomatica';
@@ -251,7 +252,7 @@ function Ventas({ usuario }) {
 
   const filaVenta = (v) => (
     <tr key={v.id_venta}>
-      <td data-label="Fecha">{v.fecha?.slice(0, 10)}</td>
+      <td data-label="Fecha">{formatoFecha(v.fecha)}</td>
       <td data-label="Cliente">{v.cliente_nombre}</td>
       <td data-label="Total">{q(v.monto_total)}</td>
       <td data-label="Saldo pendiente">{q(v.saldo_pendiente)}</td>

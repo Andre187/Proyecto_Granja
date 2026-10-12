@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../api/api';
+import { formatoFecha } from '../utils/fecha';
 import CampoFecha from '../components/CampoFecha';
 import { mostrarAviso } from '../utils/aviso';
 import useActualizacionAutomatica from '../hooks/useActualizacionAutomatica';
@@ -289,7 +290,7 @@ function Gastos() {
                     </tr>
                   ) : (
                     <tr key={g.id_gasto} style={{ opacity: g.estado === 'anulado' ? 0.6 : 1 }}>
-                      <td data-label="Fecha">{g.fecha?.slice(0, 10)}</td>
+                      <td data-label="Fecha">{formatoFecha(g.fecha)}</td>
                       <td data-label="Descripción">{g.descripcion}</td>
                       <td data-label="Categoría"><span className="tag pend">{etiquetaCategoria(g.categoria)}</span></td>
                       <td data-label="Monto">{q(g.monto)}</td>

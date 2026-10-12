@@ -1,6 +1,8 @@
 // Genera un documento Word con las tareas agrupadas por trabajador.
 // docx se carga solo al exportar para no pesar en la carga inicial del sistema.
-const dia = (valor) => String(valor || '').slice(0, 10);
+import { formatoFecha } from './fecha';
+
+const dia = (valor) => formatoFecha(valor);
 
 export async function exportarTareasWord({ tareas, desde, hasta, etiquetaEstado }) {
   const { Document, Packer, Paragraph, Table, TableRow, TableCell, TextRun, HeadingLevel, WidthType } = await import('docx');
@@ -18,7 +20,7 @@ export async function exportarTareasWord({ tareas, desde, hasta, etiquetaEstado 
   const hijos = [
     new Paragraph({ heading: HeadingLevel.TITLE, children: [new TextRun('Granja San Fernando')] }),
     new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun('Reporte de tareas por trabajador')] }),
-    new Paragraph({ children: [new TextRun(`Periodo: ${desde} al ${hasta}  ·  Estado: ${etiquetaEstado}`)] }),
+    new Paragraph({ children: [new TextRun(`Periodo: ${formatoFecha(desde)} al ${formatoFecha(hasta)}  ·  Estado: ${etiquetaEstado}`)] }),
     new Paragraph({ children: [new TextRun(`Generado: ${new Date().toLocaleString('es-GT')}`)] }),
     new Paragraph({ children: [] }),
   ];

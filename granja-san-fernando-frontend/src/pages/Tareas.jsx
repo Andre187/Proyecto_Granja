@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../api/api';
+import { formatoFecha } from '../utils/fecha';
 import CampoFecha from '../components/CampoFecha';
 import { mostrarAviso } from '../utils/aviso';
 import { exportarTareasWord } from '../utils/exportarTareasWord';
@@ -173,8 +174,8 @@ function Tareas({ usuario }) {
           )}
         </div>
         <div style={{ fontSize: '11.5px', color: 'var(--ink-soft)', marginTop: '3px' }}>
-          Asignada: {t.fecha_asignacion?.slice(0, 10)}
-          {t.fecha_limite && ` · Vence: ${t.fecha_limite.slice(0, 10)}`}
+          Asignada: {formatoFecha(t.fecha_asignacion)}
+          {t.fecha_limite && ` · Vence: ${formatoFecha(t.fecha_limite)}`}
         </div>
       </div>
 

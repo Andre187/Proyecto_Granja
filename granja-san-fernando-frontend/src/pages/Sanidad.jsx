@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../api/api';
+import { formatoFecha } from '../utils/fecha';
 import CampoFecha from '../components/CampoFecha';
 import { mostrarAviso } from '../utils/aviso';
 
@@ -195,7 +196,7 @@ function Sanidad({ usuario }) {
                         <tbody>
                           {registros.map((v) => (
                             <tr key={v.id_vacunacion}>
-                              <td data-label="Fecha">{v.fecha?.slice(0, 10)}</td>
+                              <td data-label="Fecha">{formatoFecha(v.fecha)}</td>
                               <td data-label="Vacuna">{v.tipo_vacuna}</td>
                               <td data-label="Semana">{v.semana_aplicacion}</td>
                             </tr>

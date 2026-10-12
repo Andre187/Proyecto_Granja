@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import api from '../api/api';
+import { formatoFecha } from '../utils/fecha';
+import { tasaVisible } from '../utils/porcentaje';
 import useActualizacionAutomatica from '../hooks/useActualizacionAutomatica';
 import SelectorRangoFechas from '../components/SelectorRangoFechas';
 
@@ -155,8 +157,8 @@ function Panel({ usuario }) {
                     )}
                   </div>
                   <div style={{ fontSize: '11.5px', color: 'var(--ink-soft)', marginTop: '2px' }}>
-                    Asignada: {t.fecha_asignacion?.slice(0, 10)}
-                    {t.fecha_limite && ` · Vence: ${t.fecha_limite.slice(0, 10)}`}
+                    Asignada: {formatoFecha(t.fecha_asignacion)}
+                    {t.fecha_limite && ` · Vence: ${formatoFecha(t.fecha_limite)}`}
                   </div>
                 </div>
                 <span className={`status-pill ${t.estado}`}>{t.estado}</span>
@@ -220,7 +222,7 @@ function Panel({ usuario }) {
             <div className="kpi">
               <div className="label">Huevos ({LABELS[periodo].toLowerCase()})</div>
               <div className="value">{datos.kpis.huevos.toLocaleString()}</div>
-              <div className="delta up">{datos.kpis.tasa_prom}% tasa promedio</div>
+              <div className="delta up">{tasaVisible(datos.kpis.tasa_prom)}% tasa promedio</div>
             </div>
             <div className="kpi">
               <div className="label">Mortalidad ({LABELS[periodo].toLowerCase()})</div>
@@ -288,7 +290,7 @@ function Panel({ usuario }) {
                           <span key={i} className={`egg ${eggClass(l.tasa, i)}`}></span>
                         ))}
                       </div>
-                      <span className="rate">{l.tasa}% tasa postura · {l.huevos} huevos</span>
+                      <span className="rate">{tasaVisible(l.tasa)}% tasa postura · {l.huevos} huevos</span>
                     </div>
                   ))}
                 </div>
@@ -318,7 +320,7 @@ function Panel({ usuario }) {
                     {datos.ventas_recientes.map((v) => (
                       <tr key={v.id_venta}>
                         <td>{v.cliente_nombre}</td>
-                        <td>{v.fecha?.slice(0, 10)}</td>
+                        <td>{formatoFecha(v.fecha)}</td>
                         <td>{q(v.monto_total)}</td>
                         <td><span className={`tag ${v.estado === 'cancelado' ? 'ok' : 'pend'}`}>{v.estado}</span></td>
                       </tr>
@@ -339,7 +341,7 @@ function Panel({ usuario }) {
                       <span className="a-mark">!</span>
                       <div>
                         <div className="a-title">Cuenta atrasada: {c.cliente_nombre}</div>
-                        <div className="a-sub">Saldo {q(c.saldo_pendiente)} · {c.dias} días desde la venta ({c.fecha?.slice(0, 10)})</div>
+                        <div className="a-sub">Saldo {q(c.saldo_pendiente)} · {c.dias} días desde la venta ({formatoFecha(c.fecha)})</div>
                       </div>
                     </div>
                   ))}

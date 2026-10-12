@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../api/api';
+import { formatoFecha } from '../utils/fecha';
 import CampoFecha from '../components/CampoFecha';
 import { mostrarAviso } from '../utils/aviso';
 import ConfirmModal from '../components/ConfirmModal';
@@ -444,7 +445,7 @@ function Inventario({ usuario }) {
                       <tbody>
                         {concentradoConsumo.map((c) => (
                           <tr key={c.id_consumo}>
-                            <td data-label="Fecha">{c.fecha?.slice(0, 10)}</td>
+                            <td data-label="Fecha">{formatoFecha(c.fecha)}</td>
                             <td data-label="Tipo">{c.tipo_concentrado}</td>
                             <td data-label="Cant. (qq)">{c.cantidad_qq}</td>
                           </tr>
@@ -472,7 +473,7 @@ function Inventario({ usuario }) {
                       <tbody>
                         {concentrado.map((c) => (
                           <tr key={c.id_concentrado}>
-                            <td data-label="Fecha">{c.fecha?.slice(0, 10)}</td>
+                            <td data-label="Fecha">{formatoFecha(c.fecha)}</td>
                             <td data-label="Tipo">{c.tipo_concentrado}</td>
                             <td data-label="Cant. (qq)">{c.cantidad_qq}</td>
                             <td data-label="Total">Q {Number(c.total).toLocaleString('es-GT', { minimumFractionDigits: 2 })}</td>
@@ -643,7 +644,7 @@ function Inventario({ usuario }) {
                     <tbody>
                       {movimientos.map((m) => (
                         <tr key={m.id_movimiento}>
-                          <td data-label="Fecha">{m.fecha?.slice(0, 10)}</td>
+                          <td data-label="Fecha">{formatoFecha(m.fecha)}</td>
                           <td data-label="Medicamento">{m.medicamento_nombre}</td>
                           <td data-label="Tipo"><span className={`tag ${m.tipo_movimiento === 'entrada' ? 'ok' : 'pend'}`}>{m.tipo_movimiento}</span></td>
                           <td data-label="Cantidad">{m.cantidad} {m.unidad_medida}</td>
@@ -735,7 +736,7 @@ function Inventario({ usuario }) {
                     <tbody>
                       {huevosClasificados.map((h) => (
                         <tr key={h.id_registro}>
-                          <td data-label="Fecha">{h.fecha?.slice(0, 10)}</td>
+                          <td data-label="Fecha">{formatoFecha(h.fecha)}</td>
                           <td data-label="Tamaño">{h.clasificacion}</td>
                           <td data-label="Cantidad">{h.cantidad}</td>
                         </tr>

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import api from '../api/api';
+import { formatoFecha } from '../utils/fecha';
+import { tasaVisible } from '../utils/porcentaje';
 import CampoFecha from '../components/CampoFecha';
 import { mostrarAviso } from '../utils/aviso';
 
@@ -220,7 +222,7 @@ function Produccion({ usuario }) {
                 <div className="lote-detail">
                   <div className="head">
                     <h3>{lote.galera_nombre}</h3>
-                    <span className="sub">Lote desde {lote.fecha_ingreso?.slice(0, 10)}</span>
+                    <span className="sub">Lote desde {formatoFecha(lote.fecha_ingreso)}</span>
                   </div>
                   <div className="kpi-row" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
                     <div className="kpi">
@@ -231,17 +233,17 @@ function Produccion({ usuario }) {
                     <div className="kpi">
                       <div className="label">Última postura</div>
                       <div className="value">{ultimaPostura ? `${Math.floor(Number(ultimaPostura.cantidad_huevos) / HUEVOS_POR_CARTON)} cartones` : '—'}</div>
-                      <div className="delta">{ultimaPostura ? `${Number(ultimaPostura.cantidad_huevos).toLocaleString('es-GT')} huevos · ${ultimaPostura.fecha?.slice(0, 10)}` : 'Sin registros'}</div>
+                      <div className="delta">{ultimaPostura ? `${Number(ultimaPostura.cantidad_huevos).toLocaleString('es-GT')} huevos · ${formatoFecha(ultimaPostura.fecha)}` : 'Sin registros'}</div>
                     </div>
                     <div className="kpi">
                       <div className="label">Tasa de postura</div>
-                      <div className="value">{ultimaPostura ? `${ultimaPostura.tasa_postura}%` : '—'}</div>
+                      <div className="value">{ultimaPostura ? `${tasaVisible(ultimaPostura.tasa_postura)}%` : '—'}</div>
                       <div className="delta">último registro</div>
                     </div>
                     <div className="kpi">
                       <div className="label">Última mortalidad</div>
                       <div className="value">{ultimaMortalidad ? ultimaMortalidad.cantidad : '—'}</div>
-                      <div className="delta warn">{ultimaMortalidad ? ultimaMortalidad.fecha?.slice(0, 10) : 'Sin registros'}</div>
+                      <div className="delta warn">{ultimaMortalidad ? formatoFecha(ultimaMortalidad.fecha) : 'Sin registros'}</div>
                     </div>
                   </div>
                 </div>
@@ -387,9 +389,9 @@ function Produccion({ usuario }) {
                 <tbody>
                   {posturaDelLote.map((p) => (
                     <tr key={p.id_postura}>
-                      <td data-label="Fecha">{p.fecha?.slice(0, 10)}</td>
+                      <td data-label="Fecha">{formatoFecha(p.fecha)}</td>
                       <td data-label="Producción">{textoHuevos(p.cantidad_huevos)}</td>
-                      <td data-label="Tasa">{p.tasa_postura}%</td>
+                      <td data-label="Tasa">{tasaVisible(p.tasa_postura)}%</td>
                     </tr>
                   ))}
                 </tbody>
@@ -416,7 +418,7 @@ function Produccion({ usuario }) {
                 <tbody>
                   {mortalidadDelLote.map((m) => (
                     <tr key={m.id_mortalidad}>
-                      <td data-label="Fecha">{m.fecha?.slice(0, 10)}</td>
+                      <td data-label="Fecha">{formatoFecha(m.fecha)}</td>
                       <td data-label="Cantidad">{m.cantidad}</td>
                       <td data-label="Causa">{m.causa || '—'}</td>
                     </tr>
