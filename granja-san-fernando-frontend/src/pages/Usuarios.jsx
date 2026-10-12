@@ -161,7 +161,6 @@ function Usuarios({ usuario: usuarioActivo }) {
             <input
               value={nuevoNombre}
               onChange={(e) => setNuevoNombre(e.target.value)}
-              placeholder="Andrea"
               required
             />
           </div>
@@ -170,7 +169,6 @@ function Usuarios({ usuario: usuarioActivo }) {
             <input
               value={nuevoApellido}
               onChange={(e) => setNuevoApellido(e.target.value)}
-              placeholder="Estévez"
               required
             />
           </div>
@@ -179,7 +177,6 @@ function Usuarios({ usuario: usuarioActivo }) {
             <input
               value={nuevoUsuario}
               onChange={(e) => setNuevoUsuario(e.target.value)}
-              placeholder="nombre.usuario"
               required
             />
           </div>
@@ -189,7 +186,6 @@ function Usuarios({ usuario: usuarioActivo }) {
               type="password"
               value={nuevaContrasena}
               onChange={(e) => setNuevaContrasena(e.target.value)}
-              placeholder="8 a 72 caracteres, al menos una letra y un número"
               required
             />
           </div>
@@ -315,7 +311,6 @@ function Usuarios({ usuario: usuarioActivo }) {
                 autoFocus
                 value={passwordTemporal}
                 onChange={(e) => setPasswordTemporal(e.target.value)}
-                placeholder="8 a 72 caracteres, al menos una letra y un número"
                 onKeyDown={(e) => e.key === 'Enter' && handleGuardarPassword()}
               />
             </div>
