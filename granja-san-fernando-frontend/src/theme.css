@@ -738,3 +738,34 @@ main.content textarea,
 .campo-fecha-btn {
   border: 1.5px solid #232019 !important;
 }
+
+/* ---------- Campos numéricos sin flechas (se escribe el número directamente) ---------- */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+/* ---------- Interruptor de estado de cuenta ---------- */
+.switch-estado { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; }
+.switch-estado input { position: absolute; opacity: 0; width: 0; height: 0; }
+.switch-pista {
+  position: relative; width: 44px; height: 26px; flex-shrink: 0;
+  border-radius: 999px; background: #b9b3a3; transition: background 0.2s ease;
+}
+.switch-bolita {
+  position: absolute; top: 3px; left: 3px; width: 20px; height: 20px;
+  border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  transition: transform 0.2s ease;
+}
+.switch-estado.on .switch-pista { background: var(--green); }
+.switch-estado.on .switch-bolita { transform: translateX(18px); }
+.switch-estado input:focus-visible + .switch-pista { outline: 2px solid var(--navy); outline-offset: 2px; }
+.switch-estado input:disabled + .switch-pista { opacity: 0.45; }
+.switch-estado:has(input:disabled) { cursor: not-allowed; }
+.switch-texto { font-size: 12.5px; font-weight: 600; color: var(--ink-soft); }
+.switch-estado.on .switch-texto { color: #3B5C3D; }

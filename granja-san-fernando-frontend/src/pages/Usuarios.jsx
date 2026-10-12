@@ -24,7 +24,6 @@ function Usuarios({ usuario: usuarioActivo }) {
 
   const [usuarioGestionando, setUsuarioGestionando] = useState(null);
   const [rolPermisoTemp, setRolPermisoTemp] = useState('operador');
-  const [activoPermisoTemp, setActivoPermisoTemp] = useState(true);
   const [errorPermisos, setErrorPermisos] = useState('');
 
   const cargarUsuarios = async () => {
@@ -107,26 +106,46 @@ function Usuarios({ usuario: usuarioActivo }) {
     setErrorPermisos('');
   };
 
+  // Solo el rol se cambia desde el modal de permisos; el estado de la cuenta es el interruptor de la tabla
   const handleGuardarPermisos = async () => {
     setErrorPermisos('');
+    if (rolPermisoTemp === usuarioGestionando.rol) {
+      cerrarModalPermisos();
+      return;
+    }
     try {
-      if (rolPermisoTemp !== usuarioGestionando.rol) {
-        await api.put(`/usuarios/${usuarioGestionando.id_usuario}`, { rol: rolPermisoTemp });
-      }
-      const esUnoMismo = usuarioGestionando.id_usuario === usuarioActivo.id_usuario;
-      if (!esUnoMismo && activoPermisoTemp !== !!usuarioGestionando.activo) {
-        if (activoPermisoTemp) {
-          await api.put(`/usuarios/${usuarioGestionando.id_usuario}/reactivar`);
-        } else {
-          await api.put(`/usuarios/${usuarioGestionando.id_usuario}/desactivar`);
-        }
-      }
-      mostrarMensaje(`Permisos actualizados para ${usuarioGestionando.usuario}`);
+      await api.put(`/usuarios/${usuarioGestionando.id_usuario}`, { rol: rolPermisoTemp });
+      mostrarMensaje(`Rol actualizado para ${usuarioGestionando.usuario}`);
       cerrarModalPermisos();
       cargarUsuarios();
     } catch (err) {
-      setErrorPermisos(err.response?.data?.error || 'No se pudo actualizar los permisos');
+      setErrorPermisos(err.response?.data?.error || 'No se pudo actualizar el rol');
     }
+  };
+
+  const cambiarEstadoCuenta = async (u) => {
+    try {
+      await api.put(`/usuarios/${u.id_usuario}/${u.activo ? 'desactivar' : 'reactivar'}`);
+      mostrarMensaje(u.activo ? `Cuenta de ${u.usuario} desactivada` : `Cuenta de ${u.usuario} reactivada`);
+      cargarUsuarios();
+    } catch (err) {
+      setError(err.response?.data?.error || 'No se pudo cambiar el estado de la cuenta');
+    }
+  };
+
+  // Desactivar corta el acceso de la persona: se confirma; reactivar es directo
+  const alternarEstado = (u) => {
+    if (!u.activo) {
+      cambiarEstadoCuenta(u);
+      return;
+    }
+    setConfirmacion({
+      titulo: '¿Desactivar cuenta?',
+      texto: `"${u.usuario}" no podrá iniciar sesión hasta que reactives la cuenta.`,
+      textoBoton: 'Desactivar',
+      peligro: true,
+      onConfirmar: () => cambiarEstadoCuenta(u),
+    });
   };
 
   return (
@@ -215,8 +234,21 @@ function Usuarios({ usuario: usuarioActivo }) {
                     <td>
                       <span className={`tag ${u.rol === 'administrador' ? 'ok' : 'pend'}`}>{u.rol}</span>
                     </td>
-                    <td>
-                      <span className={`tag ${u.activo ? 'ok' : 'low'}`}>{u.activo ? 'activo' : 'inactivo'}</span>
+                    <td data-label="Estado">
+                      <label
+                        className={`switch-estado ${u.activo ? 'on' : ''}`}
+                        title={esUnoMismo ? 'No puedes desactivar tu propia cuenta' : !puedeGestionar ? 'Solo el superadministrador puede cambiar esta cuenta' : ''}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={!!u.activo}
+                          disabled={esUnoMismo || !puedeGestionar}
+                          onChange={() => alternarEstado(u)}
+                          aria-label={`Cuenta de ${u.usuario} ${u.activo ? 'activa' : 'inactiva'}`}
+                        />
+                        <span className="switch-pista"><span className="switch-bolita" /></span>
+                        <span className="switch-texto">{u.activo ? 'Activo' : 'Inactivo'}</span>
+                      </label>
                     </td>
                     <td>
                       {u.rol !== 'operador' ? (
@@ -254,7 +286,6 @@ function Usuarios({ usuario: usuarioActivo }) {
                         onClick={() => {
                           setUsuarioGestionando(u);
                           setRolPermisoTemp(u.rol);
-                          setActivoPermisoTemp(!!u.activo);
                           setErrorPermisos('');
                         }}
                       >
@@ -313,28 +344,15 @@ function Usuarios({ usuario: usuarioActivo }) {
             </div>
             <h3 className="modal-title">Permisos de {usuarioGestionando.usuario}</h3>
             <p className="modal-text">
-              Cambia el rol o el estado de la cuenta.
+              Cambia el rol de la cuenta.
             </p>
-            <div className="field" style={{ textAlign: 'left', marginBottom: '14px' }}>
+            <div className="field" style={{ textAlign: 'left', marginBottom: '18px' }}>
               <label>Rol</label>
               <select value={rolPermisoTemp} onChange={(e) => setRolPermisoTemp(e.target.value)}>
                 <option value="operador">Operador</option>
                 <option value="administrador">Administrador</option>
               </select>
             </div>
-            {usuarioGestionando.id_usuario !== usuarioActivo.id_usuario ? (
-              <div className="field" style={{ textAlign: 'left', marginBottom: '18px' }}>
-                <label>Estado de la cuenta</label>
-                <select value={activoPermisoTemp ? 'activo' : 'inactivo'} onChange={(e) => setActivoPermisoTemp(e.target.value === 'activo')}>
-                  <option value="activo">Activo</option>
-                  <option value="inactivo">Inactivo (no podrá iniciar sesión)</option>
-                </select>
-              </div>
-            ) : (
-              <p style={{ fontSize: '12px', color: 'var(--ink-soft)', marginBottom: '18px' }}>
-                No puedes desactivar tu propia cuenta.
-              </p>
-            )}
             {errorPermisos && <p style={{ color: 'var(--red)', fontSize: '12.5px', marginTop: '-10px', marginBottom: '16px' }}>{errorPermisos}</p>}
             <div className="modal-actions">
               <button className="btn outline" onClick={cerrarModalPermisos}>Cancelar</button>
