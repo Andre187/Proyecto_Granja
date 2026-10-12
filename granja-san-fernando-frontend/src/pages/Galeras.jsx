@@ -125,75 +125,14 @@ function Galeras() {
           <h2>Galeras</h2>
           <div style={{ display: 'flex', gap: '8px' }}>
             <button className="btn" style={{ background: 'transparent', color: 'var(--navy)', border: '1px solid var(--line)' }}
-              onClick={() => setMostrarNuevaGalera(!mostrarNuevaGalera)}>
+              onClick={() => setMostrarNuevaGalera(true)}>
               + Galera
             </button>
-            <button className="btn" onClick={() => setMostrarNuevoLote(!mostrarNuevoLote)}>
+            <button className="btn" onClick={() => { setNuevoLote({ ...nuevoLote, id_galera: '' }); setMostrarNuevoLote(true); }}>
               + Lote
             </button>
           </div>
         </div>
-
-        {mostrarNuevaGalera && (
-          <form onSubmit={handleCrearGalera} style={{ marginBottom: '16px' }}>
-            <p style={{ fontSize: '11.5px', color: 'var(--ink-soft)', marginBottom: '10px' }}>
-              Crea la galera y, si ya te llegaron las aves, registra su primer lote en el mismo paso.
-            </p>
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: '10px' }}>
-              <div className="field">
-                <label>Nombre de galera</label>
-                <input value={nuevaGalera.nombre} onChange={(e) => setNuevaGalera({ ...nuevaGalera, nombre: e.target.value })} required />
-              </div>
-              <div className="field">
-                <label>Ubicación</label>
-                <input value={nuevaGalera.ubicacion} onChange={(e) => setNuevaGalera({ ...nuevaGalera, ubicacion: e.target.value })} />
-              </div>
-              <div className="field">
-                <label>Capacidad</label>
-                <input type="number" value={nuevaGalera.capacidad} onChange={(e) => setNuevaGalera({ ...nuevaGalera, capacidad: e.target.value })} required />
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'flex-end', background: 'var(--cream)', padding: '12px', borderRadius: '8px', border: '1px solid var(--line)' }}>
-              <div className="field">
-                <label>Fecha de ingreso del primer lote (opcional)</label>
-                <CampoFecha value={nuevaGalera.fecha_ingreso} onChange={(e) => setNuevaGalera({ ...nuevaGalera, fecha_ingreso: e.target.value })} />
-              </div>
-              <div className="field">
-                <label>Aves recibidas (opcional)</label>
-                <input type="number" value={nuevaGalera.aves_recibidas} onChange={(e) => setNuevaGalera({ ...nuevaGalera, aves_recibidas: e.target.value })} placeholder="ej. 500" />
-              </div>
-              <button type="submit" className="btn">Guardar</button>
-              <button type="button" className="btn outline" onClick={() => setMostrarNuevaGalera(false)}>Cancelar</button>
-            </div>
-          </form>
-        )}
-
-        {mostrarNuevoLote && (
-          <form onSubmit={handleCrearLote} style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-            <div className="field">
-              <label>Galera disponible</label>
-              <select value={nuevoLote.id_galera} onChange={(e) => setNuevoLote({ ...nuevoLote, id_galera: e.target.value })} required>
-                <option value="">Selecciona...</option>
-                {galerasDisponibles.map((g) => (
-                  <option key={g.id_galera} value={g.id_galera}>{g.nombre}</option>
-                ))}
-              </select>
-              {galerasDisponibles.length === 0 && (
-                <span style={{ fontSize: '11px', color: 'var(--ink-soft)' }}>No hay galeras disponibles en este momento.</span>
-              )}
-            </div>
-            <div className="field">
-              <label>Fecha de ingreso</label>
-              <CampoFecha value={nuevoLote.fecha_ingreso} onChange={(e) => setNuevoLote({ ...nuevoLote, fecha_ingreso: e.target.value })} required />
-            </div>
-            <div className="field">
-              <label>Aves recibidas</label>
-              <input type="number" value={nuevoLote.aves_recibidas} onChange={(e) => setNuevoLote({ ...nuevoLote, aves_recibidas: e.target.value })} required />
-            </div>
-            <button type="submit" className="btn">Guardar lote</button>
-            <button type="button" className="btn outline" onClick={() => setMostrarNuevoLote(false)}>Cancelar</button>
-          </form>
-        )}
 
         {galeras.length === 0 ? (
           <p style={{ fontSize: '13px', color: 'var(--ink-soft)' }}>Aún no hay galeras registradas. Crea la primera arriba.</p>
@@ -250,7 +189,6 @@ function Galeras() {
                           onClick={() => {
                             setNuevoLote({ ...nuevoLote, id_galera: String(g.id_galera) });
                             setMostrarNuevoLote(true);
-                            window.scrollTo({ top: 0, behavior: 'smooth' });
                           }}
                         >
                           Iniciar lote
@@ -267,6 +205,80 @@ function Galeras() {
           </div>
         )}
       </section>
+
+      {mostrarNuevaGalera && (
+        <div className="modal-overlay" onClick={() => setMostrarNuevaGalera(false)}>
+          <div className="modal-card" role="dialog" aria-modal="true" style={{ maxWidth: '460px', textAlign: 'left' }} onClick={(e) => e.stopPropagation()}>
+            <h3 className="modal-title" style={{ textAlign: 'center' }}>Nueva galera</h3>
+            <p className="modal-text" style={{ textAlign: 'center' }}>
+              Crea la galera y, si ya llegaron las aves, registra su primer lote en el mismo paso.
+            </p>
+            <form onSubmit={handleCrearGalera} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div className="field">
+                <label>Nombre de galera</label>
+                <input value={nuevaGalera.nombre} onChange={(e) => setNuevaGalera({ ...nuevaGalera, nombre: e.target.value })} required autoFocus />
+              </div>
+              <div className="field">
+                <label>Ubicación</label>
+                <input value={nuevaGalera.ubicacion} onChange={(e) => setNuevaGalera({ ...nuevaGalera, ubicacion: e.target.value })} />
+              </div>
+              <div className="field">
+                <label>Capacidad</label>
+                <input type="number" value={nuevaGalera.capacidad} onChange={(e) => setNuevaGalera({ ...nuevaGalera, capacidad: e.target.value })} required />
+              </div>
+              <div className="field">
+                <label>Fecha de ingreso del primer lote (opcional)</label>
+                <CampoFecha value={nuevaGalera.fecha_ingreso} onChange={(e) => setNuevaGalera({ ...nuevaGalera, fecha_ingreso: e.target.value })} />
+              </div>
+              <div className="field">
+                <label>Aves recibidas (opcional)</label>
+                <input type="number" value={nuevaGalera.aves_recibidas} onChange={(e) => setNuevaGalera({ ...nuevaGalera, aves_recibidas: e.target.value })} />
+              </div>
+              <div className="modal-actions" style={{ marginTop: '10px' }}>
+                <button type="button" className="btn outline" onClick={() => setMostrarNuevaGalera(false)}>Cancelar</button>
+                <button type="submit" className="btn">Guardar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {mostrarNuevoLote && (
+        <div className="modal-overlay" onClick={() => setMostrarNuevoLote(false)}>
+          <div className="modal-card" role="dialog" aria-modal="true" style={{ maxWidth: '420px', textAlign: 'left' }} onClick={(e) => e.stopPropagation()}>
+            <h3 className="modal-title" style={{ textAlign: 'center' }}>Iniciar lote</h3>
+            <p className="modal-text" style={{ textAlign: 'center' }}>
+              Registra las aves que llegaron. La galera pasará a producción.
+            </p>
+            <form onSubmit={handleCrearLote} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div className="field">
+                <label>Galera disponible</label>
+                <select value={nuevoLote.id_galera} onChange={(e) => setNuevoLote({ ...nuevoLote, id_galera: e.target.value })} required>
+                  <option value="">Selecciona...</option>
+                  {galerasDisponibles.map((g) => (
+                    <option key={g.id_galera} value={g.id_galera}>{g.nombre}</option>
+                  ))}
+                </select>
+                {galerasDisponibles.length === 0 && (
+                  <span style={{ fontSize: '11px', color: 'var(--ink-soft)' }}>No hay galeras disponibles en este momento.</span>
+                )}
+              </div>
+              <div className="field">
+                <label>Fecha de ingreso</label>
+                <CampoFecha value={nuevoLote.fecha_ingreso} onChange={(e) => setNuevoLote({ ...nuevoLote, fecha_ingreso: e.target.value })} required />
+              </div>
+              <div className="field">
+                <label>Aves recibidas</label>
+                <input type="number" value={nuevoLote.aves_recibidas} onChange={(e) => setNuevoLote({ ...nuevoLote, aves_recibidas: e.target.value })} required autoFocus />
+              </div>
+              <div className="modal-actions" style={{ marginTop: '10px' }}>
+                <button type="button" className="btn outline" onClick={() => setMostrarNuevoLote(false)}>Cancelar</button>
+                <button type="submit" className="btn">Guardar lote</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {galeraAFinalizar && (
         <div className="modal-overlay" onClick={() => setGaleraAFinalizar(null)}>
