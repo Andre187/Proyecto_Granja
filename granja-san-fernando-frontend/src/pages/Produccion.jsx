@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import api from '../api/api';
 import CampoFecha from '../components/CampoFecha';
 import { mostrarAviso } from '../utils/aviso';
@@ -13,6 +13,7 @@ const hoy = () => {
 };
 
 function Produccion({ usuario }) {
+  const location = useLocation();
   const esAdmin = usuario.rol === 'administrador' || usuario.rol === 'superadministrador';
 
   const [lotes, setLotes] = useState([]);
@@ -24,7 +25,8 @@ function Produccion({ usuario }) {
   const [formPostura, setFormPostura] = useState({ fecha: hoy(), cartones: '', sueltos: '' });
   const [formMortalidad, setFormMortalidad] = useState({ fecha: hoy(), cantidad: '', causa: '' });
 
-  const [loteSeleccionado, setLoteSeleccionado] = useState(null);
+  // Si se llega desde Galeras, ese galpón queda seleccionado
+  const [loteSeleccionado, setLoteSeleccionado] = useState(location.state?.id_lote ?? null);
 
   const [clasificacionesHuevo, setClasificacionesHuevo] = useState([]);
   const [formClasificarHuevos, setFormClasificarHuevos] = useState({

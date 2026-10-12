@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from '../api/api';
 import CampoFecha from '../components/CampoFecha';
 import { mostrarAviso } from '../utils/aviso';
@@ -19,6 +20,7 @@ const ESTADO_INFO = {
 };
 
 function Galeras() {
+  const navigate = useNavigate();
   const [galeras, setGaleras] = useState([]);
   const [error, setError] = useState('');
 
@@ -78,14 +80,15 @@ function Galeras() {
   const handleCrearLote = async (e) => {
     e.preventDefault();
     try {
-      await api.post('/produccion/lotes', {
+      const { data } = await api.post('/produccion/lotes', {
         ...nuevoLote,
         aves_recibidas: parseInt(nuevoLote.aves_recibidas),
       });
       setNuevoLote({ id_galera: '', fecha_ingreso: hoy(), aves_recibidas: '' });
       setMostrarNuevoLote(false);
       mostrarMensaje('Lote creado correctamente, la galera ya está en producción');
-      cargarTodo();
+      // Al iniciar el lote se abre Producción con ese galpón seleccionado
+      navigate('/produccion', { state: { id_lote: data.id_lote } });
     } catch (err) {
       mostrarError(err.response?.data?.error || 'No se pudo crear el lote');
     }
@@ -141,7 +144,18 @@ function Galeras() {
             {galeras.map((g) => {
               const info = ESTADO_INFO[g.estado] || ESTADO_INFO.disponible;
               return (
-                <div key={g.id_galera} className="lote-card galera-card" style={{ cursor: 'default' }}>
+                <div
+                  key={g.id_galera}
+                  className="lote-card galera-card"
+                  style={{ cursor: g.estado === 'ocupada' ? 'pointer' : 'default' }}
+                  {...(g.estado === 'ocupada' ? {
+                    role: 'button',
+                    tabIndex: 0,
+                    title: 'Abrir en Producción',
+                    onClick: () => navigate('/produccion', { state: { id_lote: g.id_lote } }),
+                    onKeyDown: (e) => { if (e.key === 'Enter') navigate('/produccion', { state: { id_lote: g.id_lote } }); },
+                  } : {})}
+                >
                   <div className="lc-icon">
                     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                       <path d="M3.5 11 12 4l8.5 7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
@@ -162,7 +176,7 @@ function Galeras() {
                       <button
                         className="btn"
                         style={{ width: '100%', background: 'transparent', color: 'var(--red)', border: '1px solid var(--red-light)', fontSize: '12px', padding: '7px 10px' }}
-                        onClick={() => setGaleraAFinalizar(g)}
+                        onClick={(e) => { e.stopPropagation(); setGaleraAFinalizar(g); }}
                       >
                         Finalizar lote
                       </button>
