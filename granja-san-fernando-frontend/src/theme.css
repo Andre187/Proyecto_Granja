@@ -656,3 +656,14 @@ tr:last-child td { border-bottom: none; }
   padding: 9px 12px;
 }
 .galpon-registro b { color: var(--navy-deep); }
+
+/* ---------- Campos de fecha y calendario nativo ---------- */
+/* El tema oscuro del sistema operativo no debe afectar al diseño: calendario claro e ícono visible */
+html { color-scheme: light; }
+input, select, textarea { color-scheme: light; }
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.75;
+  filter: none;
+}
+input[type="date"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
