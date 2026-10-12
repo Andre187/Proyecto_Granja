@@ -8,6 +8,16 @@ const REGEX_CONTRASENA_SEGURA = /^(?=.*[A-Za-z])(?=.*\d).{8,72}$/;
 
 const estiloClaro = { background: '#F5F1E6', color: '#232019', colorScheme: 'light' };
 
+// Resume en una frase lo que cambió en la cuenta
+const describirCambio = (a) => {
+  if (a.accion === 'INSERT') return `Cuenta creada con rol ${a.rol_nuevo || '—'}`;
+  if (a.accion === 'DELETE') return `Cuenta eliminada (rol ${a.rol_anterior || '—'})`;
+  const partes = [];
+  if (a.rol_anterior && a.rol_nuevo && a.rol_anterior !== a.rol_nuevo) partes.push(`Rol: ${a.rol_anterior} → ${a.rol_nuevo}`);
+  if (a.detalle) partes.push(a.detalle);
+  return partes.length ? partes.join(' · ') : '—';
+};
+
 function SuperAdmin({ usuario: usuarioActivo }) {
   const [confirmacion, setConfirmacion] = useState(null);
   const [usuarios, setUsuarios] = useState([]);
@@ -189,18 +199,18 @@ function SuperAdmin({ usuario: usuarioActivo }) {
           <div className="table-wrap">
             <table>
               <thead>
-                <tr><th>Fecha</th><th>Acción</th><th>Usuario afectado</th><th>Cambio</th><th>Rol anterior</th><th>Rol nuevo</th><th>Realizado por</th></tr>
+                <tr><th style={{ width: '20%' }}>Fecha</th><th style={{ width: '12%' }}>Acción</th><th style={{ width: '18%' }}>Usuario</th><th>Detalle</th><th style={{ width: '16%' }}>Realizado por</th></tr>
               </thead>
               <tbody>
                 {registros.map((a) => (
                   <tr key={a.id_auditoria}>
-                    <td>{new Date(a.fecha_hora).toLocaleString('es-GT')}</td>
-                    <td><span className={`tag ${a.accion === 'DELETE' ? 'low' : a.accion === 'INSERT' ? 'ok' : 'pend'}`}>{a.accion}</span></td>
-                    <td>{a.usuario_afectado}</td>
-                    <td>{a.detalle || '—'}</td>
-                    <td>{a.rol_anterior || '—'}</td>
-                    <td>{a.rol_nuevo || '—'}</td>
-                    <td>{a.actor || '—'}</td>
+                    <td data-label="Fecha" style={{ whiteSpace: 'nowrap' }}>
+                      {new Date(a.fecha_hora).toLocaleString('es-GT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </td>
+                    <td data-label="Acción"><span className={`tag ${a.accion === 'DELETE' ? 'low' : a.accion === 'INSERT' ? 'ok' : 'pend'}`}>{a.accion}</span></td>
+                    <td data-label="Usuario"><b>{a.usuario_afectado}</b></td>
+                    <td data-label="Detalle" style={{ color: 'var(--ink-soft)' }}>{describirCambio(a)}</td>
+                    <td data-label="Realizado por">{a.actor || '—'}</td>
                   </tr>
                 ))}
               </tbody>
