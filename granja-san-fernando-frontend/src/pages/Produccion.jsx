@@ -20,8 +20,8 @@ function Produccion({ usuario }) {
 
   const [error, setError] = useState('');
 
-  const [formPostura, setFormPostura] = useState({ id_lote: '', fecha: hoy(), cartones: '', sueltos: '' });
-  const [formMortalidad, setFormMortalidad] = useState({ id_lote: '', fecha: hoy(), cantidad: '', causa: '' });
+  const [formPostura, setFormPostura] = useState({ fecha: hoy(), cartones: '', sueltos: '' });
+  const [formMortalidad, setFormMortalidad] = useState({ fecha: hoy(), cantidad: '', causa: '' });
 
   const [loteSeleccionado, setLoteSeleccionado] = useState(null);
 
@@ -94,14 +94,15 @@ function Produccion({ usuario }) {
 
   const handleRegistrarPostura = async (e) => {
     e.preventDefault();
+    if (!lote) return mostrarError('Selecciona un galpón arriba para registrar');
     try {
       // Se captura en cartones (+ huevos sueltos); el sistema guarda el total en huevos
       await api.post('/produccion/postura', {
-        id_lote: formPostura.id_lote,
+        id_lote: lote.id_lote,
         fecha: formPostura.fecha,
         cantidad_huevos: huevosDePostura(formPostura),
       });
-      setFormPostura({ id_lote: '', fecha: hoy(), cartones: '', sueltos: '' });
+      setFormPostura({ fecha: hoy(), cartones: '', sueltos: '' });
       mostrarMensaje('Postura registrada correctamente');
       cargarTodo();
     } catch (err) {
@@ -111,12 +112,14 @@ function Produccion({ usuario }) {
 
   const handleRegistrarMortalidad = async (e) => {
     e.preventDefault();
+    if (!lote) return mostrarError('Selecciona un galpón arriba para registrar');
     try {
       await api.post('/produccion/mortalidad', {
         ...formMortalidad,
+        id_lote: lote.id_lote,
         cantidad: parseInt(formMortalidad.cantidad),
       });
-      setFormMortalidad({ id_lote: '', fecha: hoy(), cantidad: '', causa: '' });
+      setFormMortalidad({ fecha: hoy(), cantidad: '', causa: '' });
       mostrarMensaje('Mortalidad registrada correctamente');
       cargarTodo();
     } catch (err) {
@@ -168,10 +171,10 @@ function Produccion({ usuario }) {
       {error && <p style={{ color: 'var(--red)', fontSize: '13px', marginBottom: '14px' }}>{error}</p>}
 
       {/* ---- Lotes activos: solo administrador, solo lectura/selección ---- */}
-      {esAdmin && (
+      {(esAdmin || lotesActivos.length > 0) && (
         <section className="card">
           <div className="head">
-            <h2>Lotes activos</h2>
+            <h2>{esAdmin ? 'Lotes activos' : 'Galpón a registrar'}</h2>
             {esAdmin && (
               <Link
                 to="/galeras"
@@ -210,7 +213,7 @@ function Produccion({ usuario }) {
                 ))}
               </div>
 
-              {lote && (
+              {esAdmin && lote && (
                 <div className="lote-detail">
                   <div className="head">
                     <h3>{lote.galera_nombre}</h3>
@@ -258,21 +261,15 @@ function Produccion({ usuario }) {
         <section className="card">
           <div className="head"><h2>Registrar postura diaria</h2></div>
           <form onSubmit={handleRegistrarPostura} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div className="field">
-              <label>Lote</label>
-              <select value={formPostura.id_lote} onChange={(e) => setFormPostura({ ...formPostura, id_lote: e.target.value })} required>
-                <option value="">Selecciona un lote...</option>
-                {lotesActivos.map((l) => (
-                  <option key={l.id_lote} value={l.id_lote}>{l.galera_nombre} ({l.aves_activas} aves activas)</option>
-                ))}
-              </select>
-            </div>
+            <p className="galpon-registro">
+              {lote ? <>Galpón: <b>{lote.galera_nombre}</b> · {lote.aves_activas} aves activas</> : 'Selecciona un galpón arriba'}
+            </p>
             <div className="field">
               <label>Fecha</label>
               <input type="date" value={formPostura.fecha} onChange={(e) => setFormPostura({ ...formPostura, fecha: e.target.value })} required />
             </div>
             <div className="field">
-              <label>Cartones (30 huevos c/u)</label>
+              <label>Cartones</label>
               <input type="number" min="0" step="1" value={formPostura.cartones} onChange={(e) => setFormPostura({ ...formPostura, cartones: e.target.value })} required />
             </div>
             <div className="field">
@@ -284,22 +281,16 @@ function Produccion({ usuario }) {
                 </span>
               )}
             </div>
-            <button type="submit" className="btn">Registrar postura</button>
+            <button type="submit" className="btn" disabled={!lote}>Registrar postura</button>
           </form>
         </section>
 
         <section className="card">
           <div className="head"><h2>Registrar mortalidad</h2></div>
           <form onSubmit={handleRegistrarMortalidad} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div className="field">
-              <label>Lote</label>
-              <select value={formMortalidad.id_lote} onChange={(e) => setFormMortalidad({ ...formMortalidad, id_lote: e.target.value })} required>
-                <option value="">Selecciona un lote...</option>
-                {lotesActivos.map((l) => (
-                  <option key={l.id_lote} value={l.id_lote}>{l.galera_nombre} ({l.aves_activas} aves activas)</option>
-                ))}
-              </select>
-            </div>
+            <p className="galpon-registro">
+              {lote ? <>Galpón: <b>{lote.galera_nombre}</b> · {lote.aves_activas} aves activas</> : 'Selecciona un galpón arriba'}
+            </p>
             <div className="field">
               <label>Fecha</label>
               <input type="date" value={formMortalidad.fecha} onChange={(e) => setFormMortalidad({ ...formMortalidad, fecha: e.target.value })} required />
@@ -312,7 +303,7 @@ function Produccion({ usuario }) {
               <label>Causa (opcional)</label>
               <input value={formMortalidad.causa} onChange={(e) => setFormMortalidad({ ...formMortalidad, causa: e.target.value })} />
             </div>
-            <button type="submit" className="btn">Registrar mortalidad</button>
+            <button type="submit" className="btn" disabled={!lote}>Registrar mortalidad</button>
           </form>
         </section>
       </div>

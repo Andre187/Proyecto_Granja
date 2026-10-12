@@ -648,3 +648,11 @@ tr:last-child td { border-bottom: none; }
   from { opacity: 0; transform: translate(-50%, 12px); }
   to { opacity: 1; transform: translate(-50%, 0); }
 }
+
+/* ---------- Galpón activo en formularios de producción ---------- */
+.galpon-registro {
+  font-size: 13px; color: var(--ink-soft);
+  background: var(--cream); border: 1px solid var(--line); border-radius: 8px;
+  padding: 9px 12px;
+}
+.galpon-registro b { color: var(--navy-deep); }
