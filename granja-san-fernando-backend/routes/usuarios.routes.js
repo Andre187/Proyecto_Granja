@@ -39,16 +39,20 @@ const reglasCrearUsuario = [
 router.use(verificarToken, soloAdministrador);
 validarParametroId(router);
 
-// GET /api/usuarios — el administrador normal nunca ve al superadministrador
+// GET /api/usuarios
+// - El administrador solo ve a los operadores: ni al superadministrador ni a otros administradores
+//   (ni a sí mismo). Las cuentas de administrador las gestiona el propietario (superadministrador).
+// - El superadministrador ve administradores y operadores (su propia cuenta tiene su módulo aparte).
 router.get('/', async (req, res) => {
   try {
+    const rolesVisibles = req.usuario.rol === 'superadministrador' ? ['administrador', 'operador'] : ['operador'];
     const [rows] = await pool.query(`
       SELECT u.id_usuario, u.usuario, u.nombre, u.apellido, u.rol, u.activo, u.id_trabajador, t.nombre AS trabajador_nombre
       FROM usuarios u
       LEFT JOIN trabajadores t ON t.id_trabajador = u.id_trabajador
-      WHERE u.rol != 'superadministrador'
+      WHERE u.rol IN (?)
       ORDER BY u.id_usuario
-    `);
+    `, [rolesVisibles]);
     res.json(rows);
   } catch (error) {
     manejarError(res, error);
@@ -73,6 +77,9 @@ router.get('/trabajadores', async (req, res) => {
 router.post('/', reglasCrearUsuario, validar, async (req, res) => {
   try {
     const { usuario, nombre, apellido, contrasena, rol } = req.body;
+    if (rol === 'administrador' && req.usuario.rol !== 'superadministrador') {
+      return res.status(403).json({ error: 'Solo el propietario (superadministrador) puede crear administradores o ascender a alguien a administrador' });
+    }
     const nombreCompleto = `${nombre.trim()} ${apellido.trim()}`.trim();
     const hash = await bcrypt.hash(contrasena, 10);
 
@@ -190,6 +197,9 @@ router.put('/:id', cargarObjetivo, async (req, res) => {
     }
     if (req.objetivo.id_usuario === req.usuario.id_usuario) {
       return res.status(400).json({ error: 'No puedes cambiar tu propio rol' });
+    }
+    if (rol === 'administrador' && req.usuario.rol !== 'superadministrador') {
+      return res.status(403).json({ error: 'Solo el propietario (superadministrador) puede crear administradores o ascender a alguien a administrador' });
     }
     await escribirComoActor(req, 'UPDATE usuarios SET rol = ? WHERE id_usuario = ?', [rol, req.params.id]);
     res.json({ mensaje: 'Usuario actualizado correctamente' });

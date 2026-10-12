@@ -7,6 +7,8 @@ import ConfirmModal from '../components/ConfirmModal';
 const REGEX_CONTRASENA_SEGURA = /^(?=.*[A-Za-z])(?=.*\d).{8,72}$/;
 
 function Usuarios({ usuario: usuarioActivo }) {
+  // Solo el propietario (superadministrador) crea administradores o asciende a alguien a administrador
+  const esPropietario = usuarioActivo.rol === 'superadministrador';
   const [confirmacion, setConfirmacion] = useState(null);
   const [usuarios, setUsuarios] = useState([]);
   const [cargando, setCargando] = useState(true);
@@ -28,7 +30,7 @@ function Usuarios({ usuario: usuarioActivo }) {
 
   const cargarUsuarios = async () => {
     try {
-      setCargando(true);
+      // El aviso "Cargando..." solo se muestra la primera vez; al refrescar la tabla se queda como está
       const respuesta = await api.get('/usuarios');
       setUsuarios(respuesta.data);
     } catch (err) {
@@ -126,8 +128,11 @@ function Usuarios({ usuario: usuarioActivo }) {
   const cambiarEstadoCuenta = async (u) => {
     try {
       await api.put(`/usuarios/${u.id_usuario}/${u.activo ? 'desactivar' : 'reactivar'}`);
+      // Se actualiza la fila al instante, sin recargar toda la tabla
+      setUsuarios((lista) => lista.map((x) => (
+        x.id_usuario === u.id_usuario ? { ...x, activo: u.activo ? 0 : 1 } : x
+      )));
       mostrarMensaje(u.activo ? `Cuenta de ${u.usuario} desactivada` : `Cuenta de ${u.usuario} reactivada`);
-      cargarUsuarios();
     } catch (err) {
       setError(err.response?.data?.error || 'No se pudo cambiar el estado de la cuenta');
     }
@@ -192,7 +197,7 @@ function Usuarios({ usuario: usuarioActivo }) {
             <label>Rol</label>
             <select value={nuevoRol} onChange={(e) => setNuevoRol(e.target.value)}>
               <option value="operador">Operador</option>
-              <option value="administrador">Administrador</option>
+              {esPropietario && <option value="administrador">Administrador</option>}
             </select>
           </div>
           <button type="submit" className="btn">Crear usuario</button>
@@ -280,7 +285,7 @@ function Usuarios({ usuario: usuarioActivo }) {
                       ) : <span className="dato-vacio" style={{ color: 'var(--ink-soft)' }}>—</span>}
                     </td>
                     <td>
-                      {puedeGestionar && !esUnoMismo ? (
+                      {esPropietario && puedeGestionar && !esUnoMismo ? (
                       <button
                         style={{ background: 'transparent', border: 'none', fontSize: '12px', color: 'var(--navy)', textDecoration: 'underline', padding: 0 }}
                         onClick={() => {
@@ -350,7 +355,7 @@ function Usuarios({ usuario: usuarioActivo }) {
               <label>Rol</label>
               <select value={rolPermisoTemp} onChange={(e) => setRolPermisoTemp(e.target.value)}>
                 <option value="operador">Operador</option>
-                <option value="administrador">Administrador</option>
+                {esPropietario && <option value="administrador">Administrador</option>}
               </select>
             </div>
             {errorPermisos && <p style={{ color: 'var(--red)', fontSize: '12.5px', marginTop: '-10px', marginBottom: '16px' }}>{errorPermisos}</p>}

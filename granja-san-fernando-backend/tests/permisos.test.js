@@ -77,6 +77,25 @@ describe('Administrador', () => {
     expect(r.body.some((u) => u.rol === 'superadministrador')).toBe(false);
   });
 
+  test('solo ve operadores en el listado: no aparecen administradores ni su propia cuenta', async () => {
+    const r = await api.get('/usuarios', tokens.admin_qa);
+    expect(r.status).toBe(200);
+    expect(r.body.every((u) => u.rol === 'operador')).toBe(true);
+  });
+
+  test('no puede crear administradores ni ascender a un operador a administrador', async () => {
+    const crear = await api.post('/usuarios', tokens.admin_qa, { usuario: 'nuevo.admin', nombre: 'Ab', apellido: 'Cd', contrasena: CONTRASENA, rol: 'administrador' });
+    expect(crear.status).toBe(403);
+    expect((await api.put('/usuarios/2', tokens.admin_qa, { rol: 'administrador' })).status).toBe(403);
+  });
+
+  test('el superadministrador sí ve a los administradores en el listado de usuarios', async () => {
+    const r = await api.get('/usuarios', tokens.super_qa);
+    expect(r.status).toBe(200);
+    expect(r.body.some((u) => u.rol === 'administrador')).toBe(true);
+    expect(r.body.some((u) => u.rol === 'superadministrador')).toBe(false);
+  });
+
   test('no puede crear un usuario con rol superadministrador', async () => {
     const r = await api.post('/usuarios', tokens.admin_qa, { usuario: 'intruso', nombre: 'Ab', apellido: 'Cd', contrasena: CONTRASENA, rol: 'superadministrador' });
     expect(r.status).toBe(400);
