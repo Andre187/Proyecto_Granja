@@ -1,0 +1,28 @@
+config:
+  target: "http://localhost:4001"
+  processor: "./procesador.js"
+  phases:
+    - { duration: 30, arrivalRate: 5,  name: "Carga normal" }
+    - { duration: 30, arrivalRate: 15, name: "Carga alta" }
+    - { duration: 20, arrivalRate: 30, name: "Pico" }
+scenarios:
+  - name: "Jornada de un administrador"
+    beforeScenario: "asignarIp"
+    flow:
+      - post:
+          url: "/api/auth/login"
+          headers: { X-Forwarded-For: "{{ ip }}" }
+          json: { usuario: "admin_qa", contrasena: "Abcdefg1" }
+          capture: { json: "$.token", as: "token" }
+      - get:
+          url: "/api/ventas/ventas"
+          headers: { Authorization: "Bearer {{ token }}", X-Forwarded-For: "{{ ip }}" }
+      - get:
+          url: "/api/produccion/galeras"
+          headers: { Authorization: "Bearer {{ token }}", X-Forwarded-For: "{{ ip }}" }
+      - get:
+          url: "/api/inventario/huevos-stock"
+          headers: { Authorization: "Bearer {{ token }}", X-Forwarded-For: "{{ ip }}" }
+      - get:
+          url: "/api/ventas/resumen"
+          headers: { Authorization: "Bearer {{ token }}", X-Forwarded-For: "{{ ip }}" }

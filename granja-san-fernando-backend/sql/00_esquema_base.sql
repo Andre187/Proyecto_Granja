@@ -280,7 +280,7 @@ DELIMITER $$
 DROP TRIGGER IF EXISTS `trg_abonos_validar`$$
 CREATE TRIGGER `trg_abonos_validar` BEFORE INSERT ON `abonos` FOR EACH ROW BEGIN
     DECLARE saldo DECIMAL(12,2);
-    SELECT saldo_pendiente INTO saldo FROM VENTAS WHERE id_venta = NEW.id_venta;
+    SELECT saldo_pendiente INTO saldo FROM ventas WHERE id_venta = NEW.id_venta;
 
     IF NEW.monto > saldo THEN
         SIGNAL SQLSTATE '45000'
@@ -289,32 +289,32 @@ CREATE TRIGGER `trg_abonos_validar` BEFORE INSERT ON `abonos` FOR EACH ROW BEGIN
 END$$
 DROP TRIGGER IF EXISTS `trg_abonos_actualizar`$$
 CREATE TRIGGER `trg_abonos_actualizar` AFTER INSERT ON `abonos` FOR EACH ROW BEGIN
-    UPDATE VENTAS
+    UPDATE ventas
     SET saldo_pendiente = monto_total - (
-        SELECT COALESCE(SUM(monto), 0) FROM ABONOS WHERE id_venta = NEW.id_venta
+        SELECT COALESCE(SUM(monto), 0) FROM abonos WHERE id_venta = NEW.id_venta
     )
     WHERE id_venta = NEW.id_venta;
 
     -- Si el saldo llega a 0, marcamos la venta como cancelada (pagada)
-    UPDATE VENTAS
+    UPDATE ventas
     SET estado = 'cancelado'
     WHERE id_venta = NEW.id_venta AND saldo_pendiente <= 0;
 END$$
 DROP TRIGGER IF EXISTS `trg_concentrado_compra_actualiza_stock`$$
 CREATE TRIGGER `trg_concentrado_compra_actualiza_stock` AFTER INSERT ON `concentrado` FOR EACH ROW BEGIN
-    IF EXISTS (SELECT 1 FROM CONCENTRADO_STOCK WHERE tipo_concentrado = NEW.tipo_concentrado) THEN
-        UPDATE CONCENTRADO_STOCK
+    IF EXISTS (SELECT 1 FROM concentrado_stock WHERE tipo_concentrado = NEW.tipo_concentrado) THEN
+        UPDATE concentrado_stock
         SET existencia_actual = existencia_actual + NEW.cantidad_qq
         WHERE tipo_concentrado = NEW.tipo_concentrado;
     ELSE
-        INSERT INTO CONCENTRADO_STOCK (tipo_concentrado, existencia_actual, nivel_minimo)
+        INSERT INTO concentrado_stock (tipo_concentrado, existencia_actual, nivel_minimo)
         VALUES (NEW.tipo_concentrado, NEW.cantidad_qq, 0);
     END IF;
 END$$
 DROP TRIGGER IF EXISTS `trg_concentrado_consumo_validar`$$
 CREATE TRIGGER `trg_concentrado_consumo_validar` BEFORE INSERT ON `concentrado_consumo` FOR EACH ROW BEGIN
     DECLARE existencia DECIMAL(10,2);
-    SELECT existencia_actual INTO existencia FROM CONCENTRADO_STOCK WHERE id_stock = NEW.id_stock;
+    SELECT existencia_actual INTO existencia FROM concentrado_stock WHERE id_stock = NEW.id_stock;
 
     IF NEW.cantidad_qq > existencia THEN
         SIGNAL SQLSTATE '45000'
@@ -323,7 +323,7 @@ CREATE TRIGGER `trg_concentrado_consumo_validar` BEFORE INSERT ON `concentrado_c
 END$$
 DROP TRIGGER IF EXISTS `trg_concentrado_consumo_actualiza_stock`$$
 CREATE TRIGGER `trg_concentrado_consumo_actualiza_stock` AFTER INSERT ON `concentrado_consumo` FOR EACH ROW BEGIN
-    UPDATE CONCENTRADO_STOCK
+    UPDATE concentrado_stock
     SET existencia_actual = existencia_actual - NEW.cantidad_qq
     WHERE id_stock = NEW.id_stock;
 END$$
@@ -331,7 +331,7 @@ DROP TRIGGER IF EXISTS `trg_venta_valida_stock_huevo`$$
 CREATE TRIGGER `trg_venta_valida_stock_huevo` BEFORE INSERT ON `detalle_venta` FOR EACH ROW BEGIN
     DECLARE existencia INT DEFAULT 0;
     SELECT existencia_actual INTO existencia
-    FROM HUEVOS_STOCK WHERE id_clasificacion = NEW.id_clasificacion;
+    FROM huevos_stock WHERE id_clasificacion = NEW.id_clasificacion;
 
     IF NEW.cantidad > existencia THEN
         SIGNAL SQLSTATE '45000'
@@ -340,60 +340,60 @@ CREATE TRIGGER `trg_venta_valida_stock_huevo` BEFORE INSERT ON `detalle_venta` F
 END$$
 DROP TRIGGER IF EXISTS `trg_detalle_venta_insert`$$
 CREATE TRIGGER `trg_detalle_venta_insert` AFTER INSERT ON `detalle_venta` FOR EACH ROW BEGIN
-    UPDATE VENTAS
+    UPDATE ventas
     SET monto_total = (
-        SELECT COALESCE(SUM(subtotal), 0) FROM DETALLE_VENTA WHERE id_venta = NEW.id_venta
+        SELECT COALESCE(SUM(subtotal), 0) FROM detalle_venta WHERE id_venta = NEW.id_venta
     )
     WHERE id_venta = NEW.id_venta;
 
-    UPDATE VENTAS
+    UPDATE ventas
     SET saldo_pendiente = monto_total - (
-        SELECT COALESCE(SUM(monto), 0) FROM ABONOS WHERE id_venta = NEW.id_venta
+        SELECT COALESCE(SUM(monto), 0) FROM abonos WHERE id_venta = NEW.id_venta
     )
     WHERE id_venta = NEW.id_venta;
 END$$
 DROP TRIGGER IF EXISTS `trg_venta_descuenta_stock_huevo`$$
 CREATE TRIGGER `trg_venta_descuenta_stock_huevo` AFTER INSERT ON `detalle_venta` FOR EACH ROW BEGIN
-    UPDATE HUEVOS_STOCK
+    UPDATE huevos_stock
     SET existencia_actual = existencia_actual - NEW.cantidad
     WHERE id_clasificacion = NEW.id_clasificacion;
 END$$
 DROP TRIGGER IF EXISTS `trg_detalle_venta_update`$$
 CREATE TRIGGER `trg_detalle_venta_update` AFTER UPDATE ON `detalle_venta` FOR EACH ROW BEGIN
-    UPDATE VENTAS
+    UPDATE ventas
     SET monto_total = (
-        SELECT COALESCE(SUM(subtotal), 0) FROM DETALLE_VENTA WHERE id_venta = NEW.id_venta
+        SELECT COALESCE(SUM(subtotal), 0) FROM detalle_venta WHERE id_venta = NEW.id_venta
     )
     WHERE id_venta = NEW.id_venta;
 
-    UPDATE VENTAS
+    UPDATE ventas
     SET saldo_pendiente = monto_total - (
-        SELECT COALESCE(SUM(monto), 0) FROM ABONOS WHERE id_venta = NEW.id_venta
+        SELECT COALESCE(SUM(monto), 0) FROM abonos WHERE id_venta = NEW.id_venta
     )
     WHERE id_venta = NEW.id_venta;
 END$$
 DROP TRIGGER IF EXISTS `trg_detalle_venta_delete`$$
 CREATE TRIGGER `trg_detalle_venta_delete` AFTER DELETE ON `detalle_venta` FOR EACH ROW BEGIN
-    UPDATE VENTAS
+    UPDATE ventas
     SET monto_total = (
-        SELECT COALESCE(SUM(subtotal), 0) FROM DETALLE_VENTA WHERE id_venta = OLD.id_venta
+        SELECT COALESCE(SUM(subtotal), 0) FROM detalle_venta WHERE id_venta = OLD.id_venta
     )
     WHERE id_venta = OLD.id_venta;
 
-    UPDATE VENTAS
+    UPDATE ventas
     SET saldo_pendiente = monto_total - (
-        SELECT COALESCE(SUM(monto), 0) FROM ABONOS WHERE id_venta = OLD.id_venta
+        SELECT COALESCE(SUM(monto), 0) FROM abonos WHERE id_venta = OLD.id_venta
     )
     WHERE id_venta = OLD.id_venta;
 END$$
 DROP TRIGGER IF EXISTS `trg_huevos_clasificados_actualiza_stock`$$
 CREATE TRIGGER `trg_huevos_clasificados_actualiza_stock` AFTER INSERT ON `huevos_clasificados` FOR EACH ROW BEGIN
-    IF EXISTS (SELECT 1 FROM HUEVOS_STOCK WHERE id_clasificacion = NEW.id_clasificacion) THEN
-        UPDATE HUEVOS_STOCK
+    IF EXISTS (SELECT 1 FROM huevos_stock WHERE id_clasificacion = NEW.id_clasificacion) THEN
+        UPDATE huevos_stock
         SET existencia_actual = existencia_actual + NEW.cantidad
         WHERE id_clasificacion = NEW.id_clasificacion;
     ELSE
-        INSERT INTO HUEVOS_STOCK (id_clasificacion, existencia_actual, nivel_minimo)
+        INSERT INTO huevos_stock (id_clasificacion, existencia_actual, nivel_minimo)
         VALUES (NEW.id_clasificacion, NEW.cantidad, 0);
     END IF;
 END$$
@@ -410,7 +410,7 @@ CREATE TRIGGER `trg_lote_validar_unico_activo` BEFORE INSERT ON `lotes` FOR EACH
 
     IF NEW.estado = 'activo' THEN
         SELECT COUNT(*) INTO existe_activo
-        FROM LOTES
+        FROM lotes
         WHERE id_galera = NEW.id_galera AND estado = 'activo';
 
         IF existe_activo > 0 THEN
@@ -433,7 +433,7 @@ END$$
 DROP TRIGGER IF EXISTS `trg_mortalidad_validar`$$
 CREATE TRIGGER `trg_mortalidad_validar` BEFORE INSERT ON `mortalidad` FOR EACH ROW BEGIN
     DECLARE activas_actual INT;
-    SELECT aves_activas INTO activas_actual FROM LOTES WHERE id_lote = NEW.id_lote;
+    SELECT aves_activas INTO activas_actual FROM lotes WHERE id_lote = NEW.id_lote;
 
     IF NEW.cantidad > activas_actual THEN
         SIGNAL SQLSTATE '45000'
@@ -442,14 +442,14 @@ CREATE TRIGGER `trg_mortalidad_validar` BEFORE INSERT ON `mortalidad` FOR EACH R
 END$$
 DROP TRIGGER IF EXISTS `trg_mortalidad_actualizar_lote`$$
 CREATE TRIGGER `trg_mortalidad_actualizar_lote` AFTER INSERT ON `mortalidad` FOR EACH ROW BEGIN
-    UPDATE LOTES
+    UPDATE lotes
     SET aves_activas = aves_activas - NEW.cantidad
     WHERE id_lote = NEW.id_lote;
 END$$
 DROP TRIGGER IF EXISTS `trg_movimiento_medicamento_validar`$$
 CREATE TRIGGER `trg_movimiento_medicamento_validar` BEFORE INSERT ON `movimientos_medicamento` FOR EACH ROW BEGIN
     DECLARE existencia DECIMAL(10,2);
-    SELECT existencia_actual INTO existencia FROM MEDICAMENTOS WHERE id_medicamento = NEW.id_medicamento;
+    SELECT existencia_actual INTO existencia FROM medicamentos WHERE id_medicamento = NEW.id_medicamento;
 
     IF NEW.tipo_movimiento = 'salida' AND NEW.cantidad > existencia THEN
         SIGNAL SQLSTATE '45000'
@@ -459,28 +459,28 @@ END$$
 DROP TRIGGER IF EXISTS `trg_movimiento_medicamento_actualizar`$$
 CREATE TRIGGER `trg_movimiento_medicamento_actualizar` AFTER INSERT ON `movimientos_medicamento` FOR EACH ROW BEGIN
     IF NEW.tipo_movimiento = 'entrada' THEN
-        UPDATE MEDICAMENTOS
+        UPDATE medicamentos
         SET existencia_actual = existencia_actual + NEW.cantidad
         WHERE id_medicamento = NEW.id_medicamento;
     ELSE
-        UPDATE MEDICAMENTOS
+        UPDATE medicamentos
         SET existencia_actual = existencia_actual - NEW.cantidad
         WHERE id_medicamento = NEW.id_medicamento;
     END IF;
 END$$
 DROP TRIGGER IF EXISTS `trg_auditoria_usuarios_insert`$$
 CREATE TRIGGER `trg_auditoria_usuarios_insert` AFTER INSERT ON `usuarios` FOR EACH ROW BEGIN
-    INSERT INTO AUDITORIA_USUARIOS (id_usuario, accion, usuario_afectado, rol_anterior, rol_nuevo)
+    INSERT INTO auditoria_usuarios (id_usuario, accion, usuario_afectado, rol_anterior, rol_nuevo)
     VALUES (NEW.id_usuario, 'INSERT', NEW.usuario, NULL, NEW.rol);
 END$$
 DROP TRIGGER IF EXISTS `trg_auditoria_usuarios_update`$$
 CREATE TRIGGER `trg_auditoria_usuarios_update` AFTER UPDATE ON `usuarios` FOR EACH ROW BEGIN
-    INSERT INTO AUDITORIA_USUARIOS (id_usuario, accion, usuario_afectado, rol_anterior, rol_nuevo)
+    INSERT INTO auditoria_usuarios (id_usuario, accion, usuario_afectado, rol_anterior, rol_nuevo)
     VALUES (NEW.id_usuario, 'UPDATE', NEW.usuario, OLD.rol, NEW.rol);
 END$$
 DROP TRIGGER IF EXISTS `trg_auditoria_usuarios_delete`$$
 CREATE TRIGGER `trg_auditoria_usuarios_delete` AFTER DELETE ON `usuarios` FOR EACH ROW BEGIN
-    INSERT INTO AUDITORIA_USUARIOS (id_usuario, accion, usuario_afectado, rol_anterior, rol_nuevo)
+    INSERT INTO auditoria_usuarios (id_usuario, accion, usuario_afectado, rol_anterior, rol_nuevo)
     VALUES (OLD.id_usuario, 'DELETE', OLD.usuario, OLD.rol, NULL);
 END$$
 DELIMITER ;

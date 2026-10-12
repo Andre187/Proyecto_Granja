@@ -3,15 +3,15 @@
 -- garantizan lo mismo incluso ante SQL directo o un error futuro en el código.
 --
 -- ANTES de aplicar, comprueba que no haya datos ya negativos (deben dar 0 filas):
---   SELECT * FROM HUEVOS_STOCK WHERE existencia_actual < 0;
---   SELECT * FROM CONCENTRADO_STOCK WHERE existencia_actual < 0;
---   SELECT * FROM MEDICAMENTOS WHERE existencia_actual < 0;
+--   SELECT * FROM huevos_stock WHERE existencia_actual < 0;
+--   SELECT * FROM concentrado_stock WHERE existencia_actual < 0;
+--   SELECT * FROM medicamentos WHERE existencia_actual < 0;
 
-ALTER TABLE HUEVOS_STOCK
+ALTER TABLE huevos_stock
   ADD CONSTRAINT chk_huevos_stock_no_negativo CHECK (existencia_actual >= 0);
 
-ALTER TABLE CONCENTRADO_STOCK
+ALTER TABLE concentrado_stock
   ADD CONSTRAINT chk_concentrado_stock_no_negativo CHECK (existencia_actual >= 0);
 
-ALTER TABLE MEDICAMENTOS
+ALTER TABLE medicamentos
   ADD CONSTRAINT chk_medicamento_no_negativo CHECK (existencia_actual >= 0);

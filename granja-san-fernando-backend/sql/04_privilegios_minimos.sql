@@ -9,33 +9,33 @@
 
 REVOKE ALL PRIVILEGES, GRANT OPTION FROM 'granja_app'@'localhost';
 
-GRANT SELECT, INSERT, UPDATE ON granja_san_fernando.ABONOS TO 'granja_app'@'localhost';
-GRANT SELECT, INSERT, UPDATE ON granja_san_fernando.CLASIFICACIONES_HUEVO TO 'granja_app'@'localhost';
-GRANT SELECT, INSERT, UPDATE ON granja_san_fernando.CLIENTES TO 'granja_app'@'localhost';
-GRANT SELECT, INSERT, UPDATE ON granja_san_fernando.CONCENTRADO TO 'granja_app'@'localhost';
-GRANT SELECT, INSERT, UPDATE ON granja_san_fernando.CONCENTRADO_CONSUMO TO 'granja_app'@'localhost';
-GRANT SELECT, INSERT, UPDATE ON granja_san_fernando.CONCENTRADO_STOCK TO 'granja_app'@'localhost';
-GRANT SELECT, INSERT, UPDATE ON granja_san_fernando.DETALLE_VENTA TO 'granja_app'@'localhost';
-GRANT SELECT, INSERT, UPDATE ON granja_san_fernando.GALERAS TO 'granja_app'@'localhost';
-GRANT SELECT, INSERT, UPDATE ON granja_san_fernando.GASTOS TO 'granja_app'@'localhost';
-GRANT SELECT, INSERT, UPDATE ON granja_san_fernando.HUEVOS_CLASIFICADOS TO 'granja_app'@'localhost';
-GRANT SELECT, INSERT, UPDATE ON granja_san_fernando.HUEVOS_STOCK TO 'granja_app'@'localhost';
-GRANT SELECT, INSERT, UPDATE ON granja_san_fernando.LOTES TO 'granja_app'@'localhost';
-GRANT SELECT, INSERT, UPDATE ON granja_san_fernando.MEDICAMENTOS TO 'granja_app'@'localhost';
-GRANT SELECT, INSERT, UPDATE ON granja_san_fernando.MORTALIDAD TO 'granja_app'@'localhost';
-GRANT SELECT, INSERT, UPDATE ON granja_san_fernando.MOVIMIENTOS_MEDICAMENTO TO 'granja_app'@'localhost';
-GRANT SELECT, INSERT, UPDATE ON granja_san_fernando.PAGOS_SEMANALES TO 'granja_app'@'localhost';
-GRANT SELECT, INSERT, UPDATE ON granja_san_fernando.POSTURA_DIARIA TO 'granja_app'@'localhost';
-GRANT SELECT, INSERT, UPDATE ON granja_san_fernando.SEGUIMIENTO_PESO TO 'granja_app'@'localhost';
-GRANT SELECT, INSERT, UPDATE ON granja_san_fernando.TAREAS TO 'granja_app'@'localhost';
-GRANT SELECT, INSERT, UPDATE ON granja_san_fernando.TRABAJADORES TO 'granja_app'@'localhost';
-GRANT SELECT, INSERT, UPDATE ON granja_san_fernando.USUARIOS TO 'granja_app'@'localhost';
-GRANT SELECT, INSERT, UPDATE ON granja_san_fernando.VACUNACION TO 'granja_app'@'localhost';
-GRANT SELECT, INSERT, UPDATE ON granja_san_fernando.VENTAS TO 'granja_app'@'localhost';
+GRANT SELECT, INSERT, UPDATE ON granja_san_fernando.abonos TO 'granja_app'@'localhost';
+GRANT SELECT, INSERT, UPDATE ON granja_san_fernando.clasificaciones_huevo TO 'granja_app'@'localhost';
+GRANT SELECT, INSERT, UPDATE ON granja_san_fernando.clientes TO 'granja_app'@'localhost';
+GRANT SELECT, INSERT, UPDATE ON granja_san_fernando.concentrado TO 'granja_app'@'localhost';
+GRANT SELECT, INSERT, UPDATE ON granja_san_fernando.concentrado_consumo TO 'granja_app'@'localhost';
+GRANT SELECT, INSERT, UPDATE ON granja_san_fernando.concentrado_stock TO 'granja_app'@'localhost';
+GRANT SELECT, INSERT, UPDATE ON granja_san_fernando.detalle_venta TO 'granja_app'@'localhost';
+GRANT SELECT, INSERT, UPDATE ON granja_san_fernando.galeras TO 'granja_app'@'localhost';
+GRANT SELECT, INSERT, UPDATE ON granja_san_fernando.gastos TO 'granja_app'@'localhost';
+GRANT SELECT, INSERT, UPDATE ON granja_san_fernando.huevos_clasificados TO 'granja_app'@'localhost';
+GRANT SELECT, INSERT, UPDATE ON granja_san_fernando.huevos_stock TO 'granja_app'@'localhost';
+GRANT SELECT, INSERT, UPDATE ON granja_san_fernando.lotes TO 'granja_app'@'localhost';
+GRANT SELECT, INSERT, UPDATE ON granja_san_fernando.medicamentos TO 'granja_app'@'localhost';
+GRANT SELECT, INSERT, UPDATE ON granja_san_fernando.mortalidad TO 'granja_app'@'localhost';
+GRANT SELECT, INSERT, UPDATE ON granja_san_fernando.movimientos_medicamento TO 'granja_app'@'localhost';
+GRANT SELECT, INSERT, UPDATE ON granja_san_fernando.pagos_semanales TO 'granja_app'@'localhost';
+GRANT SELECT, INSERT, UPDATE ON granja_san_fernando.postura_diaria TO 'granja_app'@'localhost';
+GRANT SELECT, INSERT, UPDATE ON granja_san_fernando.seguimiento_peso TO 'granja_app'@'localhost';
+GRANT SELECT, INSERT, UPDATE ON granja_san_fernando.tareas TO 'granja_app'@'localhost';
+GRANT SELECT, INSERT, UPDATE ON granja_san_fernando.trabajadores TO 'granja_app'@'localhost';
+GRANT SELECT, INSERT, UPDATE ON granja_san_fernando.usuarios TO 'granja_app'@'localhost';
+GRANT SELECT, INSERT, UPDATE ON granja_san_fernando.vacunacion TO 'granja_app'@'localhost';
+GRANT SELECT, INSERT, UPDATE ON granja_san_fernando.ventas TO 'granja_app'@'localhost';
 
 -- Las bitácoras son de solo agregar: la app puede escribir y leer, nunca modificar ni borrar
-GRANT SELECT, INSERT ON granja_san_fernando.AUDITORIA_USUARIOS TO 'granja_app'@'localhost';
+GRANT SELECT, INSERT ON granja_san_fernando.auditoria_usuarios TO 'granja_app'@'localhost';
 -- Si aplicaste la migración 02, agrega también:
--- GRANT SELECT, INSERT ON granja_san_fernando.AUDITORIA_GENERAL TO 'granja_app'@'localhost';
+-- GRANT SELECT, INSERT ON granja_san_fernando.auditoria_general TO 'granja_app'@'localhost';
 
 FLUSH PRIVILEGES;

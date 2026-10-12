@@ -4,7 +4,7 @@
 -- provocaría un error al guardar; se amplía a DECIMAL(9,2) con la misma fórmula.
 -- Aplicar UNA sola vez.
 
-ALTER TABLE POSTURA_DIARIA
+ALTER TABLE postura_diaria
   MODIFY COLUMN tasa_postura DECIMAL(9,2)
   GENERATED ALWAYS AS (
     CASE WHEN aves_activas_dia > 0 THEN (cantidad_huevos / aves_activas_dia) * 100 ELSE 0 END

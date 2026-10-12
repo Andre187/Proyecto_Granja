@@ -242,9 +242,22 @@ function Galeras() {
                       </button>
                     )}
                     {g.estado === 'disponible' && (
-                      <p style={{ fontSize: '11px', color: 'var(--ink-soft)', textAlign: 'center', margin: 0 }}>
-                        Lista para un nuevo lote
-                      </p>
+                      <>
+                        <button
+                          className="btn"
+                          style={{ width: '100%', fontSize: '12px', padding: '7px 10px' }}
+                          onClick={() => {
+                            setNuevoLote({ ...nuevoLote, id_galera: String(g.id_galera) });
+                            setMostrarNuevoLote(true);
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }}
+                        >
+                          Iniciar lote
+                        </button>
+                        <p style={{ fontSize: '11px', color: 'var(--ink-soft)', textAlign: 'center', margin: '6px 0 0' }}>
+                          Sin aves: aún no aparece en Producción
+                        </p>
+                      </>
                     )}
                   </div>
                 </div>
