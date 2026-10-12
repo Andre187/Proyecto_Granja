@@ -10,7 +10,7 @@ const mostrar = (iso) => (iso ? iso.slice(0, 10).split('-').reverse().join('/') 
 // Campo de fecha con calendario propio (sustituye a <input type="date">).
 // Mismo uso que el input: value 'AAAA-MM-DD' y onChange(e) con e.target.value.
 // El calendario se abre pegado al botón, alineado a la derecha del campo.
-function CampoFecha({ value, onChange, required, min, max, style }) {
+function CampoFecha({ value, onChange, required, min, max, style, bloque = false }) {
   const [abierto, setAbierto] = useState(false);
   const [mesVisible, setMesVisible] = useState(() => (value ? new Date(`${value.slice(0, 10)}T00:00:00`) : new Date()));
   const ref = useRef(null);
@@ -49,7 +49,7 @@ function CampoFecha({ value, onChange, required, min, max, style }) {
   const fueraDeRango = (iso) => (min && iso < min) || (max && iso > max);
 
   return (
-    <div className="campo-fecha" ref={ref}>
+    <div className={`campo-fecha ${bloque ? 'campo-fecha-bloque' : ''}`} ref={ref}>
       <button type="button" className="campo-fecha-btn" onClick={abrir} style={style} aria-haspopup="dialog" aria-expanded={abierto}>
         <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
           <rect x="3" y="4.5" width="14" height="12" rx="2" stroke="currentColor" strokeWidth="1.6" />

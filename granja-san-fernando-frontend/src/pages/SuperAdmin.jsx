@@ -70,17 +70,8 @@ function SuperAdmin({ usuario: usuarioActivo }) {
     setPasswordNueva('');
   };
 
-  const handleGuardarRol = () => {
+  const handleGuardarRol = async () => {
     if (rolSeleccionado === gestionando.rol) return;
-    setConfirmacion({
-      titulo: '¿Cambiar el rol?',
-      texto: `"${gestionando.usuario}" pasará de ${gestionando.rol} a ${rolSeleccionado} y sus permisos cambiarán de inmediato.`,
-      textoBoton: 'Cambiar rol',
-      onConfirmar: ejecutarGuardarRol,
-    });
-  };
-
-  const ejecutarGuardarRol = async () => {
     try {
       await api.put(`/superadmin/usuarios/${gestionando.id_usuario}/rol`, { rol: rolSeleccionado });
       mostrarMensaje('Rol actualizado');

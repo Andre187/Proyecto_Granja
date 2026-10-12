@@ -248,14 +248,14 @@ function Tareas({ usuario }) {
               <div style={{ display: 'flex', gap: '12px' }}>
                 <div className="field" style={{ flex: 1 }}>
                   <label>Fecha de asignación</label>
-                  <CampoFecha value={formTarea.fecha_asignacion} onChange={(e) => setFormTarea({ ...formTarea, fecha_asignacion: e.target.value })} required />
+                  <CampoFecha bloque value={formTarea.fecha_asignacion} onChange={(e) => setFormTarea({ ...formTarea, fecha_asignacion: e.target.value })} required />
                 </div>
                 <div className="field" style={{ flex: 1 }}>
                   <label>Fecha límite (opcional)</label>
-                  <CampoFecha value={formTarea.fecha_limite} onChange={(e) => setFormTarea({ ...formTarea, fecha_limite: e.target.value })} />
+                  <CampoFecha bloque value={formTarea.fecha_limite} onChange={(e) => setFormTarea({ ...formTarea, fecha_limite: e.target.value })} />
                 </div>
               </div>
-              <button type="submit" className="btn">Asignar tarea</button>
+              <button type="submit" className="btn boton-centrado">Asignar tarea</button>
             </form>
           )}
         </section>
