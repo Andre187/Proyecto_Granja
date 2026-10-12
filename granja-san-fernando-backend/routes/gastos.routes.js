@@ -32,6 +32,14 @@ function rangoFechas(periodo) {
     const dia = String(d.getDate()).padStart(2, '0');
     return `${y}-${m}-${dia}`;
   };
+  if (periodo === 'mes_pasado') {
+    // Todo el mes anterior: del día 1 al último día
+    return {
+      desde: fmt(new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1)),
+      hasta: fmt(new Date(hoy.getFullYear(), hoy.getMonth(), 0)),
+    };
+  }
+
   let desde;
 
   if (periodo === 'semana') {
@@ -48,7 +56,7 @@ function rangoFechas(periodo) {
 
 router.get('/', reglasListado, validar, async (req, res) => {
   try {
-    let periodo = ['hoy', 'semana', 'mes'].includes(req.query.periodo) ? req.query.periodo : 'mes';
+    let periodo = ['hoy', 'semana', 'mes', 'mes_pasado'].includes(req.query.periodo) ? req.query.periodo : 'mes';
     let desde, hasta;
 
     if (req.query.desde && req.query.hasta) {

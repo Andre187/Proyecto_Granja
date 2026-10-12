@@ -5,7 +5,7 @@ import { formatoFecha } from '../utils/fecha';
 import { tasaVisible } from '../utils/porcentaje';
 import SelectorRangoFechas from '../components/SelectorRangoFechas';
 
-const LABELS = { hoy: 'Hoy', semana: 'Últimos 7 días', mes: 'Este mes', personalizado: 'Personalizado' };
+const LABELS = { hoy: 'Hoy', semana: 'Últimos 7 días', mes: 'Este mes', mes_pasado: 'Mes pasado', personalizado: 'Personalizado' };
 
 function eggClass(pct, idx) {
   const filled = Math.round((pct / 100) * 7);
@@ -64,7 +64,7 @@ function Reportes() {
     <>
       <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '10px', marginBottom: '18px', flexWrap: 'wrap' }}>
         <div className="period-tabs">
-          {['hoy', 'semana', 'mes'].map((p) => (
+          {['hoy', 'semana', 'mes', 'mes_pasado'].map((p) => (
             <button key={p} className={periodo === p ? 'active' : ''} onClick={() => { setPeriodo(p); setFechaDesde(''); setFechaHasta(''); }}>
               {LABELS[p]}
             </button>

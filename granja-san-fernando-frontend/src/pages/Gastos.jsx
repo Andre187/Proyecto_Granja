@@ -24,7 +24,7 @@ const CATEGORIAS = [
   { valor: 'otros', etiqueta: 'Otros' },
 ];
 
-const LABELS = { hoy: 'Hoy', semana: 'Últimos 7 días', mes: 'Este mes', personalizado: 'Personalizado' };
+const LABELS = { hoy: 'Hoy', semana: 'Últimos 7 días', mes: 'Este mes', mes_pasado: 'Mes pasado', personalizado: 'Personalizado' };
 
 function Gastos() {
   const [gastos, setGastos] = useState([]);
@@ -155,7 +155,7 @@ function Gastos() {
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '10px', marginBottom: '18px', flexWrap: 'wrap' }}>
         <div className="period-tabs">
-          {['hoy', 'semana', 'mes'].map((p) => (
+          {['hoy', 'semana', 'mes', 'mes_pasado'].map((p) => (
             <button key={p} className={periodo === p ? 'active' : ''} onClick={() => { setPeriodo(p); setFechaDesde(''); setFechaHasta(''); }}>
               {LABELS[p]}
             </button>

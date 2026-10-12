@@ -22,6 +22,14 @@ function rangoFechas(periodo) {
     const dia = String(d.getDate()).padStart(2, '0');
     return `${y}-${m}-${dia}`;
   };
+  if (periodo === 'mes_pasado') {
+    // Todo el mes anterior: del día 1 al último día
+    return {
+      desde: fmt(new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1)),
+      hasta: fmt(new Date(hoy.getFullYear(), hoy.getMonth(), 0)),
+    };
+  }
+
   let desde;
 
   if (periodo === 'semana') {
@@ -41,7 +49,7 @@ const DIAS_CUENTA_ATRASADA = 15;
 
 router.get('/resumen', reglasRango, validar, async (req, res) => {
   try {
-    let periodo = ['hoy', 'semana', 'mes'].includes(req.query.periodo) ? req.query.periodo : 'hoy';
+    let periodo = ['hoy', 'semana', 'mes', 'mes_pasado'].includes(req.query.periodo) ? req.query.periodo : 'hoy';
     let desde, hasta;
 
     // Si vienen fechas personalizadas explícitas, tienen prioridad sobre el período
@@ -166,7 +174,7 @@ router.get('/resumen', reglasRango, validar, async (req, res) => {
 
 router.get('/financiero', reglasRango, validar, async (req, res) => {
   try {
-    let periodo = ['hoy', 'semana', 'mes'].includes(req.query.periodo) ? req.query.periodo : 'mes';
+    let periodo = ['hoy', 'semana', 'mes', 'mes_pasado'].includes(req.query.periodo) ? req.query.periodo : 'mes';
     let desde, hasta;
 
     if (req.query.desde && req.query.hasta) {
