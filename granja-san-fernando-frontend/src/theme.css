@@ -331,13 +331,26 @@ tr:last-child td { border-bottom: none; }
 }
 .btn.gold:hover { filter: brightness(1.06); box-shadow: 0 4px 10px rgba(138, 95, 23, 0.4); }
 
-.field { display: flex; flex-direction: column; gap: 4px; }
-.field label { font-size: 11px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .03em; }
-.field input, .field select {
-  font-family: inherit; font-size: 13px; padding: 8px 10px; border: 1px solid var(--line);
-  border-radius: 7px; background: var(--cream); color: var(--ink); min-width: 130px;
+/* Campos con la etiqueta integrada al borde (estilo "outlined") */
+.field { position: relative; display: flex; flex-direction: column; gap: 4px; }
+.field > label {
+  position: absolute; top: -8px; left: 10px; z-index: 2;
+  max-width: calc(100% - 20px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  padding: 0 6px; background: var(--cream-card);
+  font-size: 12px; font-weight: 500; line-height: 1.2; letter-spacing: 0;
+  color: var(--navy); text-transform: none; pointer-events: none;
 }
-.field input:focus, .field select:focus { outline: 2px solid var(--green); outline-offset: 1px; }
+.field input:not(.campo-fecha-requerido), .field select {
+  font-family: inherit; font-size: 14px; padding: 11px 12px;
+  border: 1.5px solid #aeb8cc !important; border-radius: 8px !important;
+  background: #fff !important; color: var(--ink); min-width: 130px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.field input:not(.campo-fecha-requerido):hover, .field select:hover { border-color: #7f8dab !important; }
+.field input:not(.campo-fecha-requerido):focus, .field select:focus {
+  outline: none; border-color: var(--navy) !important; box-shadow: 0 0 0 1px var(--navy);
+}
+.field:focus-within > label { color: var(--navy-deep); font-weight: 600; }
 
 /* ---------- Postura (huevitos) ---------- */
 .carton { display: flex; flex-direction: column; gap: 10px; }
@@ -683,6 +696,14 @@ input[type="date"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
   background: var(--cream); color: var(--ink);
 }
 .campo-fecha-btn:focus-visible { outline: 2px solid var(--green); outline-offset: 1px; }
+.field .campo-fecha-btn {
+  font-size: 14px; padding: 11px 12px; border: 1.5px solid #aeb8cc; border-radius: 8px; background: #fff !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.field .campo-fecha-btn:hover { border-color: #7f8dab; }
+.field .campo-fecha-btn:focus-visible, .field .campo-fecha-btn[aria-expanded="true"] {
+  outline: none; border-color: var(--navy); box-shadow: 0 0 0 1px var(--navy);
+}
 .campo-fecha-btn .vacio { color: var(--ink-soft); }
 .campo-fecha-btn svg { width: 16px; height: 16px; flex-shrink: 0; color: var(--navy); }
 .campo-fecha-requerido {
